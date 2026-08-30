@@ -1,6 +1,6 @@
-# AfterBuy
+# Tracer
 
-AfterBuy is a post-purchase shopping assistant that can protect purchases from any public HTTPS store page with reliable order data. It captures structured purchase facts locally, stores the product identity, watches later prices, and surfaces policy-backed claim opportunities only when a verified retailer policy supports them.
+Tracer is a post-purchase shopping assistant that can protect purchases from any public HTTPS store page with reliable order data. It captures structured purchase facts locally, stores the product identity, watches later prices, and surfaces policy-backed claim opportunities only when a verified retailer policy supports them.
 
 John Lewis is the first retailer-specific policy adapter. Generic stores can now be captured and monitored without pretending every price drop is automatically claimable.
 
