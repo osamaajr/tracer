@@ -61,32 +61,38 @@
       .fan-mark {
         height: 58px;
         position: relative;
-        width: 72px;
+        width: 76px;
       }
 
       .fan-panel {
-        background: #050505;
-        border-radius: 6px 6px 8px 8px;
-        bottom: 2px;
         display: block;
-        height: 48px;
-        left: 26px;
         opacity: 0;
         position: absolute;
-        transform-origin: 50% 100%;
-        width: 18px;
+        transform-origin: 50% 88%;
       }
 
-      .fan-panel:nth-child(1) {
-        animation: fan-left 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 80ms forwards;
+      .fan-left {
+        animation: fan-left 680ms cubic-bezier(0.18, 0.96, 0.14, 1) 60ms forwards;
+        height: 55px;
+        left: 2px;
+        top: 1px;
+        width: 38px;
       }
 
-      .fan-panel:nth-child(2) {
-        animation: fan-center 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 180ms forwards;
+      .fan-center {
+        animation: fan-center 680ms cubic-bezier(0.18, 0.96, 0.14, 1) 170ms forwards;
+        height: 50px;
+        left: 38px;
+        top: 0;
+        width: 22px;
       }
 
-      .fan-panel:nth-child(3) {
-        animation: fan-right 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 280ms forwards;
+      .fan-right {
+        animation: fan-right 680ms cubic-bezier(0.18, 0.96, 0.14, 1) 280ms forwards;
+        height: 42px;
+        left: 57px;
+        top: 9px;
+        width: 26px;
       }
 
       .wordmark-image {
@@ -251,51 +257,51 @@
       @keyframes fan-left {
         0% {
           opacity: 0;
-          transform: translateX(22px) translateY(8px) rotate(0deg) scaleY(0.78);
+          transform: translateX(20px) translateY(6px) rotate(8deg) scale(0.9);
         }
 
         68% {
           opacity: 1;
-          transform: translateX(-16px) translateY(0) rotate(-18deg) scaleY(1.04);
+          transform: translateX(-2px) translateY(-1px) rotate(-2deg) scale(1.04);
         }
 
         100% {
           opacity: 1;
-          transform: translateX(-14px) rotate(-17deg);
+          transform: translateX(0) translateY(0) rotate(0deg) scale(1);
         }
       }
 
       @keyframes fan-center {
         0% {
           opacity: 0;
-          transform: translateY(10px) rotate(0deg) scaleY(0.76);
+          transform: translateX(-10px) translateY(8px) rotate(-5deg) scale(0.9);
         }
 
         68% {
           opacity: 1;
-          transform: translateY(-2px) rotate(0deg) scaleY(1.04);
+          transform: translateX(1px) translateY(-1px) rotate(1deg) scale(1.04);
         }
 
         100% {
           opacity: 1;
-          transform: rotate(0deg);
+          transform: translateX(0) translateY(0) rotate(0deg) scale(1);
         }
       }
 
       @keyframes fan-right {
         0% {
           opacity: 0;
-          transform: translateX(-22px) translateY(8px) rotate(0deg) scaleY(0.78);
+          transform: translateX(-18px) translateY(8px) rotate(-8deg) scale(0.9);
         }
 
         68% {
           opacity: 1;
-          transform: translateX(16px) translateY(0) rotate(18deg) scaleY(1.04);
+          transform: translateX(2px) translateY(-1px) rotate(2deg) scale(1.04);
         }
 
         100% {
           opacity: 1;
-          transform: translateX(14px) rotate(17deg);
+          transform: translateX(0) translateY(0) rotate(0deg) scale(1);
         }
       }
     </style>
@@ -304,9 +310,9 @@
     <main>
       <div class="brand">
         <div class="fan-mark" aria-hidden="true">
-          <span class="fan-panel"></span>
-          <span class="fan-panel"></span>
-          <span class="fan-panel"></span>
+          <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" />
+          <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" />
+          <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" />
         </div>
         <img class="wordmark-image" src="/assets/tracer-wordmark.png" alt="Tracer" />
       </div>
