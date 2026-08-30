@@ -17,65 +17,16 @@
       }
 
       body {
-        background: #ffffff;
+        background:
+          radial-gradient(circle at 72% 8%, rgb(5 5 5 / 10%), transparent 32%),
+          linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
         margin: 0;
         width: 372px;
       }
 
-      main {
-        display: grid;
-        gap: 14px;
-        padding: 16px;
-      }
-
-      h1,
-      h2,
-      p {
-        margin: 0;
-      }
-
-      h1 {
-        font-size: 1.08rem;
-      }
-
-      h2 {
-        font-size: 1.28rem;
-        letter-spacing: 0;
-        line-height: 1.15;
-      }
-
-      p {
-        color: #64645f;
-        line-height: 1.45;
-      }
-
-      label {
-        display: grid;
-        font-size: 0.78rem;
-        font-weight: 760;
-        gap: 6px;
-      }
-
-      input {
-        background: #ffffff;
-        border: 1px solid #e7e7e2;
-        border-radius: 8px;
-        color: #050505;
-        font: inherit;
-        min-height: 38px;
-        padding: 0 10px;
-      }
-
       button,
-      a {
-        align-items: center;
-        border-radius: 8px;
-        display: inline-flex;
+      input {
         font: inherit;
-        font-weight: 800;
-        justify-content: center;
-        min-height: 42px;
-        text-decoration: none;
       }
 
       button {
@@ -85,57 +36,93 @@
 
       button:disabled {
         cursor: not-allowed;
-        opacity: 0.7;
+        opacity: 0.54;
+      }
+
+      main {
+        display: grid;
+        gap: 18px;
+        min-height: 520px;
+        padding: 28px 24px 20px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
       }
 
       .brand {
         align-items: center;
         display: flex;
-        gap: 10px;
+        gap: 16px;
       }
 
-      .mark {
+      .fan-mark {
+        height: 58px;
+        position: relative;
+        width: 72px;
+      }
+
+      .fan-panel {
+        background: #050505;
+        border-radius: 6px 6px 8px 8px;
+        bottom: 2px;
         display: block;
-        height: 30px;
-        object-fit: contain;
-        width: 34px;
+        height: 48px;
+        left: 26px;
+        opacity: 0;
+        position: absolute;
+        transform-origin: 50% 100%;
+        width: 18px;
+      }
+
+      .fan-panel:nth-child(1) {
+        animation: fan-left 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 80ms forwards;
+      }
+
+      .fan-panel:nth-child(2) {
+        animation: fan-center 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 180ms forwards;
+      }
+
+      .fan-panel:nth-child(3) {
+        animation: fan-right 620ms cubic-bezier(0.2, 0.9, 0.1, 1) 280ms forwards;
       }
 
       .wordmark-image {
         display: block;
         height: auto;
         object-fit: contain;
-        width: 78px;
+        width: 112px;
       }
 
-      .hero,
-      .purchase,
-      .settings {
-        background: #ffffff;
-        border: 1px solid #e7e7e2;
-        border-radius: 8px;
-        box-shadow: 0 10px 28px rgb(23 23 20 / 8%);
-      }
-
-      .hero {
+      .panel {
+        align-content: start;
+        background: rgb(255 255 255 / 88%);
+        border: 1px solid rgb(5 5 5 / 10%);
+        border-radius: 18px;
+        box-shadow: 0 18px 50px rgb(0 0 0 / 10%);
         display: grid;
-        gap: 12px;
-        padding: 16px;
+        gap: 18px;
+        min-height: 366px;
+        padding: 24px;
       }
 
-      .scan {
-        background: #050505;
-        color: #ffffff;
-        gap: 8px;
-        width: 100%;
+      h2 {
+        font-size: 2.05rem;
+        letter-spacing: 0;
+        line-height: 1.02;
       }
 
-      .scan::before {
-        content: "->";
-        font-weight: 900;
+      .intro {
+        color: #5f5f5a;
+        font-size: 1rem;
+        line-height: 1.45;
       }
 
       .purchase {
+        background: #f3f3ef;
+        border-radius: 16px;
         display: none;
         gap: 12px;
         padding: 14px;
@@ -148,103 +135,224 @@
       .purchase-top {
         align-items: center;
         display: flex;
-        gap: 10px;
+        gap: 8px;
         justify-content: space-between;
       }
 
       .pill {
-        background: #f3f3f0;
+        background: #ffffff;
+        border: 1px solid rgb(5 5 5 / 8%);
         border-radius: 999px;
-        color: #333331;
-        font-size: 0.72rem;
+        color: #343430;
+        font-size: 0.7rem;
         font-weight: 850;
         padding: 6px 9px;
         text-transform: uppercase;
       }
 
       .product {
-        border: 1px solid #e7e7e2;
-        border-radius: 8px;
         display: grid;
         gap: 6px;
-        padding: 12px;
       }
 
       .product strong {
-        line-height: 1.25;
+        font-size: 1rem;
+        line-height: 1.24;
       }
 
-      .protect {
-        background: #050505;
-        color: #ffffff;
-        width: 100%;
-      }
-
-      .dashboard {
-        border: 1px solid #e7e7e2;
-        color: #050505;
+      .product span {
+        color: #64645f;
       }
 
       .status {
-        background: #f3f3f0;
-        border-radius: 8px;
+        background: #f3f3ef;
+        border-radius: 16px;
         color: #333331;
-        font-size: 0.88rem;
-        padding: 10px;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        padding: 14px;
+      }
+
+      .actions {
+        align-self: end;
+        display: grid;
+        gap: 10px;
+        margin-top: auto;
+      }
+
+      .protect {
+        align-items: center;
+        background: linear-gradient(180deg, #1d1d1d 0%, #050505 100%);
+        border-radius: 16px;
+        box-shadow: 0 16px 34px rgb(0 0 0 / 18%);
+        color: #ffffff;
+        display: inline-flex;
+        font-weight: 850;
+        justify-content: center;
+        min-height: 58px;
+        width: 100%;
+      }
+
+      .maybe-later {
+        background: transparent;
+        color: #8a8a84;
+        font-size: 0.82rem;
+        justify-self: center;
+        min-height: 20px;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      .dashboard {
+        color: #6c6c66;
+        font-size: 0.8rem;
+        justify-self: center;
+        text-decoration: none;
       }
 
       .settings {
+        border-top: 1px solid rgb(5 5 5 / 9%);
+        color: #73736d;
         display: grid;
+        font-size: 0.8rem;
         gap: 10px;
-        padding: 12px;
+        padding-top: 14px;
+      }
+
+      .settings summary {
+        cursor: pointer;
+        font-weight: 760;
+      }
+
+      label {
+        display: grid;
+        gap: 7px;
+        font-weight: 760;
+      }
+
+      input {
+        background: #ffffff;
+        border: 1px solid #e1e1dc;
+        border-radius: 12px;
+        color: #050505;
+        min-height: 42px;
+        padding: 0 12px;
       }
 
       .save {
-        background: linear-gradient(180deg, #202020 0%, #050505 100%);
+        background: #050505;
+        border-radius: 12px;
         color: #ffffff;
+        font-weight: 850;
+        min-height: 42px;
+      }
+
+      @keyframes fan-left {
+        0% {
+          opacity: 0;
+          transform: translateX(22px) translateY(8px) rotate(0deg) scaleY(0.78);
+        }
+
+        68% {
+          opacity: 1;
+          transform: translateX(-16px) translateY(0) rotate(-18deg) scaleY(1.04);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateX(-14px) rotate(-17deg);
+        }
+      }
+
+      @keyframes fan-center {
+        0% {
+          opacity: 0;
+          transform: translateY(10px) rotate(0deg) scaleY(0.76);
+        }
+
+        68% {
+          opacity: 1;
+          transform: translateY(-2px) rotate(0deg) scaleY(1.04);
+        }
+
+        100% {
+          opacity: 1;
+          transform: rotate(0deg);
+        }
+      }
+
+      @keyframes fan-right {
+        0% {
+          opacity: 0;
+          transform: translateX(-22px) translateY(8px) rotate(0deg) scaleY(0.78);
+        }
+
+        68% {
+          opacity: 1;
+          transform: translateX(16px) translateY(0) rotate(18deg) scaleY(1.04);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateX(14px) rotate(17deg);
+        }
       }
     </style>
   </head>
   <body>
     <main>
       <div class="brand">
-        <img class="mark" src="/assets/tracer-logo.png" alt="" />
+        <div class="fan-mark" aria-hidden="true">
+          <span class="fan-panel"></span>
+          <span class="fan-panel"></span>
+          <span class="fan-panel"></span>
+        </div>
         <img class="wordmark-image" src="/assets/tracer-wordmark.png" alt="Tracer" />
       </div>
 
-      <section class="hero" aria-label="Scan current store">
-        <h2>Scan this order page.</h2>
-        <p>
-          Tracer can read structured order details from many store confirmation
-          pages, then watch the product URL for drops.
+      <section class="panel" aria-label="Protect current purchase">
+        <h2>Protect this purchase.</h2>
+        <p class="intro">
+          Tracer checks this tab for reliable order details, then watches the
+          product for useful drops.
         </p>
-        <button class="scan" id="scan" type="button">Scan current tab</button>
-        <p class="status" id="status">Open an order confirmation page, then scan.</p>
+
+        <section class="purchase" id="purchase" aria-label="Detected purchase">
+          <div class="purchase-top">
+            <span class="pill" id="retailer">Store</span>
+            <span class="pill" id="confidence">Confidence</span>
+          </div>
+          <div class="product">
+            <strong id="productName">Detected purchase</strong>
+            <span id="totalPaid">Captured</span>
+            <span id="itemCount">1 item</span>
+          </div>
+        </section>
+
+        <p class="status" id="status">Checking this tab for an order...</p>
+
+        <div class="actions">
+          <button class="protect" id="protect" type="button" disabled>
+            Protect this purchase
+          </button>
+          <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
+          <a class="dashboard" id="dashboardLink" href="http://127.0.0.1:5173/dashboard" target="_blank" rel="noreferrer">
+            Open dashboard
+          </a>
+        </div>
+
+        <details class="settings">
+          <summary>Developer settings</summary>
+          <label>
+            Local API URL
+            <input id="apiBaseUrl" type="url" />
+          </label>
+          <button class="save" id="save" type="button">Save API URL</button>
+        </details>
       </section>
 
-      <section class="purchase" id="purchase" aria-label="Detected purchase">
-        <div class="purchase-top">
-          <span class="pill" id="retailer">Store</span>
-          <span class="pill" id="confidence">Confidence</span>
-        </div>
-        <div class="product">
-          <strong id="productName">Detected purchase</strong>
-          <span id="totalPaid">Captured</span>
-          <span id="itemCount">1 item</span>
-        </div>
-        <button class="protect" id="protect" type="button">Protect purchase</button>
-        <a class="dashboard" id="dashboardLink" href="http://localhost:5173/dashboard" target="_blank" rel="noreferrer">
-          Open dashboard
-        </a>
-      </section>
-
-      <section class="settings" aria-label="API settings">
-        <label>
-          Local API URL
-          <input id="apiBaseUrl" type="url" />
-        </label>
-        <button class="save" id="save" type="button">Save API URL</button>
-      </section>
+      <button class="scan" id="scan" type="button" hidden>Scan current tab</button>
     </main>
     <script type="module" src="/src/popup.ts"></script>
   </body>

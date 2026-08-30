@@ -17,6 +17,7 @@ const apiInput = document.getElementById("apiBaseUrl") as HTMLInputElement;
 const saveButton = document.getElementById("save") as HTMLButtonElement;
 const scanButton = document.getElementById("scan") as HTMLButtonElement;
 const protectButton = document.getElementById("protect") as HTMLButtonElement;
+const maybeLaterButton = document.getElementById("maybeLater") as HTMLButtonElement;
 const statusMessage = document.getElementById("status") as HTMLParagraphElement;
 const purchasePanel = document.getElementById("purchase") as HTMLElement;
 const dashboardLink = document.getElementById("dashboardLink") as HTMLAnchorElement;
@@ -42,6 +43,7 @@ void chrome.storage.sync.get("dashboardBaseUrl").then((stored) => {
 });
 
 void refreshOpportunityStatus();
+void scanActiveTab();
 
 saveButton.addEventListener("click", () => {
   const value = apiInput.value.trim();
@@ -64,9 +66,14 @@ scanButton.addEventListener("click", () => {
   void scanActiveTab();
 });
 
+maybeLaterButton.addEventListener("click", () => {
+  window.close();
+});
+
 protectButton.addEventListener("click", () => {
   if (!capturedDraft) {
-    statusMessage.textContent = "Scan an order page before protecting it.";
+    statusMessage.textContent =
+      "No purchase is ready yet. Open an order confirmation page and try again.";
     return;
   }
 
@@ -96,13 +103,14 @@ protectButton.addEventListener("click", () => {
 
 async function scanActiveTab(): Promise<void> {
   scanButton.disabled = true;
-  statusMessage.textContent = "Scanning this tab for order data...";
+  protectButton.disabled = true;
+  statusMessage.textContent = "Checking this tab for an order...";
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (!tab?.id || !tab.url?.startsWith("https://")) {
-      throw new Error("Open an HTTPS store order page before scanning.");
+      throw new Error("Open an HTTPS store order confirmation page to protect it.");
     }
 
     await chrome.scripting.executeScript({
@@ -118,10 +126,12 @@ async function scanActiveTab(): Promise<void> {
 
     capturedDraft = response.draft;
     renderCapturedPurchase(response.summary);
-    statusMessage.textContent = "Purchase details captured locally. Review and protect it.";
+    statusMessage.textContent = "Purchase found. Review the details and protect it.";
   } catch (error) {
     capturedDraft = null;
     purchasePanel.dataset.visible = "false";
+    protectButton.disabled = true;
+    protectButton.textContent = "Protect this purchase";
     statusMessage.textContent =
       error instanceof Error ? error.message : "Unable to scan this page.";
   } finally {
@@ -137,7 +147,7 @@ function renderCapturedPurchase(summary: NonNullable<ScanResponse["summary"]>): 
   totalPaid.textContent = summary.totalDisplay;
   itemCount.textContent = `${summary.itemCount} item${summary.itemCount === 1 ? "" : "s"}`;
   protectButton.disabled = false;
-  protectButton.textContent = "Protect purchase";
+  protectButton.textContent = "Protect this purchase";
 }
 
 function sendScanMessage(tabId: number): Promise<ScanResponse> {
