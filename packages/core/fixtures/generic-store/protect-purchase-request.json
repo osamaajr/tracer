@@ -1,0 +1,26 @@
+{
+  "purchaseDraft": {
+    "retailerId": "store_shop-example-com",
+    "retailerName": "Shop",
+    "storeHost": "shop.example.com",
+    "sourceUrl": "https://shop.example.com/checkout/confirmation/ACME-445566",
+    "orderReference": "ACME-445566",
+    "purchasedAt": "2026-08-30T12:30:00.000Z",
+    "captureMethod": "generic_schema_org",
+    "captureConfidence": "high",
+    "lineItems": [
+      {
+        "productName": "Trail Pack 24L, Moss Green",
+        "quantity": 1,
+        "pricePaid": {
+          "amountMinor": 8450,
+          "currency": "GBP"
+        },
+        "productUrl": "https://shop.example.com/products/trail-pack-24l-moss-green",
+        "productUrlConfidence": "high",
+        "externalProductId": "acme-pack-24-moss",
+        "sku": "TP24-MOSS"
+      }
+    ]
+  }
+}

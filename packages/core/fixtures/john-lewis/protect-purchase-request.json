@@ -1,0 +1,26 @@
+{
+  "purchaseDraft": {
+    "retailerId": "john-lewis",
+    "retailerName": "John Lewis",
+    "storeHost": "www.johnlewis.com",
+    "sourceUrl": "https://www.johnlewis.com/checkout/order-confirmation/JL-12345678",
+    "orderReference": "JL-12345678",
+    "purchasedAt": "2026-08-30T09:15:00.000Z",
+    "captureMethod": "retailer_adapter",
+    "captureConfidence": "high",
+    "lineItems": [
+      {
+        "productName": "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
+        "quantity": 1,
+        "pricePaid": {
+          "amountMinor": 34900,
+          "currency": "GBP"
+        },
+        "productUrl": "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
+        "productUrlConfidence": "high",
+        "externalProductId": "p1122334",
+        "sku": "JL-SNY-XM6-BLK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "afterbuy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev -w @afterbuy/api",
+    "dev:web": "npm run dev -w @afterbuy/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/chrome": "^0.2.7",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
+    "linkedom": "^0.18.13",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.68.0",
+    "vitest": "^4.1.11"
+  }
+}

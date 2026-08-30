@@ -1,0 +1,10 @@
+node_modules
+dist
+.afterbuy-data
+.env
+.env.local
+coverage
+*.log
+*.tsbuildinfo
+*.zip
+.DS_Store

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracer</title>
+    <style>
+      :root {
+        color: #050505;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #ffffff;
+        margin: 0;
+        width: 372px;
+      }
+
+      main {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 1.08rem;
+      }
+
+      h2 {
+        font-size: 1.28rem;
+        letter-spacing: 0;
+        line-height: 1.15;
+      }
+
+      p {
+        color: #64645f;
+        line-height: 1.45;
+      }
+
+      label {
+        display: grid;
+        font-size: 0.78rem;
+        font-weight: 760;
+        gap: 6px;
+      }
+
+      input {
+        background: #ffffff;
+        border: 1px solid #e7e7e2;
+        border-radius: 8px;
+        color: #050505;
+        font: inherit;
+        min-height: 38px;
+        padding: 0 10px;
+      }
+
+      button,
+      a {
+        align-items: center;
+        border-radius: 8px;
+        display: inline-flex;
+        font: inherit;
+        font-weight: 800;
+        justify-content: center;
+        min-height: 42px;
+        text-decoration: none;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+      }
+
+      .mark {
+        display: block;
+        height: 30px;
+        object-fit: contain;
+        width: 34px;
+      }
+
+      .wordmark-image {
+        display: block;
+        height: auto;
+        object-fit: contain;
+        width: 78px;
+      }
+
+      .hero,
+      .purchase,
+      .settings {
+        background: #ffffff;
+        border: 1px solid #e7e7e2;
+        border-radius: 8px;
+        box-shadow: 0 10px 28px rgb(23 23 20 / 8%);
+      }
+
+      .hero {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      .scan {
+        background: #050505;
+        color: #ffffff;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .scan::before {
+        content: "->";
+        font-weight: 900;
+      }
+
+      .purchase {
+        display: none;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .purchase[data-visible="true"] {
+        display: grid;
+      }
+
+      .purchase-top {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .pill {
+        background: #f3f3f0;
+        border-radius: 999px;
+        color: #333331;
+        font-size: 0.72rem;
+        font-weight: 850;
+        padding: 6px 9px;
+        text-transform: uppercase;
+      }
+
+      .product {
+        border: 1px solid #e7e7e2;
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+      }
+
+      .product strong {
+        line-height: 1.25;
+      }
+
+      .protect {
+        background: #050505;
+        color: #ffffff;
+        width: 100%;
+      }
+
+      .dashboard {
+        border: 1px solid #e7e7e2;
+        color: #050505;
+      }
+
+      .status {
+        background: #f3f3f0;
+        border-radius: 8px;
+        color: #333331;
+        font-size: 0.88rem;
+        padding: 10px;
+      }
+
+      .settings {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .save {
+        background: linear-gradient(180deg, #202020 0%, #050505 100%);
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">
+        <img class="mark" src="/assets/tracer-logo.png" alt="" />
+        <img class="wordmark-image" src="/assets/tracer-wordmark.png" alt="Tracer" />
+      </div>
+
+      <section class="hero" aria-label="Scan current store">
+        <h2>Scan this order page.</h2>
+        <p>
+          Tracer can read structured order details from many store confirmation
+          pages, then watch the product URL for drops.
+        </p>
+        <button class="scan" id="scan" type="button">Scan current tab</button>
+        <p class="status" id="status">Open an order confirmation page, then scan.</p>
+      </section>
+
+      <section class="purchase" id="purchase" aria-label="Detected purchase">
+        <div class="purchase-top">
+          <span class="pill" id="retailer">Store</span>
+          <span class="pill" id="confidence">Confidence</span>
+        </div>
+        <div class="product">
+          <strong id="productName">Detected purchase</strong>
+          <span id="totalPaid">Captured</span>
+          <span id="itemCount">1 item</span>
+        </div>
+        <button class="protect" id="protect" type="button">Protect purchase</button>
+        <a class="dashboard" id="dashboardLink" href="http://localhost:5173/dashboard" target="_blank" rel="noreferrer">
+          Open dashboard
+        </a>
+      </section>
+
+      <section class="settings" aria-label="API settings">
+        <label>
+          Local API URL
+          <input id="apiBaseUrl" type="url" />
+        </label>
+        <button class="save" id="save" type="button">Save API URL</button>
+      </section>
+    </main>
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>
