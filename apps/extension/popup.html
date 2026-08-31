@@ -6,7 +6,14 @@
     <title>Tracer</title>
     <style>
       :root {
-        color: #050505;
+        --ink: #171714;
+        --muted: #65625b;
+        --soft: #f6f3ee;
+        --panel: #fffdf9;
+        --line: #e5dfd6;
+        --green: #5e7d2d;
+        --radius: 12px;
+        color: var(--ink);
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", sans-serif;
@@ -17,11 +24,9 @@
       }
 
       body {
-        background:
-          radial-gradient(circle at 72% 8%, rgb(5 5 5 / 10%), transparent 32%),
-          linear-gradient(180deg, #ffffff 0%, #f7f7f4 100%);
+        background: #ece8df;
         margin: 0;
-        width: 372px;
+        width: 410px;
       }
 
       button,
@@ -29,39 +34,71 @@
         font: inherit;
       }
 
+      button,
+      summary {
+        cursor: pointer;
+      }
+
       button {
         border: 0;
-        cursor: pointer;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid #1e1e1b;
+        outline-offset: 3px;
       }
 
       button:disabled {
         cursor: not-allowed;
-        opacity: 0.54;
+        opacity: 0.48;
       }
 
       main {
+        background:
+          radial-gradient(circle at 10% 0%, rgb(255 255 255 / 90%), transparent 40%),
+          linear-gradient(145deg, #fffdf8 0%, #f7f2ea 100%);
+        box-shadow: 0 18px 60px rgb(38 35 30 / 18%);
         display: grid;
-        gap: 18px;
-        min-height: 520px;
-        padding: 28px 24px 20px;
+        gap: 22px;
+        min-height: 626px;
+        padding: 28px 26px 24px;
       }
 
       h1,
       h2,
-      p {
+      h3,
+      p,
+      dl {
         margin: 0;
       }
 
-      .brand {
+      .topbar,
+      .brand,
+      .active-pill,
+      .product-head,
+      .detail-row,
+      .feature,
+      .review-toggle,
+      .privacy-note {
         align-items: center;
         display: flex;
-        gap: 16px;
+      }
+
+      .topbar {
+        justify-content: space-between;
+      }
+
+      .brand {
+        gap: 8px;
       }
 
       .fan-mark {
-        height: 62px;
+        height: 24px;
         position: relative;
-        width: 72px;
+        width: 29px;
       }
 
       .fan-panel {
@@ -90,111 +127,340 @@
       .wordmark-image {
         display: block;
         height: auto;
-        object-fit: contain;
-        width: 112px;
+        width: 76px;
       }
 
-      .panel {
-        align-content: start;
-        background: rgb(255 255 255 / 88%);
-        border: 1px solid rgb(5 5 5 / 10%);
-        border-radius: 18px;
-        box-shadow: 0 18px 50px rgb(0 0 0 / 10%);
-        display: grid;
-        gap: 18px;
-        min-height: 366px;
-        padding: 24px;
-      }
-
-      h2 {
-        font-size: 2.05rem;
-        letter-spacing: 0;
-        line-height: 1.02;
-      }
-
-      .intro {
-        color: #5f5f5a;
-        font-size: 1rem;
-        line-height: 1.45;
-      }
-
-      .purchase {
-        background: #f3f3ef;
-        border-radius: 16px;
-        display: none;
-        gap: 12px;
-        padding: 14px;
-      }
-
-      .purchase[data-visible="true"] {
-        display: grid;
-      }
-
-      .purchase-top {
+      .top-actions {
         align-items: center;
         display: flex;
         gap: 8px;
-        justify-content: space-between;
       }
 
-      .pill {
-        background: #ffffff;
-        border: 1px solid rgb(5 5 5 / 8%);
+      .active-pill {
+        background: #efebe3;
         border-radius: 999px;
-        color: #343430;
-        font-size: 0.7rem;
-        font-weight: 850;
-        padding: 6px 9px;
-        text-transform: uppercase;
-      }
-
-      .product {
-        display: grid;
+        color: #2d2b27;
+        font-size: 0.76rem;
+        font-weight: 760;
         gap: 6px;
+        min-height: 28px;
+        padding: 0 10px;
       }
 
-      .product strong {
-        font-size: 1rem;
-        line-height: 1.24;
+      .active-pill::before {
+        background: var(--green);
+        border-radius: 50%;
+        content: "";
+        height: 6px;
+        width: 6px;
       }
 
-      .product span {
-        color: #64645f;
+      .settings-toggle {
+        align-items: center;
+        background: transparent;
+        border-radius: 999px;
+        color: #1f1d1a;
+        display: inline-flex;
+        height: 28px;
+        justify-content: center;
+        width: 28px;
       }
 
-      .status {
-        background: #f3f3ef;
-        border-radius: 16px;
-        color: #333331;
-        font-size: 0.95rem;
-        line-height: 1.4;
+      .hero-copy {
+        display: grid;
+        gap: 10px;
+      }
+
+      h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.92rem;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 0.98;
+      }
+
+      .intro {
+        color: #3f3b35;
+        font-size: 0.93rem;
+        line-height: 1.45;
+        max-width: 318px;
+      }
+
+      .purchase-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 12px 34px rgb(44 39 32 / 8%);
+        display: grid;
+        gap: 14px;
+        overflow: hidden;
         padding: 14px;
       }
 
-      .actions {
-        align-self: end;
+      .purchase-card[data-visible="false"] {
+        display: none;
+      }
+
+      .product-head {
+        gap: 14px;
+      }
+
+      .product-image {
+        align-items: center;
+        background: #f0ede7;
+        border-radius: 10px;
+        display: flex;
+        flex: 0 0 76px;
+        height: 76px;
+        justify-content: center;
+        overflow: hidden;
+        width: 76px;
+      }
+
+      .product-image img {
+        display: none;
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .product-image[data-has-image="true"] img {
+        display: block;
+      }
+
+      .product-image[data-has-image="true"] .image-fallback {
+        display: none;
+      }
+
+      .image-fallback {
+        color: #a19a90;
+        height: 30px;
+        width: 36px;
+      }
+
+      .product-title {
+        min-width: 0;
+      }
+
+      h2 {
+        font-size: 0.98rem;
+        letter-spacing: 0;
+        line-height: 1.24;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .item-subtitle {
+        color: var(--muted);
+        display: -webkit-box;
+        font-size: 0.82rem;
+        line-height: 1.32;
+        margin-top: 3px;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+      }
+
+      .divider {
+        background: var(--line);
+        height: 1px;
+      }
+
+      .details {
+        display: grid;
+        gap: 8px;
+      }
+
+      .detail-row {
+        color: #2e2b27;
+        font-size: 0.78rem;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .detail-row dt {
+        color: #5f5b53;
+      }
+
+      .detail-row dd {
+        font-weight: 760;
+        margin: 0;
+        max-width: 190px;
+        min-width: 0;
+        overflow: hidden;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .detail-row[data-visible="false"] {
+        display: none;
+      }
+
+      .match {
+        color: var(--green);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .match::before {
+        background: var(--green);
+        border-radius: 50%;
+        content: "";
+        height: 6px;
+        width: 6px;
+      }
+
+      .match[data-quality="review"] {
+        color: #8a6d2f;
+      }
+
+      .match[data-quality="review"]::before {
+        background: #c8a24f;
+      }
+
+      .url-value {
+        align-items: center;
+        color: #34312c;
+        display: inline-flex;
+        gap: 4px;
+        max-width: 190px;
+        min-width: 0;
+        overflow: hidden;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .features {
+        display: grid;
+        gap: 6px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .feature {
+        background: #fffdf9;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        gap: 8px;
+        min-height: 62px;
+        padding: 10px 8px;
+      }
+
+      .feature svg {
+        color: #1f1d1a;
+        flex: 0 0 auto;
+        height: 18px;
+        width: 18px;
+      }
+
+      .feature strong {
+        display: block;
+        font-size: 0.66rem;
+        line-height: 1.05;
+      }
+
+      .feature span {
+        color: #66625b;
+        display: block;
+        font-size: 0.62rem;
+        line-height: 1.25;
+        margin-top: 4px;
+      }
+
+      .state-panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        color: #3d3933;
         display: grid;
         gap: 10px;
-        margin-top: auto;
+        min-height: 132px;
+        padding: 16px;
+      }
+
+      .state-panel[data-visible="false"] {
+        display: none;
+      }
+
+      .state-panel:not([data-state="detecting"]) .skeleton {
+        display: none;
+      }
+
+      .state-panel strong {
+        color: var(--ink);
+        font-size: 1rem;
+      }
+
+      .state-panel p {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.4;
+      }
+
+      .skeleton {
+        animation: pulse 1.15s ease-in-out infinite;
+        background: linear-gradient(90deg, #ebe6dc 0%, #f6f2ea 50%, #ebe6dc 100%);
+        background-size: 200% 100%;
+        border-radius: 999px;
+        height: 12px;
+      }
+
+      .skeleton.short {
+        width: 54%;
+      }
+
+      .skeleton.long {
+        width: 86%;
+      }
+
+      .actions {
+        display: grid;
+        gap: 12px;
       }
 
       .protect {
         align-items: center;
-        background: linear-gradient(180deg, #1d1d1d 0%, #050505 100%);
-        border-radius: 16px;
+        background: linear-gradient(180deg, #242421 0%, #161613 100%);
+        border-radius: 13px;
         box-shadow: 0 16px 34px rgb(0 0 0 / 18%);
         color: #ffffff;
         display: inline-flex;
-        font-weight: 850;
+        font-weight: 820;
         justify-content: center;
-        min-height: 58px;
+        min-height: 50px;
         width: 100%;
+      }
+
+      .protect[data-loading="true"]::after {
+        animation: spin 760ms linear infinite;
+        border: 2px solid rgb(255 255 255 / 34%);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        content: "";
+        height: 14px;
+        margin-left: 10px;
+        width: 14px;
+      }
+
+      .review-toggle {
+        background: transparent;
+        border-radius: 8px;
+        color: #191815;
+        font-size: 0.88rem;
+        font-weight: 760;
+        gap: 8px;
+        justify-content: center;
+        min-height: 26px;
+        padding: 0;
+        text-decoration: none;
       }
 
       .maybe-later {
         background: transparent;
-        color: #8a8a84;
-        font-size: 0.82rem;
+        color: #8a847a;
+        font-size: 0.78rem;
         justify-self: center;
         min-height: 20px;
         padding: 0;
@@ -202,48 +468,62 @@
         text-underline-offset: 3px;
       }
 
-      .dashboard {
-        color: #6c6c66;
-        font-size: 0.8rem;
-        justify-self: center;
-        text-decoration: none;
+      .privacy-note {
+        color: #79736a;
+        font-size: 0.72rem;
+        gap: 8px;
+        justify-content: center;
+        line-height: 1.3;
+        text-align: center;
       }
 
+      .privacy-note svg {
+        flex: 0 0 auto;
+        height: 13px;
+        width: 13px;
+      }
+
+      .review-panel,
       .settings {
-        border-top: 1px solid rgb(5 5 5 / 9%);
-        color: #73736d;
-        display: grid;
-        font-size: 0.8rem;
+        background: rgb(255 253 249 / 68%);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        display: none;
         gap: 10px;
-        padding-top: 14px;
+        padding: 12px;
       }
 
-      .settings summary {
-        cursor: pointer;
-        font-weight: 760;
+      .review-panel[data-visible="true"],
+      .settings[data-visible="true"] {
+        display: grid;
       }
 
       label {
+        color: #4c4841;
         display: grid;
-        gap: 7px;
+        font-size: 0.72rem;
         font-weight: 760;
+        gap: 5px;
       }
 
       input {
-        background: #ffffff;
-        border: 1px solid #e1e1dc;
-        border-radius: 12px;
-        color: #050505;
-        min-height: 42px;
-        padding: 0 12px;
+        background: #fffefa;
+        border: 1px solid #ded8ce;
+        border-radius: 9px;
+        color: var(--ink);
+        min-height: 36px;
+        min-width: 0;
+        padding: 0 10px;
       }
 
-      .save {
-        background: #050505;
-        border-radius: 12px;
-        color: #ffffff;
-        font-weight: 850;
-        min-height: 42px;
+      .save,
+      .save-review {
+        background: #1c1c19;
+        border-radius: 9px;
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 800;
+        min-height: 36px;
       }
 
       @keyframes fan-left {
@@ -296,61 +576,197 @@
           transform: translateX(0) translateY(0) rotate(0deg) scale(1);
         }
       }
+
+      @keyframes pulse {
+        0% {
+          background-position: 100% 50%;
+        }
+
+        100% {
+          background-position: -100% 50%;
+        }
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          scroll-behavior: auto !important;
+          transition-duration: 1ms !important;
+        }
+      }
     </style>
   </head>
   <body>
     <main>
-      <div class="brand">
-        <div class="fan-mark" aria-hidden="true">
-          <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" />
-          <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" />
-          <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" />
+      <header class="topbar">
+        <div class="brand" aria-label="Tracer">
+          <div class="fan-mark" aria-hidden="true">
+            <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" />
+            <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" />
+            <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" />
+          </div>
+          <img class="wordmark-image" src="/assets/tracer-wordmark.png" alt="Tracer" />
         </div>
-        <img class="wordmark-image" src="/assets/tracer-wordmark.png" alt="Tracer" />
-      </div>
-
-      <section class="panel" aria-label="Protect current purchase">
-        <h2>Protect this purchase.</h2>
-        <p class="intro">
-          Tracer checks this tab for reliable order details, then watches the
-          product for useful drops.
-        </p>
-
-        <section class="purchase" id="purchase" aria-label="Detected purchase">
-          <div class="purchase-top">
-            <span class="pill" id="retailer">Store</span>
-            <span class="pill" id="confidence">Confidence</span>
-          </div>
-          <div class="product">
-            <strong id="productName">Detected purchase</strong>
-            <span id="totalPaid">Captured</span>
-            <span id="itemCount">1 item</span>
-          </div>
-        </section>
-
-        <p class="status" id="status">Checking this tab for an order...</p>
-
-        <div class="actions">
-          <button class="protect" id="protect" type="button" disabled>
-            Protect this purchase
+        <div class="top-actions">
+          <span class="active-pill">Active</span>
+          <button class="settings-toggle" id="settingsToggle" type="button" aria-label="Open settings" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.1 3.4c0-.5-.1-1-.2-1.4l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.4-1.4L14.8 2h-4l-.4 3.2A8 8 0 0 0 8 6.6l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 5.5 12c0 .5.1 1 .2 1.4l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 2.4 1.4l.4 3.2h4l.4-3.2a8 8 0 0 0 2.4-1.4l2.4 1 2-3.5-2-1.5c.1-.4.2-.9.2-1.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            </svg>
           </button>
-          <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
-          <a class="dashboard" id="dashboardLink" href="http://127.0.0.1:5173/dashboard" target="_blank" rel="noreferrer">
-            Open dashboard
-          </a>
         </div>
+      </header>
 
-        <details class="settings">
-          <summary>Developer settings</summary>
-          <label>
-            Local API URL
-            <input id="apiBaseUrl" type="url" />
-          </label>
-          <button class="save" id="save" type="button">Save API URL</button>
-        </details>
+      <section class="hero-copy">
+        <h1 id="headline">Bought it?<br />We’ll keep watching it.</h1>
+        <p class="intro" id="intro">
+          We’ll monitor this purchase for price drops and opportunities worth acting on.
+        </p>
       </section>
 
-      <button class="scan" id="scan" type="button" hidden>Scan current tab</button>
+      <section class="state-panel" id="statePanel" aria-live="polite">
+        <strong id="stateTitle">Checking this purchase...</strong>
+        <p id="stateCopy">Tracer is looking for reliable order details on this tab.</p>
+        <div class="skeleton long"></div>
+        <div class="skeleton short"></div>
+      </section>
+
+      <section class="purchase-card" id="purchase" aria-label="Detected purchase" data-visible="false">
+        <div class="product-head">
+          <div class="product-image" id="productImageFrame" data-has-image="false">
+            <img id="productImage" alt="" />
+            <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
+              <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+              <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
+            </svg>
+          </div>
+          <div class="product-title">
+            <h2 id="productName">Detected purchase</h2>
+            <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <dl class="details">
+          <div class="detail-row">
+            <dt>Paid</dt>
+            <dd id="totalPaid">Captured</dd>
+          </div>
+          <div class="detail-row">
+            <dt>Retailer</dt>
+            <dd id="retailer">Store</dd>
+          </div>
+          <div class="detail-row">
+            <dt>Purchase date</dt>
+            <dd id="purchaseDate">Unknown</dd>
+          </div>
+          <div class="detail-row">
+            <dt>Product match</dt>
+            <dd class="match" id="matchStatus">Needs review</dd>
+          </div>
+          <div class="detail-row" id="productUrlRow">
+            <dt>Product URL</dt>
+            <dd>
+              <a class="url-value" id="productUrl" href="#" target="_blank" rel="noreferrer">
+                <span id="productUrlText">Unavailable</span>
+                <svg viewBox="0 0 16 16" aria-hidden="true" width="12" height="12">
+                  <path d="M6.2 3.2H3.6a1.4 1.4 0 0 0-1.4 1.4v7.8c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4V9.8M8.8 2.2h5v5M7.8 8.2l5.8-5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </a>
+            </dd>
+          </div>
+          <div class="detail-row">
+            <dt id="windowLabel">Monitoring</dt>
+            <dd id="windowValue">Ready</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="features" aria-label="Tracer monitoring benefits">
+        <div class="feature">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m4 10 8-6 8 6-8 10-8-10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+          </svg>
+          <div>
+            <strong>Price drops</strong>
+            <span>We’ll watch for changes</span>
+          </div>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+          <div>
+            <strong>Policy windows</strong>
+            <span>Known eligibility only</span>
+          </div>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7ZM10 20h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div>
+            <strong>Alerts</strong>
+            <span>We’ll tell you when it matters</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="review-panel" id="reviewPanel" aria-label="Review purchase details" data-visible="false">
+        <label>
+          Product name
+          <input id="reviewProductName" type="text" autocomplete="off" />
+        </label>
+        <label>
+          Paid
+          <input id="reviewPrice" type="text" autocomplete="off" inputmode="decimal" />
+        </label>
+        <label>
+          Purchase date
+          <input id="reviewDate" type="datetime-local" />
+        </label>
+        <label>
+          Product URL
+          <input id="reviewUrl" type="url" autocomplete="off" />
+        </label>
+        <button class="save-review" id="saveReview" type="button">Save details</button>
+      </section>
+
+      <section class="actions">
+        <button class="protect" id="protect" type="button" disabled>Protect purchase</button>
+        <button class="review-toggle" id="reviewDetails" type="button" disabled>
+          Review details
+          <svg viewBox="0 0 16 16" aria-hidden="true" width="14" height="14">
+            <path d="m6 3.5 4.5 4.5L6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
+      </section>
+
+      <p class="privacy-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 10V8a5 5 0 0 1 10 0v2M6.5 10h11A1.5 1.5 0 0 1 19 11.5v7A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5v-7A1.5 1.5 0 0 1 6.5 10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        Only the details needed to track this purchase are saved.
+      </p>
+
+      <section class="settings" id="settingsPanel" aria-label="Developer settings" data-visible="false">
+        <label>
+          Local API URL
+          <input id="apiBaseUrl" type="url" />
+        </label>
+        <button class="save" id="save" type="button">Save API URL</button>
+        <a class="review-toggle" id="dashboardLink" href="http://127.0.0.1:5173/dashboard" target="_blank" rel="noreferrer">Open dashboard</a>
+      </section>
+
+      <button id="scan" type="button" hidden>Scan current tab</button>
     </main>
     <script type="module" src="/src/popup.ts"></script>
   </body>
