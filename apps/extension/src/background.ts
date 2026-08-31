@@ -9,7 +9,15 @@ interface SyncOpportunitiesMessage {
   type: "TRACER_SYNC_OPPORTUNITIES";
 }
 
-type ExtensionMessage = ProtectPurchaseMessage | SyncOpportunitiesMessage;
+interface CheckPurchaseProtectionMessage {
+  type: "TRACER_CHECK_PURCHASE_PROTECTION";
+  purchaseDraft: PurchaseDraft;
+}
+
+type ExtensionMessage =
+  | ProtectPurchaseMessage
+  | SyncOpportunitiesMessage
+  | CheckPurchaseProtectionMessage;
 
 interface ExtensionOpportunity {
   id: string;
@@ -85,6 +93,21 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
     return true;
   }
 
+  if (message.type === "TRACER_CHECK_PURCHASE_PROTECTION") {
+    void checkPurchaseProtection(message.purchaseDraft)
+      .then((response) => {
+        sendResponse({ ok: true, response });
+      })
+      .catch((error) => {
+        sendResponse({
+          ok: false,
+          error: error instanceof Error ? error.message : "Unable to check protection status",
+        });
+      });
+
+    return true;
+  }
+
   return false;
 });
 
@@ -116,6 +139,26 @@ async function protectPurchase(purchaseDraft: PurchaseDraft): Promise<unknown> {
   void syncOpportunities({ notify: true });
 
   return body;
+}
+
+async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<unknown> {
+  const apiBaseUrl = await getApiBaseUrl();
+  const userId = await getUserId();
+  const response = await fetch(`${apiBaseUrl}/api/purchases/protection-status`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-afterbuy-user-id": userId,
+    },
+    body: JSON.stringify({ purchaseDraft }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Tracer API returned ${response.status}`);
+  }
+
+  return (await response.json()) as unknown;
 }
 
 async function syncOpportunities(options: { notify: boolean }): Promise<ExtensionSyncResponse> {

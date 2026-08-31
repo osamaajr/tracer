@@ -214,6 +214,60 @@ describe("AfterBuy API", () => {
     await app.close();
   });
 
+  it("reports when a scanned purchase is already protected", async () => {
+    const app = await createAfterBuyServer({
+      config: {
+        port: 0,
+        dataFile: ":memory:",
+        devUserId: "user_1",
+        enableDevAuth: true,
+        enableDevEndpoints: true,
+      },
+      repository: new InMemoryAfterBuyRepository(),
+    });
+
+    const beforeProtection = await app.inject({
+      method: "POST",
+      url: "/api/purchases/protection-status",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { purchaseDraft },
+    });
+
+    expect(beforeProtection.statusCode).toBe(200);
+    expect(beforeProtection.json()).toMatchObject({
+      protected: false,
+      purchase: null,
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/api/purchases/protect",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { purchaseDraft },
+    });
+
+    const afterProtection = await app.inject({
+      method: "POST",
+      url: "/api/purchases/protection-status",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { purchaseDraft },
+    });
+    const body = afterProtection.json();
+
+    expect(afterProtection.statusCode).toBe(200);
+    expect(body).toMatchObject({
+      protected: true,
+      purchase: {
+        productName:
+          "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
+        pricePaidDisplay: "£349",
+      },
+    });
+    expect(body.purchase.id).toMatch(/^pur_/);
+
+    await app.close();
+  });
+
   it("returns a clear auth error when development auth is disabled", async () => {
     const app = await createAfterBuyServer({
       config: {

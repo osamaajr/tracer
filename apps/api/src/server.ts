@@ -6,6 +6,7 @@ import Fastify, {
 } from "fastify";
 import { z } from "zod";
 import {
+  findProtectedPurchaseForDraft,
   formatMoney,
   protectPurchase,
   runPriceMonitoringCycle,
@@ -93,13 +94,15 @@ export async function createAfterBuyServer(
   });
 
   app.setErrorHandler((error, _request, reply) => {
+    const message = error instanceof Error ? error.message : "Unknown error";
+
     if (
-      error.message === "Authentication required" ||
-      error.message === "Extension token authentication is not configured"
+      message === "Authentication required" ||
+      message === "Extension token authentication is not configured"
     ) {
       return reply.code(401).send({
         error: "authentication_required",
-        message: error.message,
+        message,
       });
     }
 
@@ -142,6 +145,43 @@ export async function createAfterBuyServer(
       userId: user.id,
       ...result,
     });
+  });
+
+  app.post("/api/purchases/protection-status", async (request, reply) => {
+    const user = requireAuthenticatedUser(request, config);
+    const parsed = protectPurchaseRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "invalid_request",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const purchaseDraft = toPurchaseDraft(parsed.data.purchaseDraft);
+    const validationErrors = validatePurchaseDraft(purchaseDraft);
+    if (validationErrors.length > 0) {
+      return reply.code(422).send({
+        error: "unsupported_purchase",
+        details: validationErrors,
+      });
+    }
+
+    const result = await findProtectedPurchaseForDraft(repository, {
+      userId: user.id,
+      draft: purchaseDraft,
+    });
+
+    return {
+      userId: user.id,
+      ...result,
+      purchase: result.purchase
+        ? {
+            ...result.purchase,
+            pricePaidDisplay: formatMoney(result.purchase.pricePaid),
+          }
+        : null,
+    };
   });
 
   app.get("/api/dashboard", async (request) => {

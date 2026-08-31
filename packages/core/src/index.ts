@@ -13,5 +13,6 @@ export * from "./retailers/purchaseExtractor";
 export * from "./retailers/urlSafety";
 export * from "./testing/fixturePriceFetcher";
 export * from "./useCases/monitorPrices";
+export * from "./useCases/findProtectedPurchaseForDraft";
 export * from "./useCases/protectPurchase";
 export * from "./useCases/updateOpportunityStatus";

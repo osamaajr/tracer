@@ -6,12 +6,12 @@
     <title>Tracer</title>
     <style>
       :root {
-        --ink: #171714;
-        --muted: #65625b;
-        --soft: #f6f3ee;
+        --ink: #191916;
+        --muted: #625f58;
         --panel: #fffdf9;
-        --line: #e5dfd6;
-        --green: #5e7d2d;
+        --line: #e6dfd6;
+        --green: #4f7627;
+        --green-soft: #edf2e6;
         --radius: 12px;
         color: var(--ink);
         font-family:
@@ -26,7 +26,7 @@
       body {
         background: #ece8df;
         margin: 0;
-        width: 410px;
+        width: 386px;
       }
 
       button,
@@ -34,45 +34,39 @@
         font: inherit;
       }
 
-      button,
-      summary {
-        cursor: pointer;
-      }
-
       button {
         border: 0;
+        cursor: pointer;
       }
 
       button:focus-visible,
       input:focus-visible,
-      a:focus-visible,
-      summary:focus-visible {
+      a:focus-visible {
         outline: 2px solid #1e1e1b;
         outline-offset: 3px;
       }
 
       button:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
-      }
-
-      main {
-        background:
-          radial-gradient(circle at 10% 0%, rgb(255 255 255 / 90%), transparent 40%),
-          linear-gradient(145deg, #fffdf8 0%, #f7f2ea 100%);
-        box-shadow: 0 18px 60px rgb(38 35 30 / 18%);
-        display: grid;
-        gap: 22px;
-        min-height: 626px;
-        padding: 28px 26px 24px;
+        opacity: 0.52;
       }
 
       h1,
       h2,
-      h3,
       p,
       dl {
         margin: 0;
+      }
+
+      main {
+        background:
+          radial-gradient(circle at 6% 0%, rgb(255 255 255 / 88%), transparent 38%),
+          linear-gradient(145deg, #fffdf8 0%, #f7f1e8 100%);
+        box-shadow: 0 18px 60px rgb(38 35 30 / 18%);
+        display: grid;
+        gap: 17px;
+        min-height: 612px;
+        padding: 24px 12px 18px;
       }
 
       .topbar,
@@ -80,15 +74,23 @@
       .active-pill,
       .product-head,
       .detail-row,
-      .feature,
-      .review-toggle,
+      .match,
+      .window-card,
+      .summary-status,
       .privacy-note {
         align-items: center;
         display: flex;
       }
 
       .topbar {
+        display: none;
         justify-content: space-between;
+        padding: 0 18px;
+      }
+
+      main[data-screen="protected"] .topbar,
+      main[data-screen="duplicate"] .topbar {
+        display: flex;
       }
 
       .brand {
@@ -166,39 +168,67 @@
         width: 28px;
       }
 
-      .hero-copy {
+      .screen {
+        display: none;
+      }
+
+      main[data-screen="detecting"] .state-screen,
+      main[data-screen="empty"] .state-screen,
+      main[data-screen="error"] .state-screen,
+      main[data-screen="detected"] .detected-screen,
+      main[data-screen="review"] .detected-screen,
+      main[data-screen="protected"] .success-screen,
+      main[data-screen="duplicate"] .success-screen {
+        animation: screen-in 210ms ease-out both;
         display: grid;
-        gap: 10px;
+      }
+
+      .detected-screen {
+        gap: 17px;
+      }
+
+      .detected-copy,
+      .success-copy {
+        display: grid;
+        gap: 8px;
+        justify-items: center;
+        padding: 0 20px;
+        text-align: center;
       }
 
       h1 {
         font-family: Georgia, "Times New Roman", serif;
-        font-size: 1.92rem;
+        font-size: 1.78rem;
         font-weight: 500;
         letter-spacing: 0;
-        line-height: 0.98;
+        line-height: 1.02;
       }
 
-      .intro {
+      .intro,
+      .success-copy p {
         color: #3f3b35;
-        font-size: 0.93rem;
+        font-size: 0.95rem;
         line-height: 1.45;
-        max-width: 318px;
+        max-width: 290px;
+      }
+
+      .purchase-card,
+      .window-card,
+      .review-panel,
+      .settings,
+      .state-panel,
+      .success-summary {
+        background: rgb(255 253 249 / 82%);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 10px 28px rgb(44 39 32 / 6%);
       }
 
       .purchase-card {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        box-shadow: 0 12px 34px rgb(44 39 32 / 8%);
         display: grid;
-        gap: 14px;
+        gap: 13px;
         overflow: hidden;
-        padding: 14px;
-      }
-
-      .purchase-card[data-visible="false"] {
-        display: none;
+        padding: 14px 13px 16px;
       }
 
       .product-head {
@@ -210,11 +240,17 @@
         background: #f0ede7;
         border-radius: 10px;
         display: flex;
-        flex: 0 0 76px;
-        height: 76px;
+        flex: 0 0 82px;
+        height: 82px;
         justify-content: center;
         overflow: hidden;
-        width: 76px;
+        width: 82px;
+      }
+
+      .success-summary .product-image {
+        flex-basis: 58px;
+        height: 58px;
+        width: 58px;
       }
 
       .product-image img {
@@ -239,23 +275,25 @@
       }
 
       .product-title {
+        display: grid;
+        gap: 5px;
         min-width: 0;
       }
 
       h2 {
-        font-size: 0.98rem;
+        color: #1b1b18;
+        font-size: 0.95rem;
         letter-spacing: 0;
-        line-height: 1.24;
+        line-height: 1.22;
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
       .item-subtitle {
-        color: var(--muted);
+        color: #37342f;
         display: -webkit-box;
-        font-size: 0.82rem;
-        line-height: 1.32;
-        margin-top: 3px;
+        font-size: 0.78rem;
+        line-height: 1.35;
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
         overflow: hidden;
@@ -266,14 +304,15 @@
         height: 1px;
       }
 
-      .details {
+      .details,
+      .summary-details {
         display: grid;
-        gap: 8px;
+        gap: 9px;
       }
 
       .detail-row {
         color: #2e2b27;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         justify-content: space-between;
         min-width: 0;
       }
@@ -297,14 +336,15 @@
         display: none;
       }
 
-      .match {
+      .match,
+      .summary-status {
         color: var(--green);
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
+        font-weight: 760;
+        gap: 6px;
       }
 
-      .match::before {
+      .match::before,
+      .summary-status::before {
         background: var(--green);
         border-radius: 50%;
         content: "";
@@ -333,86 +373,50 @@
         white-space: nowrap;
       }
 
-      .features {
-        display: grid;
-        gap: 6px;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-
-      .feature {
-        background: #fffdf9;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        gap: 8px;
-        min-height: 62px;
-        padding: 10px 8px;
-      }
-
-      .feature svg {
-        color: #1f1d1a;
-        flex: 0 0 auto;
-        height: 18px;
-        width: 18px;
-      }
-
-      .feature strong {
-        display: block;
-        font-size: 0.66rem;
-        line-height: 1.05;
-      }
-
-      .feature span {
-        color: #66625b;
-        display: block;
-        font-size: 0.62rem;
-        line-height: 1.25;
-        margin-top: 4px;
-      }
-
-      .state-panel {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        color: #3d3933;
-        display: grid;
+      .window-card {
         gap: 10px;
-        min-height: 132px;
-        padding: 16px;
+        justify-content: space-between;
+        min-height: 64px;
+        padding: 11px 12px;
       }
 
-      .state-panel[data-visible="false"] {
-        display: none;
+      .window-icon {
+        align-items: center;
+        background: #f2eee6;
+        border-radius: 10px;
+        color: #1f1d1a;
+        display: inline-flex;
+        flex: 0 0 auto;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
       }
 
-      .state-panel:not([data-state="detecting"]) .skeleton {
-        display: none;
+      .window-copy {
+        display: grid;
+        flex: 1;
+        gap: 4px;
+        min-width: 0;
       }
 
-      .state-panel strong {
-        color: var(--ink);
-        font-size: 1rem;
+      .window-copy strong {
+        color: #1e1d1a;
+        font-size: 0.8rem;
       }
 
-      .state-panel p {
-        color: var(--muted);
-        font-size: 0.86rem;
-        line-height: 1.4;
+      .window-copy span {
+        color: #4f4b44;
+        font-size: 0.74rem;
       }
 
-      .skeleton {
-        animation: pulse 1.15s ease-in-out infinite;
-        background: linear-gradient(90deg, #ebe6dc 0%, #f6f2ea 50%, #ebe6dc 100%);
-        background-size: 200% 100%;
+      .window-chip {
+        background: var(--green-soft);
         border-radius: 999px;
-        height: 12px;
-      }
-
-      .skeleton.short {
-        width: 54%;
-      }
-
-      .skeleton.long {
-        width: 86%;
+        color: var(--green);
+        flex: 0 0 auto;
+        font-size: 0.72rem;
+        font-weight: 760;
+        padding: 7px 9px;
       }
 
       .actions {
@@ -420,74 +424,53 @@
         gap: 12px;
       }
 
-      .protect {
+      .protect,
+      .dashboard-cta {
         align-items: center;
-        background: linear-gradient(180deg, #242421 0%, #161613 100%);
-        border-radius: 13px;
-        box-shadow: 0 16px 34px rgb(0 0 0 / 18%);
+        background: linear-gradient(180deg, #252621 0%, #171814 100%);
+        border-radius: 12px;
+        box-shadow: 0 15px 32px rgb(0 0 0 / 18%);
         color: #ffffff;
         display: inline-flex;
         font-weight: 820;
         justify-content: center;
-        min-height: 50px;
+        min-height: 52px;
         width: 100%;
       }
 
       .protect[data-loading="true"]::after {
         animation: spin 760ms linear infinite;
         border: 2px solid rgb(255 255 255 / 34%);
-        border-top-color: #ffffff;
         border-radius: 50%;
+        border-top-color: #ffffff;
         content: "";
         height: 14px;
         margin-left: 10px;
         width: 14px;
       }
 
-      .review-toggle {
+      .text-action,
+      .maybe-later {
         background: transparent;
-        border-radius: 8px;
-        color: #191815;
-        font-size: 0.88rem;
+        color: #23221f;
+        font-size: 0.82rem;
         font-weight: 760;
-        gap: 8px;
-        justify-content: center;
-        min-height: 26px;
+        justify-self: center;
+        min-height: 22px;
         padding: 0;
         text-decoration: none;
       }
 
       .maybe-later {
-        background: transparent;
         color: #8a847a;
-        font-size: 0.78rem;
-        justify-self: center;
-        min-height: 20px;
-        padding: 0;
+        font-size: 0.76rem;
+        font-weight: 650;
         text-decoration: underline;
         text-underline-offset: 3px;
       }
 
-      .privacy-note {
-        color: #79736a;
-        font-size: 0.72rem;
-        gap: 8px;
-        justify-content: center;
-        line-height: 1.3;
-        text-align: center;
-      }
-
-      .privacy-note svg {
-        flex: 0 0 auto;
-        height: 13px;
-        width: 13px;
-      }
-
       .review-panel,
       .settings {
-        background: rgb(255 253 249 / 68%);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
         display: none;
         gap: 10px;
         padding: 12px;
@@ -524,6 +507,149 @@
         font-size: 0.8rem;
         font-weight: 800;
         min-height: 36px;
+      }
+
+      .state-screen {
+        align-content: center;
+        gap: 18px;
+      }
+
+      .state-panel {
+        display: grid;
+        gap: 10px;
+        min-height: 146px;
+        padding: 18px;
+      }
+
+      .state-panel strong {
+        color: var(--ink);
+        font-size: 1rem;
+      }
+
+      .state-panel p {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.4;
+      }
+
+      .skeleton {
+        animation: pulse 1.15s ease-in-out infinite;
+        background: linear-gradient(90deg, #ebe6dc 0%, #f6f2ea 50%, #ebe6dc 100%);
+        background-size: 200% 100%;
+        border-radius: 999px;
+        height: 12px;
+      }
+
+      main:not([data-screen="detecting"]) .skeleton {
+        display: none;
+      }
+
+      .skeleton.short {
+        width: 54%;
+      }
+
+      .skeleton.long {
+        width: 86%;
+      }
+
+      .success-screen {
+        align-content: start;
+        gap: 18px;
+        padding-top: 2px;
+      }
+
+      .success-hero {
+        display: grid;
+        justify-items: center;
+        min-height: 142px;
+        position: relative;
+      }
+
+      .confetti {
+        display: none;
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+      }
+
+      main[data-celebrate="true"] .confetti {
+        display: block;
+      }
+
+      .confetti i {
+        animation: confetti 960ms cubic-bezier(0.22, 0.8, 0.28, 1) both;
+        background: var(--tone);
+        border-radius: 999px;
+        display: block;
+        height: 7px;
+        left: var(--x);
+        opacity: 0;
+        position: absolute;
+        top: var(--y);
+        transform: rotate(var(--r));
+        width: 3px;
+      }
+
+      .check-icon {
+        align-items: center;
+        background: #f5f8f0;
+        border: 1px solid #d8e5ca;
+        border-radius: 50%;
+        color: var(--green);
+        display: inline-flex;
+        height: 46px;
+        justify-content: center;
+        margin-bottom: 14px;
+        margin-top: 22px;
+        width: 46px;
+      }
+
+      .success-copy h1 {
+        font-size: 1.72rem;
+      }
+
+      .success-summary {
+        display: grid;
+        gap: 12px;
+        padding: 13px;
+      }
+
+      .summary-status {
+        border-top: 1px solid var(--line);
+        font-size: 0.78rem;
+        padding-top: 11px;
+      }
+
+      .summary-actions {
+        display: grid;
+        gap: 12px;
+      }
+
+      .privacy-note {
+        color: #79736a;
+        font-size: 0.72rem;
+        gap: 8px;
+        justify-content: center;
+        line-height: 1.3;
+        text-align: center;
+      }
+
+      .privacy-note svg {
+        flex: 0 0 auto;
+        height: 13px;
+        width: 13px;
+      }
+
+      @keyframes screen-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       @keyframes fan-left {
@@ -593,6 +719,22 @@
         }
       }
 
+      @keyframes confetti {
+        0% {
+          opacity: 0;
+          transform: translateY(10px) scale(0.72) rotate(var(--r));
+        }
+
+        28% {
+          opacity: 1;
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(var(--tx), var(--ty)) scale(1) rotate(calc(var(--r) + 82deg));
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -601,11 +743,15 @@
           scroll-behavior: auto !important;
           transition-duration: 1ms !important;
         }
+
+        .confetti {
+          display: none;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
+    <main id="app" data-screen="detecting">
       <header class="topbar">
         <div class="brand" aria-label="Tracer">
           <div class="fan-mark" aria-hidden="true">
@@ -625,137 +771,162 @@
         </div>
       </header>
 
-      <section class="hero-copy">
-        <h1 id="headline">Bought it?<br />We’ll keep watching it.</h1>
-        <p class="intro" id="intro">
-          We’ll monitor this purchase for price drops and opportunities worth acting on.
+      <section class="screen state-screen" aria-live="polite">
+        <section class="state-panel">
+          <strong id="stateTitle">Checking this purchase...</strong>
+          <p id="stateCopy">Tracer is looking for reliable order details on this tab.</p>
+          <div class="skeleton long"></div>
+          <div class="skeleton short"></div>
+        </section>
+        <button class="maybe-later" id="stateClose" type="button">Maybe later</button>
+      </section>
+
+      <section class="screen detected-screen" aria-label="Detected purchase">
+        <section class="detected-copy">
+          <h1>Purchase detected</h1>
+          <p class="intro">We'll keep an eye on this item and notify you if the price drops.</p>
+        </section>
+
+        <section class="purchase-card" id="purchase" aria-label="Detected purchase summary">
+          <div class="product-head">
+            <div class="product-image" id="productImageFrame" data-has-image="false">
+              <img id="productImage" alt="" />
+              <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
+                <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+                <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
+              </svg>
+            </div>
+            <div class="product-title">
+              <h2 id="productName">Detected purchase</h2>
+              <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
+              <span class="match" id="matchStatus">Needs review</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <dl class="details">
+            <div class="detail-row">
+              <dt>Paid</dt>
+              <dd id="totalPaid">Captured</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Retailer</dt>
+              <dd id="retailer">Store</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Purchase date</dt>
+              <dd id="purchaseDate">Unknown</dd>
+            </div>
+            <div class="detail-row" id="productUrlRow">
+              <dt>Product URL</dt>
+              <dd>
+                <a class="url-value" id="productUrl" href="#" target="_blank" rel="noreferrer">
+                  <span id="productUrlText">Unavailable</span>
+                  <svg viewBox="0 0 16 16" aria-hidden="true" width="12" height="12">
+                    <path d="M6.2 3.2H3.6a1.4 1.4 0 0 0-1.4 1.4v7.8c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4V9.8M8.8 2.2h5v5M7.8 8.2l5.8-5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </a>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="window-card" aria-label="Monitoring window">
+          <span class="window-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <path d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="window-copy">
+            <strong id="windowLabel">Eligible window</strong>
+            <span id="windowValue">Ready</span>
+          </span>
+          <span class="window-chip" id="windowChip">Active</span>
+        </section>
+
+        <section class="review-panel" id="reviewPanel" aria-label="Review purchase details" data-visible="false">
+          <label>
+            Product name
+            <input id="reviewProductName" type="text" autocomplete="off" />
+          </label>
+          <label>
+            Paid
+            <input id="reviewPrice" type="text" autocomplete="off" inputmode="decimal" />
+          </label>
+          <label>
+            Purchase date
+            <input id="reviewDate" type="datetime-local" />
+          </label>
+          <label>
+            Product URL
+            <input id="reviewUrl" type="url" autocomplete="off" />
+          </label>
+          <button class="save-review" id="saveReview" type="button">Save details</button>
+        </section>
+
+        <section class="actions">
+          <button class="protect" id="protect" type="button" disabled>Protect this purchase</button>
+          <button class="text-action" id="reviewDetails" type="button" disabled>Review details</button>
+          <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
+        </section>
+      </section>
+
+      <section class="screen success-screen" aria-live="polite" aria-label="Protected purchase">
+        <section class="success-hero">
+          <div class="confetti" id="confetti" aria-hidden="true">
+            <i style="--x: 28%; --y: 28%; --tx: -22px; --ty: -32px; --r: 22deg; --tone: #1f211c"></i>
+            <i style="--x: 38%; --y: 20%; --tx: -12px; --ty: -42px; --r: -18deg; --tone: #ded5c8"></i>
+            <i style="--x: 50%; --y: 18%; --tx: 0; --ty: -46px; --r: 35deg; --tone: #5e7d2d"></i>
+            <i style="--x: 62%; --y: 20%; --tx: 14px; --ty: -42px; --r: -34deg; --tone: #e9e0d3"></i>
+            <i style="--x: 72%; --y: 28%; --tx: 24px; --ty: -32px; --r: 16deg; --tone: #242421"></i>
+            <i style="--x: 42%; --y: 34%; --tx: -28px; --ty: -14px; --r: 64deg; --tone: #c9d8b6"></i>
+            <i style="--x: 58%; --y: 34%; --tx: 28px; --ty: -14px; --r: -58deg; --tone: #d6cbbb"></i>
+          </div>
+          <span class="check-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              <path d="m6 12.4 4 4L18.4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <section class="success-copy">
+            <h1 id="successTitle">Purchase protected</h1>
+            <p id="successCopy">We're now watching this purchase for price drops and relevant opportunities.</p>
+          </section>
+        </section>
+
+        <section class="success-summary" aria-label="Protected purchase summary">
+          <div class="product-head">
+            <div class="product-image" id="summaryImageFrame" data-has-image="false">
+              <img id="summaryImage" alt="" />
+              <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
+                <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+                <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
+              </svg>
+            </div>
+            <div class="product-title">
+              <h2 id="summaryProductName">Protected purchase</h2>
+              <p class="item-subtitle" id="summarySubtitle">Monitoring active</p>
+            </div>
+          </div>
+          <dl class="summary-details">
+            <div class="detail-row">
+              <dt>Paid</dt>
+              <dd id="summaryPaid">Captured</dd>
+            </div>
+          </dl>
+          <p class="summary-status" id="summaryStatus">Monitoring active</p>
+        </section>
+
+        <section class="summary-actions">
+          <button class="dashboard-cta" id="dashboardCta" type="button">Go to dashboard</button>
+          <button class="maybe-later" id="done" type="button">Done</button>
+        </section>
+
+        <p class="privacy-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2M6.5 10h11A1.5 1.5 0 0 1 19 11.5v7A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5v-7A1.5 1.5 0 0 1 6.5 10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+          Only the details needed to track this purchase are saved.
         </p>
       </section>
-
-      <section class="state-panel" id="statePanel" aria-live="polite">
-        <strong id="stateTitle">Checking this purchase...</strong>
-        <p id="stateCopy">Tracer is looking for reliable order details on this tab.</p>
-        <div class="skeleton long"></div>
-        <div class="skeleton short"></div>
-      </section>
-
-      <section class="purchase-card" id="purchase" aria-label="Detected purchase" data-visible="false">
-        <div class="product-head">
-          <div class="product-image" id="productImageFrame" data-has-image="false">
-            <img id="productImage" alt="" />
-            <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
-              <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
-              <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
-            </svg>
-          </div>
-          <div class="product-title">
-            <h2 id="productName">Detected purchase</h2>
-            <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
-          </div>
-        </div>
-        <div class="divider"></div>
-        <dl class="details">
-          <div class="detail-row">
-            <dt>Paid</dt>
-            <dd id="totalPaid">Captured</dd>
-          </div>
-          <div class="detail-row">
-            <dt>Retailer</dt>
-            <dd id="retailer">Store</dd>
-          </div>
-          <div class="detail-row">
-            <dt>Purchase date</dt>
-            <dd id="purchaseDate">Unknown</dd>
-          </div>
-          <div class="detail-row">
-            <dt>Product match</dt>
-            <dd class="match" id="matchStatus">Needs review</dd>
-          </div>
-          <div class="detail-row" id="productUrlRow">
-            <dt>Product URL</dt>
-            <dd>
-              <a class="url-value" id="productUrl" href="#" target="_blank" rel="noreferrer">
-                <span id="productUrlText">Unavailable</span>
-                <svg viewBox="0 0 16 16" aria-hidden="true" width="12" height="12">
-                  <path d="M6.2 3.2H3.6a1.4 1.4 0 0 0-1.4 1.4v7.8c0 .8.6 1.4 1.4 1.4h7.8c.8 0 1.4-.6 1.4-1.4V9.8M8.8 2.2h5v5M7.8 8.2l5.8-5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </a>
-            </dd>
-          </div>
-          <div class="detail-row">
-            <dt id="windowLabel">Monitoring</dt>
-            <dd id="windowValue">Ready</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="features" aria-label="Tracer monitoring benefits">
-        <div class="feature">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m4 10 8-6 8 6-8 10-8-10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-          </svg>
-          <div>
-            <strong>Price drops</strong>
-            <span>We’ll watch for changes</span>
-          </div>
-        </div>
-        <div class="feature">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-          <div>
-            <strong>Policy windows</strong>
-            <span>Known eligibility only</span>
-          </div>
-        </div>
-        <div class="feature">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7ZM10 20h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <div>
-            <strong>Alerts</strong>
-            <span>We’ll tell you when it matters</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="review-panel" id="reviewPanel" aria-label="Review purchase details" data-visible="false">
-        <label>
-          Product name
-          <input id="reviewProductName" type="text" autocomplete="off" />
-        </label>
-        <label>
-          Paid
-          <input id="reviewPrice" type="text" autocomplete="off" inputmode="decimal" />
-        </label>
-        <label>
-          Purchase date
-          <input id="reviewDate" type="datetime-local" />
-        </label>
-        <label>
-          Product URL
-          <input id="reviewUrl" type="url" autocomplete="off" />
-        </label>
-        <button class="save-review" id="saveReview" type="button">Save details</button>
-      </section>
-
-      <section class="actions">
-        <button class="protect" id="protect" type="button" disabled>Protect purchase</button>
-        <button class="review-toggle" id="reviewDetails" type="button" disabled>
-          Review details
-          <svg viewBox="0 0 16 16" aria-hidden="true" width="14" height="14">
-            <path d="m6 3.5 4.5 4.5L6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-        <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
-      </section>
-
-      <p class="privacy-note">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 10V8a5 5 0 0 1 10 0v2M6.5 10h11A1.5 1.5 0 0 1 19 11.5v7A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5v-7A1.5 1.5 0 0 1 6.5 10Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
-        Only the details needed to track this purchase are saved.
-      </p>
 
       <section class="settings" id="settingsPanel" aria-label="Developer settings" data-visible="false">
         <label>
@@ -763,7 +934,7 @@
           <input id="apiBaseUrl" type="url" />
         </label>
         <button class="save" id="save" type="button">Save API URL</button>
-        <a class="review-toggle" id="dashboardLink" href="http://127.0.0.1:5173/dashboard" target="_blank" rel="noreferrer">Open dashboard</a>
+        <a class="text-action" id="dashboardLink" href="http://127.0.0.1:5173/dashboard" target="_blank" rel="noreferrer">Open dashboard</a>
       </section>
 
       <button id="scan" type="button" hidden>Scan current tab</button>

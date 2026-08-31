@@ -6,6 +6,7 @@ import {
   type Money,
   type PurchaseDraft,
   type PurchaseLineItemDraft,
+  type PurchaseRecord,
 } from "@afterbuy/core";
 
 interface ScanResponse {
@@ -24,6 +25,7 @@ interface ScanResponse {
 interface ProtectResponse {
   accepted: Array<{
     status: "created" | "duplicate";
+    purchase?: Pick<PurchaseRecord, "id">;
   }>;
   rejected: Array<{
     productName: string;
@@ -41,6 +43,23 @@ type ProtectMessageResponse =
       error?: string;
     };
 
+type CheckProtectionMessageResponse =
+  | {
+      ok: true;
+      response: ProtectionStatusResponse;
+    }
+  | {
+      ok: false;
+      error?: string;
+    };
+
+interface ProtectionStatusResponse {
+  protected: boolean;
+  purchase: (Pick<PurchaseRecord, "id" | "pricePaid" | "productName"> & {
+    pricePaidDisplay?: string;
+  }) | null;
+}
+
 type SyncMessageResponse =
   | {
       ok: true;
@@ -56,18 +75,18 @@ type PopupState = "detecting" | "detected" | "protected" | "duplicate" | "empty"
 const defaultApiBaseUrl = "http://127.0.0.1:4000";
 const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
 
+const app = getElement<HTMLElement>("app");
 const apiInput = getElement<HTMLInputElement>("apiBaseUrl");
 const saveButton = getElement<HTMLButtonElement>("save");
 const scanButton = getElement<HTMLButtonElement>("scan");
 const protectButton = getElement<HTMLButtonElement>("protect");
 const reviewDetailsButton = getElement<HTMLButtonElement>("reviewDetails");
 const maybeLaterButton = getElement<HTMLButtonElement>("maybeLater");
+const stateCloseButton = getElement<HTMLButtonElement>("stateClose");
 const settingsToggle = getElement<HTMLButtonElement>("settingsToggle");
 const settingsPanel = getElement<HTMLElement>("settingsPanel");
-const statePanel = getElement<HTMLElement>("statePanel");
 const stateTitle = getElement<HTMLElement>("stateTitle");
 const stateCopy = getElement<HTMLElement>("stateCopy");
-const purchasePanel = getElement<HTMLElement>("purchase");
 const reviewPanel = getElement<HTMLElement>("reviewPanel");
 const dashboardLink = getElement<HTMLAnchorElement>("dashboardLink");
 const retailerLabel = getElement<HTMLElement>("retailer");
@@ -81,8 +100,18 @@ const productUrl = getElement<HTMLAnchorElement>("productUrl");
 const productUrlText = getElement<HTMLElement>("productUrlText");
 const windowLabel = getElement<HTMLElement>("windowLabel");
 const windowValue = getElement<HTMLElement>("windowValue");
+const windowChip = getElement<HTMLElement>("windowChip");
 const productImageFrame = getElement<HTMLElement>("productImageFrame");
 const productImage = getElement<HTMLImageElement>("productImage");
+const summaryProductName = getElement<HTMLElement>("summaryProductName");
+const summarySubtitle = getElement<HTMLElement>("summarySubtitle");
+const summaryPaid = getElement<HTMLElement>("summaryPaid");
+const summaryImageFrame = getElement<HTMLElement>("summaryImageFrame");
+const summaryImage = getElement<HTMLImageElement>("summaryImage");
+const successTitle = getElement<HTMLElement>("successTitle");
+const successCopy = getElement<HTMLElement>("successCopy");
+const dashboardCta = getElement<HTMLButtonElement>("dashboardCta");
+const doneButton = getElement<HTMLButtonElement>("done");
 const reviewProductName = getElement<HTMLInputElement>("reviewProductName");
 const reviewPrice = getElement<HTMLInputElement>("reviewPrice");
 const reviewDate = getElement<HTMLInputElement>("reviewDate");
@@ -91,17 +120,26 @@ const saveReviewButton = getElement<HTMLButtonElement>("saveReview");
 
 let capturedDraft: PurchaseDraft | null = null;
 let currentState: PopupState = "detecting";
+let dashboardBaseUrl = defaultDashboardBaseUrl;
+let protectedPurchaseId: string | null = null;
+
+productImage.addEventListener("error", () => {
+  productImageFrame.dataset.hasImage = "false";
+});
+summaryImage.addEventListener("error", () => {
+  summaryImageFrame.dataset.hasImage = "false";
+});
 
 void chrome.storage.sync.get("apiBaseUrl").then((stored) => {
   apiInput.value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : defaultApiBaseUrl;
 });
 
 void chrome.storage.sync.get("dashboardBaseUrl").then((stored) => {
-  const baseUrl =
+  dashboardBaseUrl =
     typeof stored.dashboardBaseUrl === "string"
       ? stored.dashboardBaseUrl
       : defaultDashboardBaseUrl;
-  dashboardLink.href = `${baseUrl.replace(/\/$/, "")}/dashboard`;
+  dashboardLink.href = buildDashboardUrl();
 });
 
 void refreshOpportunityStatus();
@@ -120,10 +158,7 @@ saveButton.addEventListener("click", () => {
   }
 
   void chrome.storage.sync.set({ apiBaseUrl: value }).then(() => {
-    renderState("detected", "Settings saved.", "Tracer will use this API URL for local testing.");
-    if (capturedDraft) {
-      purchasePanel.dataset.visible = "true";
-    }
+    renderState(currentState, "Settings saved.", "Tracer will use this API URL for local testing.");
   });
 });
 
@@ -134,11 +169,21 @@ scanButton.addEventListener("click", () => {
 maybeLaterButton.addEventListener("click", () => {
   window.close();
 });
+stateCloseButton.addEventListener("click", () => {
+  window.close();
+});
+doneButton.addEventListener("click", () => {
+  window.close();
+});
 
 settingsToggle.addEventListener("click", () => {
   const isVisible = settingsPanel.dataset.visible === "true";
   settingsPanel.dataset.visible = String(!isVisible);
   settingsToggle.setAttribute("aria-expanded", String(!isVisible));
+});
+
+dashboardCta.addEventListener("click", () => {
+  void chrome.tabs.create({ url: buildDashboardUrl() });
 });
 
 reviewDetailsButton.addEventListener("click", () => {
@@ -154,7 +199,7 @@ reviewDetailsButton.addEventListener("click", () => {
     populateReviewForm(capturedDraft);
     renderState("review", "Review the details.", "Edit anything Tracer should track more accurately.");
   } else {
-    renderState("detected", "Purchase found.", "Review it once, then protect it.");
+    renderState("detected", "Purchase detected", "Review it once, then protect it.");
   }
 });
 
@@ -171,6 +216,7 @@ saveReviewButton.addEventListener("click", () => {
   }
 
   capturedDraft = reviewed.draft;
+  protectedPurchaseId = null;
   renderCapturedPurchase(capturedDraft);
   renderState("detected", "Details updated.", "Tracer will use these fields to protect the purchase.");
   reviewPanel.dataset.visible = "false";
@@ -178,6 +224,10 @@ saveReviewButton.addEventListener("click", () => {
 });
 
 protectButton.addEventListener("click", () => {
+  if (protectButton.dataset.loading === "true") {
+    return;
+  }
+
   if (!capturedDraft) {
     renderState(
       "empty",
@@ -190,7 +240,6 @@ protectButton.addEventListener("click", () => {
   protectButton.disabled = true;
   protectButton.dataset.loading = "true";
   protectButton.textContent = "Protecting...";
-  renderState("detected", "Saving protection.", "Tracer is sending the captured purchase fields.");
 
   chrome.runtime.sendMessage(
     {
@@ -201,36 +250,32 @@ protectButton.addEventListener("click", () => {
       protectButton.dataset.loading = "false";
 
       if (response?.ok) {
-        const accepted = response.response.accepted.length;
-        const rejected = response.response.rejected.length;
-        const duplicate = response.response.accepted.some((item) => item.status === "duplicate");
+        const accepted = response.response.accepted;
+        const rejected = response.response.rejected;
+        const protectedPurchase = accepted[0]?.purchase;
+        const duplicate = accepted.some((item) => item.status === "duplicate");
 
-        if (accepted === 0 && rejected > 0) {
+        if (accepted.length === 0 && rejected.length > 0) {
           protectButton.disabled = false;
-          protectButton.textContent = "Try again";
+          protectButton.textContent = "Retry";
           renderState(
             "error",
             "Protection needs review.",
-            response.response.rejected[0]?.reason ?? "Tracer could not protect this purchase yet.",
+            rejected[0]?.reason ?? "Tracer could not protect this purchase yet.",
           );
           return;
         }
 
-        protectButton.textContent = duplicate ? "Already protected" : "Purchase protected";
-        reviewDetailsButton.disabled = true;
-        renderState(
-          duplicate ? "duplicate" : "protected",
-          duplicate ? "Already protected." : "Purchase protected.",
-          duplicate
-            ? "Tracer already has this purchase in your dashboard."
-            : "Tracer will watch this purchase and alert you when action is worth taking.",
-        );
-        void refreshOpportunityStatus();
+        protectedPurchaseId = protectedPurchase?.id ?? null;
+        renderProtectedPurchase({
+          title: duplicate ? "Already protected" : "Purchase protected",
+          newlyProtected: !duplicate,
+        });
         return;
       }
 
       protectButton.disabled = false;
-      protectButton.textContent = "Try again";
+      protectButton.textContent = "Retry";
       renderState("error", "Could not protect this purchase.", response?.error ?? "Try again shortly.");
     },
   );
@@ -238,13 +283,13 @@ protectButton.addEventListener("click", () => {
 
 async function scanActiveTab(): Promise<void> {
   capturedDraft = null;
+  protectedPurchaseId = null;
   renderState("detecting", "Checking this purchase...", "Tracer is looking for reliable order details on this tab.");
-  purchasePanel.dataset.visible = "false";
   reviewPanel.dataset.visible = "false";
   scanButton.disabled = true;
   protectButton.disabled = true;
   protectButton.dataset.loading = "false";
-  protectButton.textContent = "Protect purchase";
+  protectButton.textContent = "Protect this purchase";
   reviewDetailsButton.disabled = true;
 
   try {
@@ -277,10 +322,26 @@ async function scanActiveTab(): Promise<void> {
 
     capturedDraft = response.draft;
     renderCapturedPurchase(response.draft, response.summary);
-    renderState("detected", "Purchase found.", "Review it once, then protect it.");
+
+    const protectionStatus = await checkProtectionStatus(response.draft);
+    if (protectionStatus?.protected) {
+      protectedPurchaseId = protectionStatus.purchase?.id ?? null;
+      const protectedOptions: Parameters<typeof renderProtectedPurchase>[0] = {
+        title: "Already protected",
+        newlyProtected: false,
+      };
+
+      if (protectionStatus.purchase?.pricePaidDisplay) {
+        protectedOptions.pricePaidDisplay = protectionStatus.purchase.pricePaidDisplay;
+      }
+
+      renderProtectedPurchase(protectedOptions);
+      return;
+    }
+
+    renderState("detected", "Purchase detected", "Ready to protect this purchase.");
   } catch (error) {
     capturedDraft = null;
-    purchasePanel.dataset.visible = "false";
     renderState("error", "Scan failed.", error instanceof Error ? error.message : "Unable to scan this page.");
   } finally {
     scanButton.disabled = false;
@@ -292,9 +353,8 @@ function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["su
   const total = sumLineItemTotals(draft.lineItems);
   const itemCount = draft.lineItems.length;
 
-  purchasePanel.dataset.visible = "true";
   productName.textContent = primaryItem?.productName ?? summary?.productName ?? "Detected purchase";
-  itemSubtitle.textContent = buildSubtitle(draft, itemCount, total);
+  itemSubtitle.textContent = buildSubtitle(draft, itemCount);
   totalPaid.textContent = total ? formatMoney(total) : summary?.totalDisplay ?? "Needs review";
   retailerLabel.textContent = draft.retailerName || summary?.retailerName || "Store";
   purchaseDate.textContent = formatDisplayDate(draft.purchasedAt);
@@ -302,20 +362,52 @@ function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["su
   matchStatus.dataset.quality = buildMatchQuality(draft, primaryItem);
   renderProductUrl(primaryItem?.productUrl);
   renderPolicyWindow(draft);
-  renderProductImage(primaryItem);
+  renderProductImage(primaryItem, productImage, productImageFrame);
 
   protectButton.disabled = false;
   protectButton.dataset.loading = "false";
-  protectButton.textContent = "Protect purchase";
+  protectButton.textContent = "Protect this purchase";
   reviewDetailsButton.disabled = false;
+}
+
+function renderProtectedPurchase(options: {
+  title: "Purchase protected" | "Already protected";
+  newlyProtected: boolean;
+  pricePaidDisplay?: string;
+}): void {
+  const draft = capturedDraft;
+  const primaryItem = draft?.lineItems[0];
+  const total = draft ? sumLineItemTotals(draft.lineItems) : null;
+
+  successTitle.textContent = options.title;
+  successCopy.textContent =
+    options.title === "Already protected"
+      ? "We're already watching this purchase for price drops and relevant opportunities."
+      : "We're now watching this purchase for price drops and relevant opportunities.";
+  app.dataset.celebrate = String(options.newlyProtected);
+  summaryProductName.textContent = primaryItem?.productName ?? "Protected purchase";
+  summarySubtitle.textContent = draft ? buildSubtitle(draft, draft.lineItems.length) : "Monitoring active";
+  summaryPaid.textContent = options.pricePaidDisplay ?? (total ? formatMoney(total) : "Protected");
+  renderProductImage(primaryItem, summaryImage, summaryImageFrame);
+  renderState(options.title === "Already protected" ? "duplicate" : "protected", options.title, successCopy.textContent);
+  dashboardCta.focus();
+
+  if (options.newlyProtected) {
+    window.setTimeout(() => {
+      app.dataset.celebrate = "false";
+    }, 1_150);
+  }
 }
 
 function renderState(state: PopupState, title: string, copy: string): void {
   currentState = state;
-  statePanel.dataset.state = state;
-  statePanel.dataset.visible = String(["detecting", "empty", "review", "error"].includes(state));
+  app.dataset.screen = state;
   stateTitle.textContent = title;
   stateCopy.textContent = copy;
+
+  if (state !== "protected" && state !== "duplicate") {
+    app.dataset.celebrate = "false";
+  }
 }
 
 function renderProductUrl(value: string | undefined): void {
@@ -331,32 +423,39 @@ function renderProductUrl(value: string | undefined): void {
   productUrlText.textContent = compactUrl(value);
 }
 
-function renderProductImage(item: PurchaseLineItemDraft | undefined): void {
+function renderProductImage(
+  item: PurchaseLineItemDraft | undefined,
+  image: HTMLImageElement,
+  frame: HTMLElement,
+): void {
   if (!item?.imageUrl) {
-    productImageFrame.dataset.hasImage = "false";
-    productImage.removeAttribute("src");
-    productImage.alt = "";
+    frame.dataset.hasImage = "false";
+    image.removeAttribute("src");
+    image.alt = "";
     return;
   }
 
-  productImageFrame.dataset.hasImage = "true";
-  productImage.src = item.imageUrl;
-  productImage.alt = item.productName;
+  frame.dataset.hasImage = "true";
+  image.src = item.imageUrl;
+  image.alt = item.productName;
 }
 
 function renderPolicyWindow(draft: PurchaseDraft): void {
   const policy = defaultPolicyRegistry.findPolicyForRetailer(draft.retailerId, draft.purchasedAt);
 
   if (!policy) {
-    windowLabel.textContent = "Monitoring";
-    windowValue.textContent = "Price tracking";
+    windowLabel.textContent = "Monitoring active";
+    windowValue.textContent = "Price tracking enabled";
+    windowChip.textContent = "Active";
     return;
   }
 
-  windowLabel.textContent = "Protection window";
-  windowValue.textContent = `${formatShortDate(draft.purchasedAt)} - ${formatShortDate(
-    addCalendarDays(draft.purchasedAt, policy.eligibilityWindowDays),
-  )}`;
+  const windowEnd = addCalendarDays(draft.purchasedAt, policy.eligibilityWindowDays);
+  const daysLeft = daysUntil(windowEnd);
+
+  windowLabel.textContent = "Eligible window";
+  windowValue.textContent = `${formatShortDate(draft.purchasedAt)} - ${formatShortDate(windowEnd)}`;
+  windowChip.textContent = daysLeft > 0 ? `${daysLeft} days left` : "Ends today";
 }
 
 function populateReviewForm(draft: PurchaseDraft): void {
@@ -443,6 +542,20 @@ function sendScanMessage(tabId: number): Promise<ScanResponse> {
   });
 }
 
+function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusResponse | null> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "TRACER_CHECK_PURCHASE_PROTECTION",
+        purchaseDraft: draft,
+      },
+      (response?: CheckProtectionMessageResponse) => {
+        resolve(response?.ok ? response.response : null);
+      },
+    );
+  });
+}
+
 function refreshOpportunityStatus(): Promise<void> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: "TRACER_SYNC_OPPORTUNITIES" }, (response?: SyncMessageResponse) => {
@@ -485,12 +598,11 @@ function sumLineItemTotals(items: PurchaseLineItemDraft[]): Money | null {
   return { amountMinor, currency };
 }
 
-function buildSubtitle(draft: PurchaseDraft, itemCount: number, total: Money | null): string {
-  const count = `${itemCount} item${itemCount === 1 ? "" : "s"}`;
+function buildSubtitle(draft: PurchaseDraft, itemCount: number): string {
   const host = draft.storeHost || draft.retailerName;
 
-  if (itemCount > 1 && total) {
-    return `${count} from ${host}`;
+  if (itemCount > 1) {
+    return `${itemCount} items from ${host}`;
   }
 
   return host;
@@ -526,6 +638,28 @@ function buildMatchQuality(
   }
 
   return "review";
+}
+
+function buildDashboardUrl(): string {
+  const base = dashboardBaseUrl.replace(/\/$/, "");
+
+  if (protectedPurchaseId) {
+    return `${base}/dashboard?purchase=${encodeURIComponent(protectedPurchaseId)}`;
+  }
+
+  return `${base}/dashboard`;
+}
+
+function daysUntil(dateOnly: string): number {
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const target = new Date(`${dateOnly}T00:00:00.000Z`).getTime();
+
+  if (Number.isNaN(target)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((target - todayUtc) / 86_400_000));
 }
 
 function formatDisplayDate(value: string): string {
