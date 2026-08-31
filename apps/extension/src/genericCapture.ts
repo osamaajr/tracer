@@ -79,6 +79,11 @@ if (!window.__afterbuyGenericCaptureReady) {
 }
 
 function extractPurchaseFromPage(page: Document, sourceUrl: string): PurchaseDraft | null {
+  const demoDraft = extractLocalDemoDraft(page, sourceUrl);
+  if (demoDraft) {
+    return demoDraft;
+  }
+
   const storefront = storefrontFromUrl(sourceUrl);
 
   if (!storefront) {
@@ -288,6 +293,108 @@ function buildDraft(input: {
   }
 
   return draft;
+}
+
+function extractLocalDemoDraft(page: Document, sourceUrl: string): PurchaseDraft | null {
+  if (!isLocalDevelopmentUrl(sourceUrl)) {
+    return null;
+  }
+
+  if (!page.querySelector("meta[name='tracer-demo-order'][content='true']")) {
+    return null;
+  }
+
+  const parsed = parseJson(page.getElementById("tracer-demo-purchase")?.textContent ?? "");
+  const draft = asRecord(parsed);
+
+  if (!draft) {
+    return null;
+  }
+
+  const lineItems = asArray(draft.lineItems)
+    .map(demoLineItemFromRecord)
+    .filter((item): item is PurchaseLineItemDraft => item !== null);
+  const purchasedAt = firstString(draft.purchasedAt);
+
+  if (lineItems.length === 0 || !purchasedAt) {
+    return null;
+  }
+
+  return buildDraft({
+    storefront: {
+      retailerId: firstString(draft.retailerId) ?? "store_store-example-com",
+      retailerName: firstString(draft.retailerName) ?? "Example Store",
+      host: firstString(draft.storeHost) ?? "store.example.com",
+    },
+    sourceUrl: firstString(draft.sourceUrl) ?? "https://store.example.com/orders/TR-DEMO-1001",
+    purchasedAt,
+    orderReference: firstString(draft.orderReference),
+    lineItems,
+    captureMethod: "generic_schema_org",
+    captureConfidence: "high",
+  });
+}
+
+function demoLineItemFromRecord(value: unknown): PurchaseLineItemDraft | null {
+  const record = asRecord(value);
+
+  if (!record) {
+    return null;
+  }
+
+  const productName = firstString(record.productName);
+  const pricePaid = asRecord(record.pricePaid);
+  const amountMinor = typeof pricePaid?.amountMinor === "number" ? pricePaid.amountMinor : null;
+  const currency = firstString(pricePaid?.currency);
+  const productUrl = firstString(record.productUrl);
+
+  if (
+    !productName ||
+    typeof amountMinor !== "number" ||
+    !Number.isInteger(amountMinor) ||
+    !currency ||
+    !productUrl
+  ) {
+    return null;
+  }
+
+  const item: PurchaseLineItemDraft = {
+    productName,
+    quantity: numberFromUnknown(record.quantity) ?? 1,
+    pricePaid: {
+      amountMinor,
+      currency,
+    },
+    productUrl,
+    productUrlConfidence: "high",
+  };
+  const externalProductId = firstString(record.externalProductId);
+  const sku = firstString(record.sku);
+  const imageUrl = firstString(record.imageUrl);
+
+  if (externalProductId) {
+    item.externalProductId = externalProductId;
+  }
+  if (sku) {
+    item.sku = sku;
+  }
+  if (imageUrl) {
+    item.imageUrl = imageUrl;
+  }
+
+  return item;
+}
+
+function isLocalDevelopmentUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      (url.protocol === "http:" || url.protocol === "https:")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function storefrontFromUrl(rawUrl: string): Storefront | null {
