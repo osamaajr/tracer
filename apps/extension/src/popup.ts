@@ -70,7 +70,15 @@ type SyncMessageResponse =
     }
   | { ok: false; error?: string };
 
-type PopupState = "detecting" | "detected" | "protected" | "duplicate" | "empty" | "review" | "error";
+type PopupState =
+  | "detecting"
+  | "detected"
+  | "protected"
+  | "duplicate"
+  | "empty"
+  | "incomplete"
+  | "review"
+  | "error";
 
 const defaultApiBaseUrl = "http://127.0.0.1:4000";
 const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
@@ -111,6 +119,8 @@ const summaryImage = getElement<HTMLImageElement>("summaryImage");
 const successTitle = getElement<HTMLElement>("successTitle");
 const successCopy = getElement<HTMLElement>("successCopy");
 const dashboardCta = getElement<HTMLButtonElement>("dashboardCta");
+const protectedItemsCta = getElement<HTMLButtonElement>("protectedItemsCta");
+const howItWorksButton = getElement<HTMLButtonElement>("howItWorks");
 const doneButton = getElement<HTMLButtonElement>("done");
 const reviewProductName = getElement<HTMLInputElement>("reviewProductName");
 const reviewPrice = getElement<HTMLInputElement>("reviewPrice");
@@ -183,7 +193,15 @@ settingsToggle.addEventListener("click", () => {
 });
 
 dashboardCta.addEventListener("click", () => {
-  void chrome.tabs.create({ url: buildDashboardUrl() });
+  openExtensionUrl(buildDashboardUrl());
+});
+
+protectedItemsCta.addEventListener("click", () => {
+  openExtensionUrl(buildDashboardUrl());
+});
+
+howItWorksButton.addEventListener("click", () => {
+  openExtensionUrl(buildHowItWorksUrl());
 });
 
 reviewDetailsButton.addEventListener("click", () => {
@@ -230,9 +248,9 @@ protectButton.addEventListener("click", () => {
 
   if (!capturedDraft) {
     renderState(
-      "empty",
-      "No purchase detected.",
-      "Open an order confirmation page and Tracer will look for the details.",
+      "incomplete",
+      "We need a little more detail.",
+      "Tracer could not read enough purchase details from this page yet.",
     );
     return;
   }
@@ -298,8 +316,8 @@ async function scanActiveTab(): Promise<void> {
     if (!tab?.id || !isScannableTabUrl(tab.url)) {
       renderState(
         "empty",
-        "No purchase detected.",
-        "Open a store order confirmation page and Tracer will check it automatically.",
+        "Nothing to protect here.",
+        "Tracer works on checkout and order confirmation pages.",
       );
       return;
     }
@@ -312,10 +330,20 @@ async function scanActiveTab(): Promise<void> {
     const response = await sendScanMessage(tab.id);
 
     if (!response.ok || !response.draft) {
+      if (isLikelyPurchasePage(tab.url)) {
+        renderState(
+          "incomplete",
+          "We need a little more detail.",
+          response.error ??
+            "This looks like a checkout or order page, but Tracer could not read enough purchase details yet.",
+        );
+        return;
+      }
+
       renderState(
         "empty",
-        "No purchase detected.",
-        response.error ?? "Tracer could not find enough order details on this page.",
+        "Nothing to protect here.",
+        "Tracer works on checkout and order confirmation pages.",
       );
       return;
     }
@@ -559,21 +587,7 @@ function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusRe
 function refreshOpportunityStatus(): Promise<void> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: "TRACER_SYNC_OPPORTUNITIES" }, (response?: SyncMessageResponse) => {
-      if (
-        response?.ok &&
-        response.response.openOpportunityCount > 0 &&
-        !capturedDraft &&
-        currentState !== "detecting"
-      ) {
-        renderState(
-          "empty",
-          "Opportunity waiting.",
-          `${response.response.openOpportunityCount} pay back opportunity${
-            response.response.openOpportunityCount === 1 ? "" : "ies"
-          } waiting in your dashboard.`,
-        );
-      }
-
+      void response;
       resolve();
     });
   });
@@ -650,6 +664,14 @@ function buildDashboardUrl(): string {
   return `${base}/dashboard`;
 }
 
+function buildHowItWorksUrl(): string {
+  return `${dashboardBaseUrl.replace(/\/$/, "")}/#demo`;
+}
+
+function openExtensionUrl(url: string): void {
+  void chrome.tabs.create({ url });
+}
+
 function daysUntil(dateOnly: string): number {
   const now = new Date();
   const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -724,7 +746,26 @@ function isScannableTabUrl(value: string | undefined): boolean {
     return false;
   }
 
-  return value.startsWith("https://") || value.startsWith("http://localhost:");
+  return (
+    value.startsWith("https://") ||
+    value.startsWith("http://localhost:") ||
+    value.startsWith("http://127.0.0.1:")
+  );
+}
+
+function isLikelyPurchasePage(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    const pageSignal = `${url.hostname} ${url.pathname} ${url.search}`.toLowerCase();
+
+    return /checkout|order|confirmation|receipt|thank|complete|success|purchase/.test(pageSignal);
+  } catch {
+    return false;
+  }
 }
 
 function isHttpUrl(value: string): boolean {

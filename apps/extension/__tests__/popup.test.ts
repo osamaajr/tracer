@@ -31,6 +31,8 @@ interface PopupHarnessOptions {
   protected?: boolean;
   protectResponse?: unknown;
   dashboardBaseUrl?: string;
+  scanResponse?: unknown;
+  tabUrl?: string;
 }
 
 describe("extension popup", () => {
@@ -68,6 +70,50 @@ describe("extension popup", () => {
       },
     });
     await flushPopup();
+  });
+
+  it("shows the idle state on ordinary pages with no purchase", async () => {
+    const harness = await setupPopup({
+      dashboardBaseUrl: "https://app.tracer.test",
+      scanResponse: {
+        ok: false,
+        error: "No order confirmation data found on this page.",
+      },
+      tabUrl: "https://example.com/articles/story",
+    });
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("empty");
+    expect(text("stateTitle")).toBe("Nothing to protect here.");
+    expect(text("idleHeading")).toBe("Nothing to protect here.");
+    expect(text("idleFeatureCard")).toContain("Price drops");
+    expect(text("idleFeatureCard")).toContain("Policy windows");
+    expect(text("idleFeatureCard")).toContain("Alerts");
+
+    harness.protectedItemsCta.click();
+    expect(harness.tabsCreate).toHaveBeenCalledWith({
+      url: "https://app.tracer.test/dashboard",
+    });
+
+    harness.howItWorksButton.click();
+    expect(harness.tabsCreate).toHaveBeenCalledWith({
+      url: "https://app.tracer.test/#demo",
+    });
+  });
+
+  it("keeps checkout-like pages with incomplete extraction out of the idle state", async () => {
+    const harness = await setupPopup({
+      scanResponse: {
+        ok: false,
+        error: "Tracer could not read enough purchase details yet.",
+      },
+      tabUrl: "https://shop.example.com/checkout/order-confirmation/ABC",
+    });
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("incomplete");
+    expect(text("stateTitle")).toBe("We need a little more detail.");
+    expect(text("stateCopy")).toBe("Tracer could not read enough purchase details yet.");
   });
 
   it("renders the protected state with the protected purchase summary", async () => {
@@ -229,19 +275,21 @@ async function setupPopup(
         },
       },
       tabs: {
-        query: vi.fn().mockResolvedValue([{ id: 1, url: purchaseDraft.sourceUrl }]),
+        query: vi.fn().mockResolvedValue([{ id: 1, url: options.tabUrl ?? purchaseDraft.sourceUrl }]),
         sendMessage: vi.fn((_tabId: number, _message: unknown, callback: (response: unknown) => void) => {
-          callback({
-            ok: true,
-            draft: purchaseDraft,
-            summary: {
-              retailerName: purchaseDraft.retailerName,
-              productName: purchaseDraft.lineItems[0]?.productName,
-              itemCount: 1,
-              totalDisplay: "£349.99",
-              confidence: "high",
+          callback(
+            options.scanResponse ?? {
+              ok: true,
+              draft: purchaseDraft,
+              summary: {
+                retailerName: purchaseDraft.retailerName,
+                productName: purchaseDraft.lineItems[0]?.productName,
+                itemCount: 1,
+                totalDisplay: "£349.99",
+                confidence: "high",
+              },
             },
-          });
+          );
         }),
         create: tabsCreate,
       },
@@ -257,6 +305,8 @@ async function setupPopup(
     app: element("app"),
     protectButton: element<HTMLButtonElement>("protect"),
     dashboardCta: element<HTMLButtonElement>("dashboardCta"),
+    protectedItemsCta: element<HTMLButtonElement>("protectedItemsCta"),
+    howItWorksButton: element<HTMLButtonElement>("howItWorks"),
     runtimeSendMessage,
     tabsCreate,
     protectMessages: () =>
