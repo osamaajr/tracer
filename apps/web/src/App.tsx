@@ -158,9 +158,6 @@ function HeroSection() {
           <ChromeMark />
           Add to Chrome - It's free
         </a>
-        <div className="trust-strip" aria-label="Tracer trust highlights">
-          <span><CheckCircle2 aria-hidden="true" size={16} />You choose what to protect</span>
-        </div>
       </div>
       <div className="hero-stage" aria-label="Tracer purchase protection preview">
         <OrderWindow />

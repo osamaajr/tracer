@@ -88,8 +88,6 @@ img {
 .brand,
 .header-cta,
 .primary-button,
-.trust-strip,
-.trust-strip span,
 .extension-topbar,
 .extension-topbar > div,
 .browser-dots,
@@ -291,19 +289,6 @@ img {
   width: max-content;
 }
 
-.trust-strip {
-  color: #3d3932;
-  flex-wrap: wrap;
-  font-size: 0.86rem;
-  gap: 24px;
-  margin-top: 24px;
-}
-
-.trust-strip span {
-  gap: 8px;
-}
-
-.trust-strip svg,
 .extension-privacy svg {
   color: #766b5b;
 }
@@ -1173,17 +1158,6 @@ dd {
 
 .hero-cta {
   margin-top: 30px;
-}
-
-.trust-strip {
-  flex-wrap: nowrap;
-  font-size: 0.78rem;
-  gap: 21px;
-  margin-top: 22px;
-}
-
-.trust-strip span {
-  min-width: 0;
 }
 
 .hero-stage {
@@ -2092,12 +2066,6 @@ dd {
 
   .hero-text {
     font-size: 1rem;
-  }
-
-  .trust-strip {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
   }
 
   .hero-stage {
