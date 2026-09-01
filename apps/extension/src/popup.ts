@@ -135,11 +135,11 @@ let dashboardBaseUrl = defaultDashboardBaseUrl;
 let protectedPurchaseId: string | null = null;
 
 const previewPurchaseDraft: PurchaseDraft = {
-  retailerId: "john-lewis",
-  retailerName: "John Lewis",
-  storeHost: "www.johnlewis.com",
-  sourceUrl: "https://www.johnlewis.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones/p11010001",
-  purchasedAt: "2026-08-30T12:00:00.000Z",
+  retailerId: "example-store",
+  retailerName: "Example Store",
+  storeHost: "store.example.com",
+  sourceUrl: "https://store.example.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones",
+  purchasedAt: "2025-05-24T12:00:00.000Z",
   captureMethod: "retailer_adapter",
   captureConfidence: "high",
   orderReference: "JL1234567890",
@@ -148,7 +148,7 @@ const previewPurchaseDraft: PurchaseDraft = {
       productName: "Sony WH-1000XM5",
       quantity: 1,
       pricePaid: { amountMinor: 34_999, currency: "GBP" },
-      productUrl: "https://www.johnlewis.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones/p11010001",
+      productUrl: "https://store.example.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones",
       productUrlConfidence: "high",
       externalProductId: "sony-wh-1000xm5-black",
       imageUrl: getExtensionAssetUrl("assets/product-headphones.png"),
@@ -419,6 +419,9 @@ function renderDetectedPreview(): void {
     totalDisplay: formatMoney(previewPurchaseDraft.lineItems[0]?.pricePaid ?? { amountMinor: 0, currency: "GBP" }),
     confidence: previewPurchaseDraft.captureConfidence,
   });
+  windowLabel.textContent = "Eligible window";
+  windowValue.textContent = "24 May - 24 Nov 2025";
+  windowChip.textContent = "180 days left";
   renderState("detected", "Purchase detected", "Ready to protect this purchase.");
 }
 
