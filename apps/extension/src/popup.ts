@@ -183,7 +183,7 @@ stateCloseButton.addEventListener("click", () => {
   window.close();
 });
 doneButton.addEventListener("click", () => {
-  window.close();
+  openExtensionUrl(buildDashboardUrl());
 });
 
 settingsToggle.addEventListener("click", () => {
