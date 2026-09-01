@@ -1282,36 +1282,37 @@ dd {
   border-radius: 16px;
   bottom: auto;
   box-shadow: 0 18px 45px rgb(30 25 20 / 10%);
-  gap: 8px;
-  padding: 14px 18px 14px;
+  gap: 10px;
+  padding: 16px 18px 15px;
   right: 18px;
-  top: -10px;
+  top: -4px;
   width: 314px;
 }
 
 .extension-actions {
   align-items: center;
   display: flex;
-  gap: 10px;
+  gap: 0;
 }
 
 .extension-actions svg {
-  height: 13px;
+  height: 14px;
   opacity: 0.78;
-  width: 13px;
+  width: 14px;
 }
 
 .extension-copy h2 {
-  font-size: 1.38rem;
-  line-height: 1;
-  margin-top: 14px;
+  font-size: 1.48rem;
+  line-height: 1.02;
+  margin-top: 13px;
 }
 
 .extension-copy p {
   color: #615c54;
-  font-size: 0.64rem;
-  line-height: 1.4;
-  margin-top: 8px;
+  font-size: 0.66rem;
+  line-height: 1.45;
+  margin-top: 9px;
+  max-width: 255px;
 }
 
 .mini-logo {
@@ -1334,8 +1335,8 @@ dd {
   background: rgb(255 253 249 / 74%);
   border-color: rgb(40 35 28 / 9%);
   border-radius: 11px;
-  gap: 6px;
-  padding: 9px;
+  gap: 7px;
+  padding: 10px;
 }
 
 .mini-product-head {
@@ -1401,7 +1402,7 @@ dd {
 
 .mini-feature-row {
   gap: 8px;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .mini-feature-row span {
@@ -1441,7 +1442,8 @@ dd {
   border-radius: 7px;
   font-size: 0.84rem;
   font-weight: 760;
-  min-height: 34px;
+  margin-top: 1px;
+  min-height: 36px;
 }
 
 .review-preview {
@@ -1452,9 +1454,11 @@ dd {
 
 .extension-privacy {
   align-items: center;
+  display: block;
   font-size: 0.58rem;
-  line-height: 1.22;
-  margin-top: 2px;
+  line-height: 1.28;
+  margin-top: 1px;
+  padding: 0 10px;
 }
 
 .chapter {

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  LockKeyhole,
   RefreshCw,
   Settings,
   ShoppingBag,
@@ -191,10 +190,10 @@ function ExtensionPreview() {
           <img className="mini-logo" src="/assets/tracer-logo.png" alt="" />
           <img className="extension-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
         </div>
-        <div className="extension-actions"><span className="status-pill">Active</span><Settings aria-hidden="true" size={14} /></div>
+        <div className="extension-actions"><Settings aria-hidden="true" size={14} /></div>
       </div>
       <div className="extension-copy">
-        <h2>Bought it?<br />We'll keep watching it.</h2>
+        <h2>Purchase detected</h2>
         <p>We'll monitor this purchase for price drops and opportunities worth acting on.</p>
       </div>
       <section className="mini-product-card" aria-label="Protected purchase preview">
@@ -214,13 +213,12 @@ function ExtensionPreview() {
         <div className="eligibility-row"><strong>Eligible window</strong><span>Until 30 Aug 2027</span></div>
       </section>
       <div className="mini-feature-row">
-        <span><Tag aria-hidden="true" size={15} /><strong>Price drops</strong><small>We'll watch for changes</small></span>
-        <span><CalendarCheck2 aria-hidden="true" size={15} /><strong>Policy windows</strong><small>We'll track known eligibility</small></span>
-        <span><Bell aria-hidden="true" size={15} /><strong>Alerts</strong><small>We'll tell you when it matters</small></span>
+        <span><Tag aria-hidden="true" size={15} /><strong>PRICE DROPS</strong><small>We'll watch for changes</small></span>
+        <span><CalendarCheck2 aria-hidden="true" size={15} /><strong>POLICY WINDOWS</strong><small>We'll track known eligibility</small></span>
+        <span><Bell aria-hidden="true" size={15} /><strong>ALERTS</strong><small>We'll tell you when it matters</small></span>
       </div>
       <button className="protect-preview" type="button">Protect purchase</button>
-      <button className="review-preview" type="button">Review details</button>
-      <p className="extension-privacy"><LockKeyhole aria-hidden="true" size={14} />Only the details needed to track this purchase are saved.</p>
+      <p className="extension-privacy">Only the details needed to track this purchase are saved.</p>
     </article>
   );
 }
