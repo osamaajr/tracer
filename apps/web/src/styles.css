@@ -1385,6 +1385,37 @@ dd {
   margin-top: 18px;
 }
 
+.how-section {
+  background:
+    radial-gradient(circle at 50% 0%, rgb(255 252 247 / 92%) 0 28%, transparent 58%),
+    linear-gradient(90deg, #f2eadf 0%, #f7f0e7 48%, #f2eadf 100%);
+  margin: 0;
+  padding: 36px 38px 42px;
+  position: relative;
+  width: 100%;
+}
+
+.how-section-inner {
+  display: grid;
+  gap: 28px;
+  margin: 0 auto;
+  max-width: 1120px;
+  width: 100%;
+}
+
+.how-section .section-heading {
+  margin: 0 auto;
+  max-width: none;
+}
+
+.how-section .section-heading h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.42rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
 .chapter {
   gap: 46px;
   min-height: 0;
@@ -1407,7 +1438,8 @@ dd {
 
 .steps-layout {
   align-items: start;
-  gap: 26px;
+  gap: 36px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .steps-layout::before {
@@ -1420,29 +1452,35 @@ dd {
   border-radius: 0;
   box-shadow: none;
   min-height: 0;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 .step-card:not(:last-child)::after {
   color: #a89983;
-  content: "->";
-  font-size: 1.45rem;
+  content: "→";
+  font-size: 1.08rem;
   font-weight: 300;
+  opacity: 0.86;
   position: absolute;
-  right: -17px;
-  top: 84px;
+  right: -28px;
+  top: 45px;
 }
 
 .step-number {
   background: #ddceb9;
-  font-size: 0.78rem;
-  height: 34px;
-  width: 34px;
+  color: #fffaf3;
+  font-size: 0.58rem;
+  font-weight: 700;
+  height: 27px;
+  left: calc(50% - 112px);
+  position: absolute;
+  top: 6px;
+  width: 27px;
 }
 
 .step-visual {
-  height: 118px;
-  margin-top: 18px;
+  height: 92px;
+  margin-top: 0;
 }
 
 .order-miniature,
@@ -1451,94 +1489,116 @@ dd {
 .protect-browser-card {
   background: #fbf7ef;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  box-shadow: 0 10px 28px rgb(35 30 24 / 5%);
+  border-radius: 7px;
+  box-shadow: 0 9px 22px rgb(35 30 24 / 4%);
 }
 
 .order-miniature {
-  height: 118px;
-  width: 168px;
+  height: 92px;
+  width: 136px;
+}
+
+.order-miniature svg:first-child {
+  height: 39px;
+  width: 39px;
 }
 
 .protect-step-stage {
   display: grid;
-  height: 128px;
+  height: 101px;
   place-items: center;
   position: relative;
-  width: 190px;
+  width: 150px;
 }
 
 .protect-browser-card {
   display: grid;
-  gap: 10px;
-  height: 92px;
-  padding: 16px;
+  gap: 7px;
+  height: 72px;
+  padding: 13px;
   position: absolute;
-  right: 26px;
-  top: 12px;
-  width: 122px;
+  right: 19px;
+  top: 7px;
+  width: 96px;
 }
 
 .protect-browser-card span {
   background: #eee5d8;
   border-radius: 999px;
-  height: 8px;
+  height: 6px;
 }
 
 .protect-miniature {
-  gap: 5px;
-  padding: 12px;
+  gap: 4px;
+  padding: 9px;
   position: absolute;
   right: 0;
-  top: 28px;
-  width: 112px;
+  top: 21px;
+  width: 89px;
   z-index: 2;
 }
 
 .protect-miniature img {
-  width: 23px;
+  width: 18px;
 }
 
 .protect-miniature b {
-  font-size: 0.58rem;
+  font-size: 0.46rem;
 }
 
 .protect-miniature span {
-  font-size: 0.82rem;
+  font-size: 0.63rem;
 }
 
 .protect-miniature button {
-  font-size: 0.5rem;
-  min-height: 21px;
-  padding: 0 9px;
+  font-size: 0.38rem;
+  min-height: 17px;
+  padding: 0 7px;
 }
 
 .opportunity-miniature {
-  gap: 10px;
-  padding: 18px;
-  width: 190px;
+  gap: 7px;
+  min-height: 82px;
+  padding: 23px 15px 14px;
+  position: relative;
+  width: 154px;
 }
 
 .opportunity-miniature p {
-  font-size: 0.92rem;
+  font-size: 0.64rem;
+}
+
+.opportunity-miniature .opportunity-bell {
+  align-items: center;
+  background: #e5dacb;
+  border-radius: 999px;
+  color: #473f35;
+  display: flex;
+  height: 31px;
+  justify-content: center;
+  position: absolute;
+  right: -13px;
+  top: -13px;
+  width: 31px;
 }
 
 .opportunity-miniature strong {
   border-radius: 999px;
-  font-size: 0.66rem;
-  padding: 7px 10px;
+  font-size: 0.51rem;
+  padding: 5px 8px;
 }
 
 .step-card h3 {
-  font-size: 1.18rem;
-  margin-top: 24px;
+  font-size: 0.98rem;
+  font-weight: 650;
+  margin: 17px 0 0;
 }
 
 .step-card p {
-  font-size: 0.88rem;
-  line-height: 1.48;
-  margin-top: 9px;
-  max-width: 255px;
+  font-size: 0.72rem;
+  line-height: 1.42;
+  margin-top: 8px;
+  max-width: 230px;
 }
 
 .watching-section {
@@ -1975,6 +2035,10 @@ dd {
   }
 
   .steps-layout::before {
+    display: none;
+  }
+
+  .step-card:not(:last-child)::after {
     display: none;
   }
 }

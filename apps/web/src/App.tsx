@@ -244,14 +244,16 @@ function TransitionStatement() {
 
 function HowItWorksSection() {
   return (
-    <section className="chapter how-section" id="how-it-works">
-      <div className="section-heading">
-        <h2>How it works</h2>
-      </div>
-      <div className="steps-layout">
-        <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
-        <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your protected items." visual={<ProtectMiniature />} />
-        <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
+    <section className="how-section" id="how-it-works">
+      <div className="how-section-inner">
+        <div className="section-heading">
+          <h2>How it works</h2>
+        </div>
+        <div className="steps-layout">
+          <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
+          <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your watchlist." visual={<ProtectMiniature />} />
+          <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
+        </div>
       </div>
     </section>
   );
@@ -282,7 +284,13 @@ function ProtectMiniature() {
 }
 
 function OpportunityMiniature() {
-  return <div className="opportunity-miniature" aria-hidden="true"><Bell size={21} /><p>£349.99 <span>-&gt;</span> £319.99</p><strong>£30 opportunity found</strong></div>;
+  return (
+    <div className="opportunity-miniature" aria-hidden="true">
+      <span className="opportunity-bell"><Bell size={17} /></span>
+      <p>£349.99 <span>→</span> £319.99</p>
+      <strong>£30 opportunity found</strong>
+    </div>
+  );
 }
 
 function WatchingSection() {
