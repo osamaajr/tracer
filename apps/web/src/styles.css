@@ -1144,7 +1144,7 @@ dd {
 
 .hero h1 {
   font-size: clamp(4.4rem, 5.45vw, 4.95rem);
-  line-height: 0.96;
+  line-height: 1.045;
   margin-top: 34px;
   max-width: 560px;
 }
@@ -1161,102 +1161,180 @@ dd {
 }
 
 .hero-stage {
-  min-height: 560px;
+  min-height: 590px;
 }
 
 .order-window {
-  background: rgb(255 251 244 / 72%);
-  border-color: rgb(40 35 28 / 10%);
-  border-radius: 15px;
-  box-shadow: 0 18px 46px rgb(35 30 24 / 7%);
-  min-height: 500px;
-  padding: 16px 26px 28px;
-  right: 178px;
-  top: 4px;
-  width: 430px;
+  background: rgb(255 252 247 / 78%);
+  border-color: rgb(40 35 28 / 9%);
+  border-radius: 13px;
+  box-shadow: 0 18px 42px rgb(35 30 24 / 6%);
+  min-height: 525px;
+  overflow: hidden;
+  padding: 0 26px 28px;
+  right: 168px;
+  top: 22px;
+  width: 470px;
 }
 
 .browser-dots {
-  margin: -2px -26px 38px;
+  background: rgb(248 243 235 / 64%);
+  display: flex;
+  margin: 0 -26px 44px;
+  position: relative;
+}
+
+.browser-dots::after {
+  background: rgb(255 253 249 / 72%);
+  border: 1px solid rgb(40 35 28 / 7%);
+  border-radius: 999px;
+  content: "";
+  flex: 1;
+  height: 14px;
+  margin-left: 18px;
+  max-width: 126px;
+}
+
+.browser-dots i {
+  align-items: center;
+  border: 0;
+  border-radius: 0;
+  display: inline-flex;
+  gap: 13px;
+  height: auto;
+  margin-left: 14px;
+  width: auto;
+}
+
+.browser-dots i::before,
+.browser-dots i::after {
+  color: #777068;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.browser-dots i::before {
+  content: "‹";
+}
+
+.browser-dots i::after {
+  content: "›";
 }
 
 .receipt-brand {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   line-height: 1.6;
 }
 
 .receipt-brand::after {
   content: "& PARTNERS";
   display: block;
-  font-size: 0.55rem;
+  font-size: 0.48rem;
   letter-spacing: 0.22em;
 }
 
 .order-check {
-  height: 58px;
-  margin: 62px auto 24px;
-  width: 58px;
+  height: 52px;
+  margin: 62px auto 23px;
+  width: 52px;
+}
+
+.order-check svg {
+  height: 28px;
+  width: 28px;
 }
 
 .order-window h2 {
-  font-size: 1.58rem;
+  font-size: 1.36rem;
+  font-weight: 720;
 }
 
 .order-summary {
-  background: rgb(255 250 243 / 58%);
-  margin-top: 28px;
-  padding: 20px;
+  background: rgb(255 250 243 / 48%);
+  border-color: rgb(40 35 28 / 9%);
+  border-radius: 9px;
+  gap: 18px;
+  margin-top: 31px;
+  max-width: 225px;
+  padding: 18px 20px;
+}
+
+.order-summary dt {
+  font-size: 0.68rem;
+}
+
+.order-summary dd {
+  font-size: 0.9rem;
+  font-weight: 760;
+}
+
+.order-window button {
+  border-color: rgb(40 35 28 / 35%);
+  font-size: 0.9rem;
+  font-weight: 720;
+  min-height: 36px;
+  max-width: 225px;
 }
 
 .extension-preview {
-  background: #fffaf3;
-  border-color: rgb(40 35 28 / 12%);
-  border-radius: 15px;
+  background: #fffbf6;
+  border-color: rgb(40 35 28 / 10%);
+  border-radius: 16px;
   bottom: auto;
-  box-shadow: 0 24px 68px rgb(35 30 24 / 13%);
-  gap: 7px;
-  padding: 16px;
-  right: 2px;
-  top: 0;
-  width: 318px;
+  box-shadow: 0 18px 45px rgb(30 25 20 / 10%);
+  gap: 8px;
+  padding: 14px 18px 14px;
+  right: 18px;
+  top: -10px;
+  width: 314px;
 }
 
 .extension-actions {
   align-items: center;
   display: flex;
-  gap: 11px;
+  gap: 10px;
+}
+
+.extension-actions svg {
+  height: 13px;
+  opacity: 0.78;
+  width: 13px;
 }
 
 .extension-copy h2 {
-  font-size: 1.26rem;
-  line-height: 1.05;
-  margin-top: 10px;
+  font-size: 1.38rem;
+  line-height: 1;
+  margin-top: 14px;
 }
 
 .extension-copy p {
+  color: #615c54;
   font-size: 0.64rem;
-  line-height: 1.38;
+  line-height: 1.4;
+  margin-top: 8px;
 }
 
 .mini-logo {
-  height: 21px;
-  width: 24px;
+  height: 18px;
+  width: 21px;
 }
 
 .extension-wordmark {
-  width: 61px;
+  width: 59px;
 }
 
 .status-pill {
-  font-size: 0.68rem;
-  padding: 6px 10px;
+  background: #f3eee6;
+  font-size: 0.64rem;
+  font-weight: 720;
+  padding: 5px 9px;
 }
 
 .mini-product-card {
-  background: #fffdf8;
-  border-color: rgb(40 35 28 / 10%);
-  border-radius: 12px;
-  gap: 7px;
+  background: rgb(255 253 249 / 74%);
+  border-color: rgb(40 35 28 / 9%);
+  border-radius: 11px;
+  gap: 6px;
   padding: 9px;
 }
 
@@ -1267,36 +1345,63 @@ dd {
 .product-image {
   display: block;
   flex: 0 0 auto;
-  height: 65px;
+  height: 62px;
   object-fit: contain;
-  width: 72px;
+  width: 68px;
 }
 
 .mini-product-head h3 {
   font-size: 0.82rem;
+  font-weight: 760;
 }
 
 .mini-product-head p {
-  font-size: 0.66rem;
+  color: #514b43;
+  font-size: 0.67rem;
+  line-height: 1.32;
 }
 
 .mini-product-card dl {
+  border-top-color: rgb(40 35 28 / 8%);
   gap: 5px;
+  padding-top: 7px;
 }
 
 .mini-product-card dl div {
   font-size: 0.63rem;
 }
 
+.mini-product-card dt {
+  color: #706960;
+}
+
+.mini-product-card dd {
+  font-weight: 760;
+}
+
 .eligibility-row {
-  background: #efe6d8;
+  background: #eee5d7;
   border-radius: 7px;
   font-size: 0.62rem;
-  padding: 7px;
+  padding: 7px 9px;
+}
+
+.eligibility-row span::after {
+  border: 1px solid rgb(40 35 28 / 35%);
+  border-radius: 50%;
+  color: #6d655c;
+  content: "i";
+  display: inline-grid;
+  font-size: 0.5rem;
+  height: 12px;
+  margin-left: 6px;
+  place-items: center;
+  width: 12px;
 }
 
 .mini-feature-row {
   gap: 8px;
+  margin-top: 2px;
 }
 
 .mini-feature-row span {
@@ -1323,24 +1428,33 @@ dd {
 }
 
 .mini-feature-row svg {
-  height: 25px;
+  background: #f0eadf;
+  color: #6a6157;
+  height: 24px;
   padding: 6px;
-  width: 25px;
+  stroke-width: 1.75;
+  width: 24px;
 }
 
 .protect-preview {
   background: #171714;
   border-radius: 7px;
-  min-height: 31px;
+  font-size: 0.84rem;
+  font-weight: 760;
+  min-height: 34px;
 }
 
 .review-preview {
-  min-height: 29px;
+  border-color: rgb(40 35 28 / 28%);
+  font-size: 0.84rem;
+  min-height: 31px;
 }
 
 .extension-privacy {
-  font-size: 0.59rem;
-  line-height: 1.25;
+  align-items: center;
+  font-size: 0.58rem;
+  line-height: 1.22;
+  margin-top: 2px;
 }
 
 .chapter {
