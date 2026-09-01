@@ -104,7 +104,9 @@
         display: flex;
       }
 
-      main[data-screen="detected"] .active-pill {
+      main[data-screen="detected"] .active-pill,
+      main[data-screen="protected"] .active-pill,
+      main[data-screen="duplicate"] .active-pill {
         display: none;
       }
 
@@ -727,14 +729,14 @@
 
       .success-screen {
         align-content: start;
-        gap: 13px;
-        padding: 3px 26px 0;
+        gap: 16px;
+        padding: 1px 26px 0;
       }
 
       .success-hero {
         display: grid;
         justify-items: center;
-        min-height: 134px;
+        min-height: 168px;
         position: relative;
       }
 
@@ -770,15 +772,21 @@
         border-radius: 50%;
         color: var(--green);
         display: inline-flex;
-        height: 44px;
+        height: 54px;
         justify-content: center;
-        margin-bottom: 12px;
-        margin-top: 18px;
-        width: 44px;
+        margin-bottom: 15px;
+        margin-top: 24px;
+        width: 54px;
+      }
+
+      .check-icon svg {
+        height: 30px;
+        width: 30px;
       }
 
       .success-copy h1 {
-        font-size: 1.64rem;
+        font-size: 1.9rem;
+        line-height: 1.03;
       }
 
       .success-summary {
