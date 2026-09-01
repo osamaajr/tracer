@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Bell,
@@ -107,7 +107,6 @@ function LandingPage() {
     <main className="landing-shell">
       <Header />
       <HeroSection />
-      <TransitionStatement />
       <HowItWorksSection />
       <WatchingSection />
       <FinalCtaSection />
@@ -230,63 +229,130 @@ function ProductSilhouette() {
   return <img className="product-image" src="/assets/product-headphones.png" alt="" />;
 }
 
-function TransitionStatement() {
-  return (
-    <section className="transition-statement">
-      <h2>Shopping shouldn't end at checkout.</h2>
-      <p>Buy something. Protect it. Tracer takes it from there.</p>
-    </section>
-  );
-}
-
 function HowItWorksSection() {
   return (
-    <section className="how-section" id="how-it-works">
-      <div className="how-section-inner">
-        <div className="section-heading">
-          <h2>How it works</h2>
+    <section className="how-story-section" id="how-it-works">
+      <div className="how-story-shell">
+        <div className="how-story-copy">
+          <a className="how-story-brand" href="/" aria-label="Tracer home">
+            <img src="/assets/tracer-logo.png" alt="" />
+            <img src="/assets/tracer-wordmark.png" alt="Tracer" />
+          </a>
+          <p className="how-story-kicker">How it works</p>
+          <h2>Shopping shouldn't end at checkout.</h2>
+          <p className="how-story-lede">
+            Tracer watches your purchases 24/7 and notifies you the moment there's a better deal.
+          </p>
+          <ol className="how-story-steps" aria-label="How Tracer works">
+            <li>
+              <span>01</span>
+              <div>
+                <h3>Buy normally</h3>
+                <p>Shop anywhere, no changes to your routine.</p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <h3>Protect it</h3>
+                <p>Tracer detects your receipt and activates price protection.</p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <h3>We keep watching</h3>
+                <p>We monitor price drops and notify you when it's time to save.</p>
+              </div>
+            </li>
+          </ol>
         </div>
-        <div className="steps-layout">
-          <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
-          <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your watchlist." visual={<ProtectMiniature />} />
-          <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
+        <div className="how-story-stage" aria-label="Tracer purchase protection flow">
+          <article className="how-order-card">
+            <div className="how-browser-bar" aria-hidden="true">
+              <span /><span /><span />
+            </div>
+            <div className="how-order-body">
+              <CheckCircle2 aria-hidden="true" size={36} />
+              <div>
+                <h3>Thank you for your order.</h3>
+                <p>We've sent a confirmation to hello@sam.com</p>
+              </div>
+            </div>
+            <div className="how-order-product">
+              <ProductSilhouette />
+              <div>
+                <strong>Sony WH-1000XM5</strong>
+                <span>Wireless Headphones</span>
+              </div>
+              <b>£349.99</b>
+            </div>
+          </article>
+
+          <svg className="how-flow-arrow how-flow-arrow-one" viewBox="0 0 92 90" aria-hidden="true">
+            <path d="M20 8 C14 45 28 68 74 66" />
+            <path d="M64 55 L76 66 L62 74" />
+          </svg>
+
+          <article className="how-popup-card">
+            <div className="how-popup-bar">
+              <span><img src="/assets/tracer-logo.png" alt="" />tracer</span>
+              <i aria-hidden="true">×</i>
+            </div>
+            <div className="how-popup-content">
+              <CheckCircle2 aria-hidden="true" size={52} />
+              <div>
+                <h3>Purchase detected</h3>
+                <p>We'll watch this item and alert you if the price drops.</p>
+              </div>
+            </div>
+            <div className="how-popup-product">
+              <ProductSilhouette />
+              <div>
+                <strong>Sony WH-1000XM5</strong>
+                <span>Wireless Headphones</span>
+              </div>
+              <b>£349.99</b>
+            </div>
+            <p className="how-active-row"><CheckCircle2 aria-hidden="true" size={14} />Protection active</p>
+          </article>
+
+          <svg className="how-flow-arrow how-flow-arrow-two" viewBox="0 0 92 90" aria-hidden="true">
+            <path d="M18 18 C60 18 75 38 72 76" />
+            <path d="M61 65 L72 78 L82 63" />
+          </svg>
+
+          <article className="how-dashboard-card">
+            <aside aria-hidden="true">
+              <img src="/assets/tracer-logo.png" alt="" />
+              <span><ShoppingBag size={16} /></span>
+              <span><Bell size={16} /></span>
+              <span><Settings size={16} /></span>
+            </aside>
+            <div className="how-dashboard-main">
+              <div className="how-opportunity-strip">
+                <strong>Opportunity found</strong>
+                <span>Price dropped!</span>
+                <button type="button">View details <ArrowRight aria-hidden="true" size={12} /></button>
+              </div>
+              <div className="how-savings-row">
+                <ProductSilhouette />
+                <div>
+                  <strong>Sony WH-1000XM5</strong>
+                  <span>Wireless Headphones</span>
+                  <small>Best Buy</small>
+                </div>
+                <div>
+                  <b>£298.00</b>
+                  <s>£349.99</s>
+                  <em>Save £51.99</em>
+                </div>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
-  );
-}
-
-function StepCard({ number, title, copy, visual }: { number: string; title: string; copy: string; visual: ReactNode }) {
-  return (
-    <article className="step-card">
-      <span className="step-number">{number}</span>
-      <div className="step-visual">{visual}</div>
-      <h3>{title}</h3>
-      <p>{copy}</p>
-    </article>
-  );
-}
-
-function OrderMiniature() {
-  return <div className="order-miniature" aria-hidden="true"><ShoppingBag size={45} /><CheckCircle2 className="mini-check" size={28} /></div>;
-}
-
-function ProtectMiniature() {
-  return (
-    <div className="protect-step-stage" aria-hidden="true">
-      <div className="protect-browser-card"><span /><span /></div>
-      <div className="protect-miniature"><img src="/assets/tracer-logo.png" alt="" /><b>Tracer</b><span>Bought it?</span><button type="button">Protect purchase</button></div>
-    </div>
-  );
-}
-
-function OpportunityMiniature() {
-  return (
-    <div className="opportunity-miniature" aria-hidden="true">
-      <span className="opportunity-bell"><Bell size={17} /></span>
-      <p>£349.99 <span>→</span> £319.99</p>
-      <strong>£30 opportunity found</strong>
-    </div>
   );
 }
 
