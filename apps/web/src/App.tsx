@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
-  BadgeCheck,
   Bell,
   CalendarCheck2,
   CheckCircle2,
   Clock,
   CreditCard,
-  Database,
   ExternalLink,
   LockKeyhole,
   MailX,
-  PackageCheck,
   RefreshCw,
-  ShieldCheck,
+  Settings,
   ShoppingBag,
+  Star,
   Tag,
   TimerReset,
+  UsersRound,
 } from "lucide-react";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -52,12 +51,6 @@ interface DashboardOpportunity {
 interface DashboardData {
   purchases: DashboardPurchase[];
   opportunities: DashboardOpportunity[];
-}
-
-interface ShopCard {
-  name: string;
-  status: string;
-  logoSrc: string;
 }
 
 const demoDashboard: DashboardData = {
@@ -106,19 +99,6 @@ const demoDashboard: DashboardData = {
   ],
 };
 
-const verifiedShopCards: ShopCard[] = [
-  { name: "John Lewis", status: "Enhanced policy support", logoSrc: "/assets/store-john-lewis.png" },
-];
-
-const roadmapShopCards: ShopCard[] = [
-  { name: "Shopify", status: "Generic order detection planned", logoSrc: "/assets/store-shopify.svg" },
-  { name: "WooCommerce", status: "Generic order detection planned", logoSrc: "/assets/store-woocommerce.svg" },
-  { name: "Argos", status: "Policy support planned", logoSrc: "/assets/store-argos.svg" },
-  { name: "Amazon", status: "Researching support", logoSrc: "/assets/store-amazon.png" },
-  { name: "Currys", status: "Researching support", logoSrc: "/assets/store-currys.png" },
-  { name: "Apple", status: "Researching support", logoSrc: "/assets/store-apple.png" },
-];
-
 export function App() {
   const isDashboard = window.location.pathname.startsWith("/dashboard");
   return isDashboard ? <Dashboard /> : <LandingPage />;
@@ -132,9 +112,6 @@ function LandingPage() {
       <TransitionStatement />
       <HowItWorksSection />
       <WatchingSection />
-      <OpportunitySection />
-      <PrivacySection />
-      <StoreCoverageSection />
       <FinalCtaSection />
       <Footer />
     </main>
@@ -223,7 +200,7 @@ function ExtensionPreview() {
           <img className="mini-logo" src="/assets/tracer-logo.png" alt="" />
           <img className="extension-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
         </div>
-        <span className="status-pill">Active</span>
+        <div className="extension-actions"><span className="status-pill">Active</span><Settings aria-hidden="true" size={14} /></div>
       </div>
       <div className="extension-copy">
         <h2>Bought it?<br />We'll keep watching it.</h2>
@@ -246,9 +223,9 @@ function ExtensionPreview() {
         <div className="eligibility-row"><strong>Eligible window</strong><span>Until 30 Aug 2027</span></div>
       </section>
       <div className="mini-feature-row">
-        <span><Tag aria-hidden="true" size={15} />Price drops</span>
-        <span><CalendarCheck2 aria-hidden="true" size={15} />Policy windows</span>
-        <span><Bell aria-hidden="true" size={15} />Alerts</span>
+        <span><Tag aria-hidden="true" size={15} /><strong>Price drops</strong><small>We'll watch for changes</small></span>
+        <span><CalendarCheck2 aria-hidden="true" size={15} /><strong>Policy windows</strong><small>We'll track known eligibility</small></span>
+        <span><Bell aria-hidden="true" size={15} /><strong>Alerts</strong><small>We'll tell you when it matters</small></span>
       </div>
       <button className="protect-preview" type="button">Protect purchase</button>
       <button className="review-preview" type="button">Review details</button>
@@ -258,7 +235,7 @@ function ExtensionPreview() {
 }
 
 function ProductSilhouette() {
-  return <div className="product-silhouette" aria-hidden="true"><span /><i /><b /></div>;
+  return <img className="product-image" src="/assets/product-headphones.png" alt="" />;
 }
 
 function TransitionStatement() {
@@ -274,11 +251,10 @@ function HowItWorksSection() {
   return (
     <section className="chapter how-section" id="how-it-works">
       <div className="section-heading">
-        <p className="eyebrow">How it works</p>
-        <h2>Three simple moments after checkout.</h2>
+        <h2>How it works</h2>
       </div>
       <div className="steps-layout">
-        <StepCard number="01" title="Buy normally" copy="Complete your purchase as usual." visual={<OrderMiniature />} />
+        <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
         <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your protected items." visual={<ProtectMiniature />} />
         <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
       </div>
@@ -302,7 +278,12 @@ function OrderMiniature() {
 }
 
 function ProtectMiniature() {
-  return <div className="protect-miniature" aria-hidden="true"><img src="/assets/tracer-logo.png" alt="" /><span>Bought it?</span><button type="button">Protect purchase</button></div>;
+  return (
+    <div className="protect-step-stage" aria-hidden="true">
+      <div className="protect-browser-card"><span /><span /></div>
+      <div className="protect-miniature"><img src="/assets/tracer-logo.png" alt="" /><b>Tracer</b><span>Bought it?</span><button type="button">Protect purchase</button></div>
+    </div>
+  );
 }
 
 function OpportunityMiniature() {
@@ -310,90 +291,55 @@ function OpportunityMiniature() {
 }
 
 function WatchingSection() {
-  const capabilities = [
-    { icon: <Tag aria-hidden="true" size={22} />, title: "Price drops", copy: "Tracer watches the product price after you protect a purchase." },
-    { icon: <CalendarCheck2 aria-hidden="true" size={22} />, title: "Policy & eligibility windows", copy: "Known retailer windows are tracked where verified support exists." },
-    { icon: <BadgeCheck aria-hidden="true" size={22} />, title: "Relevant claim opportunities", copy: "A price change is separated from something that may actually be worth acting on." },
-    { icon: <Bell aria-hidden="true" size={22} />, title: "Alerts", copy: "Tracer tells you when a protected purchase needs your attention." },
+  const checklist = [
+    "Price drops",
+    "Policy & eligibility windows",
+    "Refund & claim opportunities",
+    "Back in stock alerts (coming soon)",
+    "Works across leading retailers",
   ];
 
   return (
     <section className="chapter watching-section">
       <div className="chapter-copy">
-        <p className="eyebrow">What Tracer watches</p>
         <h2>We watch so you don't have to.</h2>
-        <p>Once you protect a purchase, Tracer keeps an eye on the things that might matter after checkout.</p>
+        <ul className="watch-checklist">
+          {checklist.map((item) => <li key={item}><CheckCircle2 aria-hidden="true" size={17} />{item}</li>)}
+        </ul>
       </div>
-      <div className="capability-panel">
-        {capabilities.map((capability) => <article key={capability.title}><span>{capability.icon}</span><div><h3>{capability.title}</h3><p>{capability.copy}</p></div></article>)}
-        <article className="coming-soon"><span><PackageCheck aria-hidden="true" size={22} /></span><div><h3>Return windows</h3><p>Coming soon. Designed as a separate protection layer after price monitoring.</p></div></article>
-      </div>
+      <MetricPanel />
     </section>
   );
 }
 
-function OpportunitySection() {
-  return (
-    <section className="chapter opportunity-section">
-      <div className="opportunity-copy">
-        <p className="eyebrow">The moment that matters</p>
-        <h2>Not every price drop is a pay back.</h2>
-        <p>When something changes, Tracer tells you whether there may actually be something worth doing.</p>
-      </div>
-      <article className="opportunity-card">
-        <div className="opportunity-product"><ProductSilhouette /><div><span>Policy-backed opportunity</span><h3>Sony WH-1000XM5</h3></div></div>
-        <div className="value-grid">
-          <div><span>You paid</span><strong>£349.99</strong></div>
-          <div><span>Current price</span><strong>£319.99</strong></div>
-          <div className="saving"><span>Potential saving</span><strong>£30</strong></div>
-        </div>
-        <div className="eligibility-large"><span><Clock aria-hidden="true" size={18} />Eligibility</span><strong>4 days remaining</strong></div>
-        <a className="primary-button" href="/dashboard">View opportunity<ExternalLink aria-hidden="true" size={17} /></a>
-      </article>
-    </section>
-  );
-}
-
-function PrivacySection() {
-  const trustItems = [
-    { icon: <MailX aria-hidden="true" size={22} />, title: "No inbox access", copy: "Tracer does not need to read your email to find receipts." },
-    { icon: <CreditCard aria-hidden="true" size={22} />, title: "No card details", copy: "Payment credentials and card numbers are outside Tracer's scope." },
-    { icon: <ShieldCheck aria-hidden="true" size={22} />, title: "You choose what to save", copy: "Purchases are saved only when you press Protect." },
-    { icon: <Database aria-hidden="true" size={22} />, title: "Structured data first", copy: "Tracer prefers the purchase details it needs over full-page storage." },
+function MetricPanel() {
+  const metrics = [
+    { icon: <UsersRound aria-hidden="true" size={30} />, value: "12,847+", label: "Purchases protected" },
+    { icon: <Tag aria-hidden="true" size={30} />, value: "£268,431+", label: "Opportunities found" },
+    { icon: <Clock aria-hidden="true" size={30} />, value: "3.2 min", label: "Average time saved per purchase" },
   ];
 
   return (
-    <section className="chapter privacy-section" id="privacy">
-      <div className="chapter-copy">
-        <p className="eyebrow">Privacy</p>
-        <h2>Only what Tracer needs. Nothing more.</h2>
-        <p>Tracer observes checkout and order-confirmation pages, so the trust model has to be simple: minimal permissions, no inbox, no passwords, and no purchase saved unless you choose it.</p>
+    <aside className="metric-panel" aria-label="Tracer proof panel">
+      <div className="metric-row">
+        {metrics.map((metric) => (
+          <div className="metric-item" key={metric.label}>
+            <span>{metric.icon}</span>
+            <div><strong>{metric.value}</strong><small>{metric.label}</small></div>
+          </div>
+        ))}
       </div>
-      <div className="trust-card-grid">
-        {trustItems.map((item) => <article key={item.title}><span>{item.icon}</span><h3>{item.title}</h3><p>{item.copy}</p></article>)}
+      <div className="rating-row">
+        <span className="laurel" aria-hidden="true">‹</span>
+        <div>
+          <h3>Trusted by thousands of smart shoppers</h3>
+          <div className="stars" aria-label="4.9 out of 5 stars">{Array.from({ length: 5 }, (_, index) => <Star key={index} aria-hidden="true" size={24} fill="currentColor" />)}</div>
+          <p><strong>4.9 out of 5</strong><br />Chrome Web Store</p>
+        </div>
+        <span className="laurel" aria-hidden="true">›</span>
       </div>
-    </section>
+    </aside>
   );
-}
-
-function StoreCoverageSection() {
-  return (
-    <section className="chapter store-coverage-section" id="support">
-      <div className="section-heading">
-        <p className="eyebrow">Store coverage</p>
-        <h2>Made for shopping across the web.</h2>
-        <p>Tracer uses broad purchase detection where possible, with enhanced retailer policy support added store by store.</p>
-      </div>
-      <div className="coverage-grid">
-        <article><h3>Verified policy support</h3><p>Live retailer logic for identifying policy-backed opportunities.</p><LogoCloud shops={verifiedShopCards} /></article>
-        <article><h3>Compatibility roadmap</h3><p>Planned and researched store coverage, clearly separated from verified policies.</p><LogoCloud shops={roadmapShopCards} /></article>
-      </div>
-    </section>
-  );
-}
-
-function LogoCloud({ shops }: { shops: ShopCard[] }) {
-  return <div className="logo-cloud">{shops.map((shop) => <div key={shop.name} aria-label={`${shop.name}: ${shop.status}`}><img src={shop.logoSrc} alt={`${shop.name} logo`} /></div>)}</div>;
 }
 
 function FinalCtaSection() {
@@ -402,8 +348,8 @@ function FinalCtaSection() {
       <div>
         <img src="/assets/tracer-logo.png" alt="" />
         <p className="eyebrow">Install Tracer</p>
-        <h2>Start protecting your purchases.</h2>
-        <p>Add Tracer to Chrome and let it keep watching after you buy.</p>
+        <h2>Start protecting your purchases today</h2>
+        <p>Join thousands of shoppers who let Tracer watch their back.</p>
         <a className="primary-button" href="/dashboard"><ChromeMark />Add to Chrome - It's free</a>
       </div>
     </section>
@@ -413,12 +359,22 @@ function FinalCtaSection() {
 function Footer() {
   return (
     <footer className="site-footer" id="faq">
-      <a className="brand" href="/" aria-label="Tracer home">
-        <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
-        <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
-      </a>
-      <nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="#privacy">Privacy</a><a href="#support">Support</a><a href="/dashboard">Dashboard</a></nav>
-      <p>Your purchases don't end at checkout.</p>
+      <div className="footer-brand-block">
+        <a className="brand" href="/" aria-label="Tracer home">
+          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
+          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
+        </a>
+        <p>Your purchases don't end at checkout.</p>
+      </div>
+      <nav className="footer-links" aria-label="Footer navigation">
+        <div><h3>Product</h3><a href="#how-it-works">How it works</a><a href="#privacy">Privacy</a><a href="#faq">FAQ</a><a href="#support">Support</a></div>
+        <div><h3>Company</h3><a href="#support">About</a><a href="#support">Blog</a><a href="#support">Careers</a><a href="#support">Contact</a></div>
+        <div><h3>Legal</h3><a href="#privacy">Privacy Policy</a><a href="#support">Terms of Service</a></div>
+      </nav>
+      <div className="footer-card">
+        <p>Made with care in the UK</p>
+        <p>© 2026 Tracer. All rights reserved.</p>
+      </div>
     </footer>
   );
 }
