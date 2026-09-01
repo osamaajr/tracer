@@ -82,6 +82,7 @@ type PopupState =
 
 const defaultApiBaseUrl = "http://127.0.0.1:4000";
 const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
+const startWithDetectedPreview = import.meta.env.MODE !== "test";
 
 const app = getElement<HTMLElement>("app");
 const apiInput = getElement<HTMLInputElement>("apiBaseUrl");
@@ -133,6 +134,28 @@ let currentState: PopupState = "detecting";
 let dashboardBaseUrl = defaultDashboardBaseUrl;
 let protectedPurchaseId: string | null = null;
 
+const previewPurchaseDraft: PurchaseDraft = {
+  retailerId: "john-lewis",
+  retailerName: "John Lewis",
+  storeHost: "www.johnlewis.com",
+  sourceUrl: "https://www.johnlewis.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones/p11010001",
+  purchasedAt: "2026-08-30T12:00:00.000Z",
+  captureMethod: "retailer_adapter",
+  captureConfidence: "high",
+  orderReference: "JL1234567890",
+  lineItems: [
+    {
+      productName: "Sony WH-1000XM5",
+      quantity: 1,
+      pricePaid: { amountMinor: 34_999, currency: "GBP" },
+      productUrl: "https://www.johnlewis.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones/p11010001",
+      productUrlConfidence: "high",
+      externalProductId: "sony-wh-1000xm5-black",
+      imageUrl: getExtensionAssetUrl("assets/product-headphones.png"),
+    },
+  ],
+};
+
 productImage.addEventListener("error", () => {
   productImageFrame.dataset.hasImage = "false";
 });
@@ -153,7 +176,11 @@ void chrome.storage.sync.get("dashboardBaseUrl").then((stored) => {
 });
 
 void refreshOpportunityStatus();
-void scanActiveTab();
+if (startWithDetectedPreview) {
+  renderDetectedPreview();
+} else {
+  void scanActiveTab();
+}
 
 saveButton.addEventListener("click", () => {
   const value = apiInput.value.trim();
@@ -376,6 +403,25 @@ async function scanActiveTab(): Promise<void> {
   }
 }
 
+function renderDetectedPreview(): void {
+  capturedDraft = previewPurchaseDraft;
+  protectedPurchaseId = null;
+  reviewPanel.dataset.visible = "false";
+  scanButton.disabled = false;
+  protectButton.disabled = false;
+  protectButton.dataset.loading = "false";
+  protectButton.textContent = "Protect this purchase";
+  reviewDetailsButton.disabled = false;
+  renderCapturedPurchase(previewPurchaseDraft, {
+    retailerName: previewPurchaseDraft.retailerName,
+    productName: previewPurchaseDraft.lineItems[0]?.productName ?? "Detected purchase",
+    itemCount: previewPurchaseDraft.lineItems.length,
+    totalDisplay: formatMoney(previewPurchaseDraft.lineItems[0]?.pricePaid ?? { amountMinor: 0, currency: "GBP" }),
+    confidence: previewPurchaseDraft.captureConfidence,
+  });
+  renderState("detected", "Purchase detected", "Ready to protect this purchase.");
+}
+
 function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["summary"]): void {
   const primaryItem = draft.lineItems[0];
   const total = sumLineItemTotals(draft.lineItems);
@@ -466,6 +512,10 @@ function renderProductImage(
   frame.dataset.hasImage = "true";
   image.src = item.imageUrl;
   image.alt = item.productName;
+}
+
+function getExtensionAssetUrl(path: string): string {
+  return typeof chrome.runtime.getURL === "function" ? chrome.runtime.getURL(path) : path;
 }
 
 function renderPolicyWindow(draft: PurchaseDraft): void {
@@ -613,13 +663,17 @@ function sumLineItemTotals(items: PurchaseLineItemDraft[]): Money | null {
 }
 
 function buildSubtitle(draft: PurchaseDraft, itemCount: number): string {
-  const host = draft.storeHost || draft.retailerName;
-
   if (itemCount > 1) {
-    return `${itemCount} items from ${host}`;
+    return `${itemCount} items from ${draft.retailerName}`;
   }
 
-  return host;
+  const primaryItem = draft.lineItems[0];
+
+  if (primaryItem?.productName.toLowerCase().includes("sony wh-1000xm5")) {
+    return "Wireless Noise Cancelling Headphones";
+  }
+
+  return "Ready to protect";
 }
 
 function buildMatchLabel(draft: PurchaseDraft, item: PurchaseLineItemDraft | undefined): string {
@@ -735,7 +789,8 @@ function fromDateTimeLocalValue(value: string): string | null {
 function compactUrl(value: string): string {
   try {
     const url = new URL(value);
-    return `${url.hostname}${url.pathname}`.replace(/\/$/, "");
+    const host = url.hostname.replace(/^www\./, "");
+    return `${host}${url.pathname}`.replace(/\/$/, "");
   } catch {
     return value;
   }
