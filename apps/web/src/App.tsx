@@ -5,10 +5,8 @@ import {
   CalendarCheck2,
   CheckCircle2,
   Clock,
-  CreditCard,
   ExternalLink,
   LockKeyhole,
-  MailX,
   RefreshCw,
   Settings,
   ShoppingBag,
@@ -152,7 +150,6 @@ function HeroSection() {
   return (
     <section className="hero">
       <div className="hero-copy">
-        <p className="soft-pill"><span />The post-purchase assistant</p>
         <h1>Bought it?<br />We'll keep<br />watching it.</h1>
         <p className="hero-text">
           Tracer watches your purchases after checkout and alerts you when prices drop or there's something worth acting on.
@@ -162,8 +159,6 @@ function HeroSection() {
           Add to Chrome - It's free
         </a>
         <div className="trust-strip" aria-label="Tracer trust highlights">
-          <span><MailX aria-hidden="true" size={16} />No inbox access</span>
-          <span><CreditCard aria-hidden="true" size={16} />No card details</span>
           <span><CheckCircle2 aria-hidden="true" size={16} />You choose what to protect</span>
         </div>
       </div>

@@ -183,6 +183,11 @@
         width: 28px;
       }
 
+      .settings-toggle:disabled {
+        cursor: default;
+        opacity: 0.36;
+      }
+
       .screen {
         display: none;
       }
@@ -934,7 +939,7 @@
         </div>
         <div class="top-actions">
           <span class="active-pill">Active</span>
-          <button class="settings-toggle" id="settingsToggle" type="button" aria-label="Open settings" aria-expanded="false">
+          <button class="settings-toggle" id="settingsToggle" type="button" aria-label="Settings unavailable" aria-expanded="false" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.1 3.4c0-.5-.1-1-.2-1.4l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.4-1.4L14.8 2h-4l-.4 3.2A8 8 0 0 0 8 6.6l-2.4-1-2 3.5 2 1.5A7 7 0 0 0 5.5 12c0 .5.1 1 .2 1.4l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 2.4 1.4l.4 3.2h4l.4-3.2a8 8 0 0 0 2.4-1.4l2.4 1 2-3.5-2-1.5c.1-.4.2-.9.2-1.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
             </svg>
