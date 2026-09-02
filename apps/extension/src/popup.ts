@@ -472,7 +472,7 @@ function renderProtectedPurchase(options: {
   if (options.newlyProtected) {
     window.setTimeout(() => {
       app.dataset.celebrate = "false";
-    }, 1_150);
+    }, 1_800);
   }
 }
 
