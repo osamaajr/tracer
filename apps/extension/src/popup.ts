@@ -122,7 +122,6 @@ const successCopy = getElement<HTMLElement>("successCopy");
 const dashboardCta = getElement<HTMLButtonElement>("dashboardCta");
 const protectedItemsCta = getElement<HTMLButtonElement>("protectedItemsCta");
 const howItWorksButton = getElement<HTMLButtonElement>("howItWorks");
-const doneButton = getElement<HTMLButtonElement>("done");
 const reviewProductName = getElement<HTMLInputElement>("reviewProductName");
 const reviewPrice = getElement<HTMLInputElement>("reviewPrice");
 const reviewDate = getElement<HTMLInputElement>("reviewDate");
@@ -209,10 +208,6 @@ maybeLaterButton.addEventListener("click", () => {
 stateCloseButton.addEventListener("click", () => {
   window.close();
 });
-doneButton.addEventListener("click", () => {
-  openExtensionUrl(buildDashboardUrl());
-});
-
 settingsToggle.addEventListener("click", () => {
   const isVisible = settingsPanel.dataset.visible === "true";
   settingsPanel.dataset.visible = String(!isVisible);

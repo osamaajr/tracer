@@ -93,6 +93,11 @@
         padding: 0 14px;
       }
 
+      main[data-screen="protected"] .topbar,
+      main[data-screen="duplicate"] .topbar {
+        padding: 0 12px;
+      }
+
       main[data-screen="detecting"] .topbar,
       main[data-screen="empty"] .topbar,
       main[data-screen="incomplete"] .topbar,
@@ -730,7 +735,7 @@
       .success-screen {
         align-content: start;
         gap: 16px;
-        padding: 1px 26px 0;
+        padding: 1px 24px 0;
       }
 
       .success-hero {
@@ -802,7 +807,6 @@
 
       .summary-actions {
         display: grid;
-        gap: 10px;
       }
 
       .privacy-note {
@@ -1175,8 +1179,7 @@
         </section>
 
         <section class="summary-actions">
-          <button class="dashboard-cta" id="dashboardCta" type="button">Go to dashboard</button>
-          <button class="text-action" id="done" type="button">View protected items</button>
+          <button class="dashboard-cta" id="dashboardCta" type="button">View protected items</button>
         </section>
 
         <p class="privacy-note">
