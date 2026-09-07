@@ -5,7 +5,9 @@ import {
   type ProductPriceSnapshot,
 } from "@afterbuy/core";
 
-const johnLewisHeadphonesDrop: ProductPriceSnapshot = {
+type DevFixturePriceVariant = "paid" | "dropped";
+
+const johnLewisHeadphonesFixture: ProductPriceSnapshot = {
   retailerId: "john-lewis",
   productUrl:
     "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
@@ -14,15 +16,22 @@ const johnLewisHeadphonesDrop: ProductPriceSnapshot = {
   externalProductId: "p1122334",
   sku: "JL-SNY-XM6-BLK",
   observedAt: "2026-09-01T08:00:00.000Z",
-  price: gbp(31_900),
+  price: gbp(31_999),
   availability: "in_stock",
 };
 
-export function createDevFixturePriceFetcher(now: string = new Date().toISOString()): PriceFetcher {
+export function createDevFixturePriceFetcher(
+  _now: string = new Date().toISOString(),
+  variant: DevFixturePriceVariant = "dropped",
+): PriceFetcher {
   return new FixturePriceFetcher([
     {
-      ...johnLewisHeadphonesDrop,
-      observedAt: now,
+      ...johnLewisHeadphonesFixture,
+      observedAt:
+        variant === "paid"
+          ? "2026-09-01T08:00:00.000Z"
+          : "2026-09-02T08:00:00.000Z",
+      price: variant === "paid" ? gbp(34_999) : gbp(31_999),
     },
   ]);
 }

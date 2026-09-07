@@ -48,6 +48,7 @@ Useful individual commands:
 npm run dev:api
 npm run dev:web
 npm run dev -w @afterbuy/extension
+npm run monitor -w @afterbuy/api
 ```
 
 The API defaults to `http://localhost:4000`. The web app defaults to `http://localhost:5173`.
@@ -89,6 +90,21 @@ curl -X POST http://localhost:4000/api/purchases/protect \
   -H "x-afterbuy-user-id: dev-user-afterbuy" \
   --data @packages/core/fixtures/generic-store/protect-purchase-request.json
 ```
+
+The monitoring worker checks immediately and then every 12 hours by default. Set `AFTERBUY_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
+
+Product images are optional. Tracer prefers an order-confirmation image, then JSON-LD or Open Graph metadata, and ignores unusable candidates without rejecting the purchase. The dashboard and extension use intentional fallback visuals when an image is missing or later becomes unavailable.
+
+## Consumer extension flow
+
+To test the experience from a shopper's perspective, start the app with a fresh data file and build the unpacked extension:
+
+```sh
+AFTERBUY_DATA_FILE=/tmp/tracer-consumer-flow.json npm run dev
+npm run build -w @afterbuy/extension
+```
+
+Load `apps/extension/dist` from `chrome://extensions`, then open `http://127.0.0.1:5173/tracer-demo-order.html`. Click the Tracer toolbar icon. The popup scans the completed demo order and shows `Purchase detected`; `Protect this purchase` persists it. `View protected items` opens the dashboard. Run the paid and dropped fixture commands above to see the dashboard move from £349.99 to £319.99 and create the activity/opportunity state.
 
 ## Quality Checks
 

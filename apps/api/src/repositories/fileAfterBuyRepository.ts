@@ -2,11 +2,15 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   createId,
+  type ActivityEventCreateInput,
+  type ActivityEventRecord,
+  type ActivityEventWriteResult,
   type AfterBuyRepository,
   type LatestObservation,
   type OpportunityCreateInput,
   type OpportunityRecord,
   type OpportunityStatus,
+  type OpportunityUpdateInput,
   type PriceObservationCreateInput,
   type PriceObservationRecord,
   type ProductRecord,
@@ -21,6 +25,7 @@ interface StoreState {
   purchases: PurchaseRecord[];
   observations: PriceObservationRecord[];
   opportunities: OpportunityRecord[];
+  activityEvents: ActivityEventRecord[];
 }
 
 const emptyStore: StoreState = {
@@ -28,6 +33,7 @@ const emptyStore: StoreState = {
   purchases: [],
   observations: [],
   opportunities: [],
+  activityEvents: [],
 };
 
 export class FileAfterBuyRepository implements AfterBuyRepository {
@@ -132,13 +138,27 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
 
   async listProductsForMonitoring(): Promise<ProductRecord[]> {
     const state = await this.read();
-    return clone(state.products.filter((product) => product.monitoringStatus === "active"));
+    return clone(state.products.filter((product) => product.monitoringStatus !== "paused"));
   }
 
   async recordPriceObservation(
     input: PriceObservationCreateInput,
   ): Promise<PriceObservationRecord> {
     return this.mutate((state) => {
+      const existing = state.observations.find(
+        (observation) =>
+          observation.productId === input.productId &&
+          observation.observedAt === input.observedAt &&
+          observation.price.amountMinor === input.price.amountMinor &&
+          observation.price.currency === input.price.currency &&
+          observation.availability === input.availability &&
+          observation.sourceUrl === input.sourceUrl,
+      );
+
+      if (existing) {
+        return clone(existing);
+      }
+
       const observation: PriceObservationRecord = {
         id: createId("obs"),
         ...input,
@@ -151,11 +171,25 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
         product.lastCheckedAt = input.observedAt;
         if (input.availability === "out_of_stock") {
           product.monitoringStatus = "unavailable";
+        } else {
+          product.monitoringStatus = "active";
         }
       }
 
       return clone(observation);
     });
+  }
+
+  async findLatestObservationForProduct(
+    productId: string,
+  ): Promise<PriceObservationRecord | null> {
+    const state = await this.read();
+    const observation =
+      state.observations
+        .filter((candidate) => candidate.productId === productId)
+        .sort((left, right) => right.observedAt.localeCompare(left.observedAt))[0] ?? null;
+
+    return clone(observation);
   }
 
   async listActivePurchasesForProduct(productId: string): Promise<PurchaseRecord[]> {
@@ -191,6 +225,30 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
       };
 
       state.opportunities.push(opportunity);
+      return clone(opportunity);
+    });
+  }
+
+  async updateOpportunity(input: OpportunityUpdateInput): Promise<OpportunityRecord | null> {
+    return this.mutate((state) => {
+      const opportunity =
+        state.opportunities.find(
+          (candidate) => candidate.id === input.opportunityId && candidate.userId === input.userId,
+        ) ?? null;
+
+      if (!opportunity) {
+        return null;
+      }
+
+      opportunity.priceObservationId = input.priceObservationId;
+      opportunity.currentPrice = input.currentPrice;
+      opportunity.potentialSaving = input.potentialSaving;
+      opportunity.title = input.title;
+      opportunity.guidance = input.guidance;
+      opportunity.claimUrl = input.claimUrl;
+      opportunity.claimBy = input.claimBy;
+      opportunity.statusUpdatedAt = input.statusUpdatedAt;
+
       return clone(opportunity);
     });
   }
@@ -254,6 +312,47 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
     });
   }
 
+  async recordActivityEvent(
+    input: ActivityEventCreateInput,
+  ): Promise<ActivityEventWriteResult> {
+    return this.mutate((state) => {
+      if (input.dedupeKey) {
+        const existing = state.activityEvents.find(
+          (event) => event.dedupeKey === input.dedupeKey,
+        );
+
+        if (existing) {
+          return { event: clone(existing), created: false };
+        }
+      }
+
+      const event: ActivityEventRecord = {
+        id: createId("evt"),
+        ...input,
+        metadata: input.metadata ?? {},
+      };
+
+      state.activityEvents.push(event);
+      return { event: clone(event), created: true };
+    });
+  }
+
+  async listActivityEventsForPurchases(
+    purchaseIds: string[],
+    limitPerPurchase = 10,
+  ): Promise<ActivityEventRecord[]> {
+    const state = await this.read();
+
+    return clone(
+      purchaseIds.flatMap((purchaseId) =>
+        state.activityEvents
+          .filter((event) => event.purchaseId === purchaseId)
+          .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+          .slice(0, limitPerPurchase),
+      ),
+    );
+  }
+
   private async mutate<T>(mutator: (state: StoreState) => T): Promise<T> {
     const operation = this.queue.then(async () => {
       const state = await this.read();
@@ -280,6 +379,7 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
         purchases: parsed.purchases ?? [],
         observations: parsed.observations ?? [],
         opportunities: parsed.opportunities ?? [],
+        activityEvents: parsed.activityEvents ?? [],
       };
     } catch (error) {
       if (isMissingFileError(error)) {

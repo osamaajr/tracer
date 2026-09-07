@@ -25,7 +25,11 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*/*"],
+      "matches": [
+        "https://*/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
       "js": ["contentScript.js"],
       "run_at": "document_idle"
     }

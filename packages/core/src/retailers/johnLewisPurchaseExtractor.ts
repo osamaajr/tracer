@@ -1,6 +1,11 @@
 import { parseGbpPrice } from "../domain/money";
 import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { extractJsonLdObjects, findJsonLdByType, asRecord, firstString, readString } from "./jsonLd";
+import {
+  findOpenGraphImage,
+  findOrderConfirmationImage,
+  selectProductImage,
+} from "./productImage";
 import { extractJohnLewisProductId, normalizeRetailerUrl } from "./urlSafety";
 
 export function isJohnLewisSupportedOrderPage(sourceUrl: string, document?: Document): boolean {
@@ -106,7 +111,7 @@ function extractFromJsonLd(document: Document, sourceUrl: string): PurchaseDraft
       : [];
 
   const lineItems = offers
-    .map((offer) => extractLineItemFromOffer(asRecord(offer)))
+    .map((offer) => extractLineItemFromOffer(asRecord(offer), document, sourceUrl))
     .filter((item): item is PurchaseLineItemDraft => item !== null);
 
   if (lineItems.length === 0) {
@@ -133,7 +138,11 @@ function extractFromJsonLd(document: Document, sourceUrl: string): PurchaseDraft
   return draft;
 }
 
-function extractLineItemFromOffer(offer: Record<string, unknown> | null): PurchaseLineItemDraft | null {
+function extractLineItemFromOffer(
+  offer: Record<string, unknown> | null,
+  document?: Document,
+  sourceUrl?: string,
+): PurchaseLineItemDraft | null {
   if (!offer) {
     return null;
   }
@@ -166,6 +175,27 @@ function extractLineItemFromOffer(offer: Record<string, unknown> | null): Purcha
 
   if (sku) {
     item.sku = sku;
+  }
+
+  const image = selectProductImage(
+    [
+      {
+        value: document
+          ? findOrderConfirmationImage(document, productName, normalized.url, sourceUrl ?? normalized.url)
+          : null,
+        source: "order_confirmation",
+      },
+      { value: product?.image, source: "json_ld" },
+      {
+        value: document && sourceUrl ? findOpenGraphImage(document, sourceUrl) : null,
+        source: "open_graph",
+      },
+    ],
+    sourceUrl,
+  );
+
+  if (image) {
+    item.imageUrl = image.url;
   }
 
   return item;
@@ -223,7 +253,26 @@ function extractLineItemFromElement(element: HTMLElement): PurchaseLineItemDraft
     item.sku = sku;
   }
 
+  const image = selectProductImage(
+    [
+      {
+        value: elementImageUrl(element),
+        source: "order_confirmation",
+      },
+    ],
+  );
+
+  if (image) {
+    item.imageUrl = image.url;
+  }
+
   return item;
+}
+
+function elementImageUrl(element: HTMLElement): string | null {
+  const image = element.querySelector<HTMLImageElement>("img");
+
+  return image?.currentSrc || image?.src || image?.getAttribute("data-src") || null;
 }
 
 function textFromSelectors(root: ParentNode, selectors: string[]): string | null {

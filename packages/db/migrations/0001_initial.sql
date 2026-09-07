@@ -128,6 +128,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS opportunities_purchase_actionable_idx
   ON opportunities(purchase_id)
   WHERE status IN ('open', 'viewed');
 
+CREATE TABLE IF NOT EXISTS activity_events (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES users(id),
+  purchase_id text NOT NULL REFERENCES purchases(id),
+  product_id text NOT NULL REFERENCES products(id),
+  opportunity_id text REFERENCES opportunities(id),
+  type text NOT NULL,
+  occurred_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  dedupe_key text
+);
+
+CREATE INDEX IF NOT EXISTS activity_events_user_occurred_at_idx
+  ON activity_events(user_id, occurred_at);
+
+CREATE INDEX IF NOT EXISTS activity_events_purchase_occurred_at_idx
+  ON activity_events(purchase_id, occurred_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS activity_events_dedupe_key_idx
+  ON activity_events(dedupe_key)
+  WHERE dedupe_key IS NOT NULL;
+
 INSERT INTO retailers (id, display_name, host, country_code, created_at)
 VALUES ('john-lewis', 'John Lewis & Partners', 'www.johnlewis.com', 'GB', now())
 ON CONFLICT (id) DO NOTHING;

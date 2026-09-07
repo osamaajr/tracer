@@ -109,6 +109,20 @@ export async function protectPurchase(
       }
 
       const purchase = await repository.createPurchase(purchaseInput);
+      await repository.recordActivityEvent({
+        userId: command.userId,
+        purchaseId: purchase.id,
+        productId: product.id,
+        type: "purchase_protected",
+        occurredAt: now,
+        createdAt: now,
+        metadata: {
+          productName: purchase.productName,
+          retailerName: purchase.retailerName,
+          pricePaid: purchase.pricePaid,
+        },
+        dedupeKey: `${purchase.id}:purchase_protected`,
+      });
 
       accepted.push({ product, purchase, status: "created" });
     } catch (error) {

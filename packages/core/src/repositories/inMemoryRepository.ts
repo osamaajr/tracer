@@ -1,10 +1,14 @@
 import { createId } from "../domain/ids";
 import type {
+  ActivityEventCreateInput,
+  ActivityEventRecord,
+  ActivityEventWriteResult,
   AfterBuyRepository,
   LatestObservation,
   OpportunityCreateInput,
   OpportunityRecord,
   OpportunityStatus,
+  OpportunityUpdateInput,
   PriceObservationCreateInput,
   PriceObservationRecord,
   ProductRecord,
@@ -19,6 +23,7 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
   private readonly purchases: PurchaseRecord[] = [];
   private readonly observations: PriceObservationRecord[] = [];
   private readonly opportunities: OpportunityRecord[] = [];
+  private readonly activityEvents: ActivityEventRecord[] = [];
 
   async upsertProduct(input: ProductUpsertInput): Promise<ProductRecord> {
     const existing = this.products.find((product) => {
@@ -109,12 +114,26 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
   }
 
   async listProductsForMonitoring(): Promise<ProductRecord[]> {
-    return this.products.filter((product) => product.monitoringStatus === "active");
+    return this.products.filter((product) => product.monitoringStatus !== "paused");
   }
 
   async recordPriceObservation(
     input: PriceObservationCreateInput,
   ): Promise<PriceObservationRecord> {
+    const existing = this.observations.find(
+      (observation) =>
+        observation.productId === input.productId &&
+        observation.observedAt === input.observedAt &&
+        observation.price.amountMinor === input.price.amountMinor &&
+        observation.price.currency === input.price.currency &&
+        observation.availability === input.availability &&
+        observation.sourceUrl === input.sourceUrl,
+    );
+
+    if (existing) {
+      return existing;
+    }
+
     const observation: PriceObservationRecord = {
       id: createId("obs"),
       ...input,
@@ -127,10 +146,22 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
       product.lastCheckedAt = input.observedAt;
       if (input.availability === "out_of_stock") {
         product.monitoringStatus = "unavailable";
+      } else {
+        product.monitoringStatus = "active";
       }
     }
 
     return observation;
+  }
+
+  async findLatestObservationForProduct(
+    productId: string,
+  ): Promise<PriceObservationRecord | null> {
+    return (
+      this.observations
+        .filter((observation) => observation.productId === productId)
+        .sort((left, right) => right.observedAt.localeCompare(left.observedAt))[0] ?? null
+    );
   }
 
   async listActivePurchasesForProduct(productId: string): Promise<PurchaseRecord[]> {
@@ -159,6 +190,28 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
     };
 
     this.opportunities.push(opportunity);
+    return opportunity;
+  }
+
+  async updateOpportunity(input: OpportunityUpdateInput): Promise<OpportunityRecord | null> {
+    const opportunity =
+      this.opportunities.find(
+        (candidate) => candidate.id === input.opportunityId && candidate.userId === input.userId,
+      ) ?? null;
+
+    if (!opportunity) {
+      return null;
+    }
+
+    opportunity.priceObservationId = input.priceObservationId;
+    opportunity.currentPrice = input.currentPrice;
+    opportunity.potentialSaving = input.potentialSaving;
+    opportunity.title = input.title;
+    opportunity.guidance = input.guidance;
+    opportunity.claimUrl = input.claimUrl;
+    opportunity.claimBy = input.claimBy;
+    opportunity.statusUpdatedAt = input.statusUpdatedAt;
+
     return opportunity;
   }
 
@@ -208,5 +261,40 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
 
       return latest ? [{ productId, observation: latest }] : [];
     });
+  }
+
+  async recordActivityEvent(
+    input: ActivityEventCreateInput,
+  ): Promise<ActivityEventWriteResult> {
+    if (input.dedupeKey) {
+      const existing = this.activityEvents.find(
+        (event) => event.dedupeKey === input.dedupeKey,
+      );
+
+      if (existing) {
+        return { event: existing, created: false };
+      }
+    }
+
+    const event: ActivityEventRecord = {
+      id: createId("evt"),
+      ...input,
+      metadata: input.metadata ?? {},
+    };
+
+    this.activityEvents.push(event);
+    return { event, created: true };
+  }
+
+  async listActivityEventsForPurchases(
+    purchaseIds: string[],
+    limitPerPurchase = 10,
+  ): Promise<ActivityEventRecord[]> {
+    return purchaseIds.flatMap((purchaseId) =>
+      this.activityEvents
+        .filter((event) => event.purchaseId === purchaseId)
+        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+        .slice(0, limitPerPurchase),
+    );
   }
 }

@@ -13,10 +13,13 @@ import {
   updateOpportunityStatus,
   validatePurchaseDraft,
   type AfterBuyRepository,
+  type ActivityEventRecord,
+  type Money,
   type OpportunityRecord,
   type PriceFetcher,
   type PurchaseDraft,
   type PurchaseLineItemDraft,
+  firstUsableProductImage,
 } from "@afterbuy/core";
 import { requireAuthenticatedUser } from "./auth";
 import { type ApiConfig, loadConfig } from "./config";
@@ -43,7 +46,10 @@ const lineItemSchema = z.object({
   productUrl: z.string().url().optional(),
   externalProductId: z.string().min(1).optional(),
   sku: z.string().min(1).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.preprocess(
+    (value) => (typeof value === "string" ? firstUsableProductImage(value) ?? undefined : undefined),
+    z.string().url().optional(),
+  ),
 });
 
 const purchaseDraftSchema = z.object({
@@ -64,6 +70,10 @@ const protectPurchaseRequestSchema = z.object({
 
 const opportunityParamsSchema = z.object({
   opportunityId: z.string().min(1),
+});
+
+const devMonitoringQuerySchema = z.object({
+  fixture: z.enum(["paid", "dropped"]).optional(),
 });
 
 type OpportunityRouteRequest = FastifyRequest<{
@@ -187,26 +197,44 @@ export async function createAfterBuyServer(
   app.get("/api/dashboard", async (request) => {
     const user = requireAuthenticatedUser(request, config);
     const purchases = await repository.listPurchasesForUser(user.id);
+    const products = await repository.listProductsForMonitoring(new Date().toISOString());
     const opportunities = await repository.listOpportunitiesForUser(user.id);
     const latestObservations = await repository.listLatestObservationsByProductIds(
       purchases.map((purchase) => purchase.productId),
     );
+    const activityEvents = await repository.listActivityEventsForPurchases(
+      purchases.map((purchase) => purchase.id),
+      8,
+    );
     const latestByProductId = new Map(
       latestObservations.map((latest) => [latest.productId, latest.observation]),
     );
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const activityByPurchaseId = new Map<string, ActivityEventRecord[]>();
+    for (const event of activityEvents) {
+      const current = activityByPurchaseId.get(event.purchaseId) ?? [];
+      current.push(event);
+      activityByPurchaseId.set(event.purchaseId, current);
+    }
 
     return {
       userId: user.id,
       purchases: purchases.map((purchase) => {
         const latest = latestByProductId.get(purchase.productId);
+        const product = productById.get(purchase.productId);
+        const purchaseActivity = activityByPurchaseId.get(purchase.id) ?? [];
 
         return {
           ...purchase,
+          imageUrl: product?.imageUrl ?? null,
           retailerName: purchase.retailerName || purchase.retailerId,
           pricePaidDisplay: formatMoney(purchase.pricePaid),
           currentPrice: latest?.price ?? null,
           currentPriceDisplay: latest ? formatMoney(latest.price) : null,
           lastCheckedAt: latest?.observedAt ?? null,
+          recentActivity: purchaseActivity
+            .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+            .map((event) => serializeActivityEvent(event, purchase.retailerName)),
         };
       }),
       opportunities: opportunities.map(serializeOpportunity),
@@ -264,15 +292,29 @@ export async function createAfterBuyServer(
     };
   });
 
-  app.post("/api/dev/run-monitoring", async (_request, reply) => {
+  app.post("/api/dev/run-monitoring", async (request, reply) => {
     if (!config.enableDevEndpoints) {
       return reply.code(404).send({ error: "not_found" });
     }
 
-    const now = new Date().toISOString();
+    const parsed = devMonitoringQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "invalid_request",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const fixture = parsed.data.fixture ?? "dropped";
+    const now =
+      fixture === "paid"
+        ? "2026-09-01T08:00:00.000Z"
+        : "2026-09-02T08:00:00.000Z";
     const summary = await runPriceMonitoringCycle({
       repository,
-      priceFetcher: configuredPriceFetcher ?? createDevFixturePriceFetcher(now),
+      priceFetcher:
+        configuredPriceFetcher ??
+        createDevFixturePriceFetcher(now, fixture),
       now,
     });
 
@@ -368,6 +410,118 @@ function serializeOpportunity(opportunity: OpportunityRecord) {
     originalPriceDisplay: formatMoney(opportunity.originalPrice),
     currentPriceDisplay: formatMoney(opportunity.currentPrice),
   };
+}
+
+function serializeActivityEvent(event: ActivityEventRecord, retailerName: string) {
+  const currentPrice = readMoney(event.metadata.currentPrice);
+  const potentialSaving = readMoney(event.metadata.potentialSaving);
+  const change = readMoney(event.metadata.change);
+  const claimBy =
+    typeof event.metadata.claimBy === "string" ? event.metadata.claimBy : undefined;
+  const formattedPrice = currentPrice ? formatMoney(currentPrice) : null;
+  const formattedSaving = potentialSaving
+    ? formatMoney(potentialSaving)
+    : change
+      ? formatMoney(change)
+      : null;
+
+  return {
+    ...event,
+    title: activityTitle(event.type),
+    description: activityDescription({
+      type: event.type,
+      retailerName,
+      formattedPrice,
+      formattedSaving,
+      claimBy,
+      reason: typeof event.metadata.reason === "string" ? event.metadata.reason : undefined,
+    }),
+  };
+}
+
+function activityTitle(type: ActivityEventRecord["type"]): string {
+  const titles: Record<ActivityEventRecord["type"], string> = {
+    purchase_protected: "Purchase protected",
+    price_observed: "Price unchanged",
+    price_dropped: "Price dropped",
+    price_increased: "Price increased",
+    product_unavailable: "Temporarily unavailable",
+    product_available_again: "Back in stock",
+    policy_window_expired: "Protection window ended",
+    opportunity_created: "Opportunity found",
+    opportunity_updated: "Opportunity updated",
+    opportunity_resolved: "Opportunity resolved",
+    opportunity_expired: "Opportunity expired",
+    monitoring_error: "Monitoring paused",
+  };
+
+  return titles[type];
+}
+
+function activityDescription(input: {
+  type: ActivityEventRecord["type"];
+  retailerName: string;
+  formattedPrice: string | null;
+  formattedSaving: string | null;
+  claimBy: string | undefined;
+  reason: string | undefined;
+}): string {
+  switch (input.type) {
+    case "purchase_protected":
+      return "We're now monitoring this item.";
+    case "price_observed":
+      return input.formattedPrice
+        ? `Still ${input.formattedPrice} at ${input.retailerName}.`
+        : `Checked at ${input.retailerName}.`;
+    case "price_dropped":
+      return input.formattedPrice
+        ? `Now ${input.formattedPrice} at ${input.retailerName}.`
+        : "The price moved lower.";
+    case "price_increased":
+      return input.formattedPrice
+        ? `Now ${input.formattedPrice} at ${input.retailerName}.`
+        : "The price moved higher.";
+    case "product_unavailable":
+      return `We could not confirm current availability at ${input.retailerName}.`;
+    case "product_available_again":
+      return `The item is available again at ${input.retailerName}.`;
+    case "policy_window_expired":
+      return "This purchase is outside the retailer protection window.";
+    case "opportunity_created":
+      return input.formattedSaving
+        ? `${input.formattedSaving} potential saving found.`
+        : "A claim opportunity is ready to review.";
+    case "opportunity_updated":
+      return input.formattedSaving
+        ? `Updated to ${input.formattedSaving} potential saving.`
+        : "The opportunity has been refreshed.";
+    case "opportunity_resolved":
+      return "The current price no longer creates a claim opportunity.";
+    case "opportunity_expired":
+      return input.claimBy
+        ? `The claim window ended on ${input.claimBy}.`
+        : "The claim window has ended.";
+    case "monitoring_error":
+      return input.reason ?? "The latest price check did not complete.";
+  }
+}
+
+function readMoney(value: unknown): Money | null {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "amountMinor" in value &&
+    "currency" in value &&
+    typeof value.amountMinor === "number" &&
+    typeof value.currency === "string"
+  ) {
+    return {
+      amountMinor: value.amountMinor,
+      currency: value.currency,
+    };
+  }
+
+  return null;
 }
 
 function isActionableOpportunityStatus(status: OpportunityRecord["status"]): boolean {

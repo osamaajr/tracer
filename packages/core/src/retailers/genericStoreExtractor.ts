@@ -12,6 +12,7 @@ import {
   deriveRetailerNameFromHost,
   normalizePublicStoreUrl,
 } from "./urlSafety";
+import { findOpenGraphImage, findOrderConfirmationImage, selectProductImage } from "./productImage";
 
 export function extractGenericPurchaseFromDocument(
   document: Document,
@@ -26,7 +27,7 @@ export function extractGenericPurchaseFromDocument(
 
   const jsonLdOrder = findJsonLdByType(extractJsonLdObjects(document), "Order");
   const jsonLdLineItems = jsonLdOrder
-    ? extractLineItemsFromJsonLdOrder(jsonLdOrder, sourceUrl, storefront.host)
+    ? extractLineItemsFromJsonLdOrder(jsonLdOrder, document, sourceUrl, storefront.host)
     : [];
 
   if (jsonLdLineItems.length > 0) {
@@ -116,13 +117,19 @@ export function extractGenericProductFromDocument(
   };
 
   const sku = firstString(product?.sku);
-  const imageUrl = firstString(product?.image);
+  const image = selectProductImage(
+    [
+      { value: product?.image, source: "json_ld" },
+      { value: findOpenGraphImage(document, productUrl), source: "open_graph" },
+    ],
+    productUrl,
+  );
 
   if (sku) {
     snapshot.sku = sku;
   }
-  if (imageUrl) {
-    snapshot.imageUrl = imageUrl;
+  if (image) {
+    snapshot.imageUrl = image.url;
   }
 
   return snapshot;
@@ -149,6 +156,7 @@ export function looksLikeOrderConfirmation(document: Document, sourceUrl: string
 
 function extractLineItemsFromJsonLdOrder(
   order: Record<string, unknown>,
+  document: Document,
   sourceUrl: string,
   expectedHost: string,
 ): PurchaseLineItemDraft[] {
@@ -161,13 +169,20 @@ function extractLineItemsFromJsonLdOrder(
 
   return entries
     .map((entry) =>
-      extractLineItemFromJsonLdEntry(asRecord(entry), sourceUrl, expectedHost, priceCurrency),
+      extractLineItemFromJsonLdEntry(
+        asRecord(entry),
+        document,
+        sourceUrl,
+        expectedHost,
+        priceCurrency,
+      ),
     )
     .filter((item): item is PurchaseLineItemDraft => item !== null);
 }
 
 function extractLineItemFromJsonLdEntry(
   entry: Record<string, unknown> | null,
+  document: Document,
   sourceUrl: string,
   expectedHost: string,
   fallbackCurrency: string,
@@ -201,7 +216,17 @@ function extractLineItemFromJsonLdEntry(
   };
   const sku = firstString(product?.sku) ?? firstString(entry.sku);
   const productId = firstString(product?.productID) ?? firstString(entry.productID);
-  const imageUrl = firstString(product?.image);
+  const image = selectProductImage(
+    [
+      {
+        value: findOrderConfirmationImage(document, name, normalized.url, sourceUrl),
+        source: "order_confirmation",
+      },
+      { value: product?.image, source: "json_ld" },
+      { value: findOpenGraphImage(document, sourceUrl), source: "open_graph" },
+    ],
+    sourceUrl,
+  );
 
   if (sku) {
     item.sku = sku;
@@ -209,8 +234,8 @@ function extractLineItemFromJsonLdEntry(
   if (productId) {
     item.externalProductId = productId;
   }
-  if (imageUrl) {
-    item.imageUrl = imageUrl;
+  if (image) {
+    item.imageUrl = image.url;
   }
 
   return item;
@@ -299,6 +324,23 @@ function extractLineItemFromDomElement(
 
   if (sku) {
     item.sku = sku;
+  }
+
+  const image = selectProductImage(
+    [
+      {
+        value:
+          element.querySelector<HTMLImageElement>("img")?.currentSrc ??
+          element.querySelector<HTMLImageElement>("img")?.src ??
+          element.querySelector<HTMLImageElement>("img")?.getAttribute("data-src"),
+        source: "order_confirmation",
+      },
+    ],
+    sourceUrl,
+  );
+
+  if (image) {
+    item.imageUrl = image.url;
   }
 
   return item;

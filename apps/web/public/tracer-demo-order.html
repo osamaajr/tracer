@@ -107,10 +107,10 @@
         <article
           class="line-item"
           data-afterbuy-line-item
-          data-afterbuy-product-name="Dyson Airwrap Complete Long"
-          data-afterbuy-price-paid="£449.99"
+          data-afterbuy-product-name="Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black"
+          data-afterbuy-price-paid="£349.99"
           data-afterbuy-quantity="1"
-          data-afterbuy-product-url="https://store.example.com/products/dyson-airwrap-complete-long"
+          data-afterbuy-product-url="https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334"
         >
           <div class="product-art" aria-hidden="true">
             <svg viewBox="0 0 164 164" role="img">
@@ -123,36 +123,37 @@
             </svg>
           </div>
           <div>
-            <h2>Dyson Airwrap Complete Long</h2>
-            <p>Multi-styler and dryer, Nickel/Copper</p>
+            <h2>Sony WH-1000XM6</h2>
+            <p>Wireless Bluetooth Noise Cancelling Headphones</p>
           </div>
-          <strong class="price">£449.99</strong>
+          <strong class="price">£349.99</strong>
         </article>
       </section>
     </main>
 
     <script id="tracer-demo-purchase" type="application/json">
       {
-        "retailerId": "store_store-example-com",
-        "retailerName": "Example Store",
-        "storeHost": "store.example.com",
-        "sourceUrl": "https://store.example.com/orders/TR-DEMO-1001",
-        "orderReference": "TR-DEMO-1001",
-        "purchasedAt": "2026-08-31T11:20:00.000Z",
-        "captureMethod": "generic_schema_org",
+        "retailerId": "john-lewis",
+        "retailerName": "John Lewis",
+        "storeHost": "www.johnlewis.com",
+        "sourceUrl": "https://www.johnlewis.com/checkout/order-confirmation/JL-12345678",
+        "orderReference": "JL-12345678",
+        "purchasedAt": "2026-08-30T09:15:00.000Z",
+        "captureMethod": "retailer_adapter",
         "captureConfidence": "high",
         "lineItems": [
           {
-            "productName": "Dyson Airwrap Complete Long",
+            "productName": "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
             "quantity": 1,
             "pricePaid": {
-              "amountMinor": 44999,
+              "amountMinor": 34999,
               "currency": "GBP"
             },
-            "productUrl": "https://store.example.com/products/dyson-airwrap-complete-long",
+            "productUrl": "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
             "productUrlConfidence": "high",
-            "externalProductId": "dyson-airwrap-complete-long",
-            "sku": "DY-AIR-LONG-NC"
+            "externalProductId": "p1122334",
+            "sku": "JL-SNY-XM6-BLK",
+            "imageUrl": "http://127.0.0.1:5173/assets/product-headphones.png"
           }
         ]
       }

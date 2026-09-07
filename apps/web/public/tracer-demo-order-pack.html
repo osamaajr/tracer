@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="tracer-demo-order" content="true" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Order Confirmation - Trail Pack</title>
+    <style>
+      :root { color: #24231f; font-family: Inter, system-ui, sans-serif; background: #f5f1ea; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+      main { width: min(760px, calc(100% - 40px)); padding: 42px; background: #fffdf9; border: 1px solid #e7dfd2; border-radius: 18px; box-shadow: 0 24px 60px rgb(47 40 31 / 10%); }
+      h1 { margin: 0 0 8px; font: 500 42px Georgia, serif; }
+      .muted { color: #726b61; }
+      .item { display: grid; grid-template-columns: 116px 1fr auto; gap: 22px; align-items: center; margin-top: 32px; padding-top: 28px; border-top: 1px solid #e7dfd2; }
+      .tile { display: grid; place-items: center; width: 116px; height: 116px; border-radius: 14px; background: #e8efe7; color: #173b31; font-weight: 700; font-size: 28px; }
+      h2 { margin: 0 0 7px; font-size: 21px; }
+      .price { font-size: 22px; font-weight: 750; }
+      @media (max-width: 600px) { main { padding: 24px; } .item { grid-template-columns: 78px 1fr; } .tile { width: 78px; height: 78px; } .price { grid-column: 2; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Thank you for your order.</h1>
+      <div class="muted">Order number ACME-445566 has been confirmed.</div>
+      <div class="muted">7 September 2026</div>
+      <section class="item" data-afterbuy-line-item>
+        <div class="tile" aria-hidden="true">TP</div>
+        <div>
+          <h2 data-afterbuy-product-name>Trail Pack 24L, Moss Green</h2>
+          <div class="muted">Outdoor day pack</div>
+        </div>
+        <div class="price" data-afterbuy-price-paid>£84.50</div>
+        <a href="https://shop.example.com/products/trail-pack-24l-moss-green" data-afterbuy-product-url>View product</a>
+      </section>
+    </main>
+    <script id="tracer-demo-purchase" type="application/json">
+      {
+        "retailerId": "store_shop-example-com",
+        "retailerName": "Acme Outdoor",
+        "storeHost": "shop.example.com",
+        "sourceUrl": "https://shop.example.com/checkout/confirmation/ACME-445566",
+        "orderReference": "ACME-445566",
+        "purchasedAt": "2026-09-07T09:30:00.000Z",
+        "lineItems": [{
+          "productName": "Trail Pack 24L, Moss Green",
+          "quantity": 1,
+          "pricePaid": { "amountMinor": 8450, "currency": "GBP" },
+          "productUrl": "https://shop.example.com/products/trail-pack-24l-moss-green",
+          "productUrlConfidence": "high",
+          "externalProductId": "acme-pack-24-moss",
+          "sku": "TP24-MOSS"
+        }]
+      }
+    </script>
+  </body>
+</html>

@@ -10,6 +10,7 @@ export * from "./retailers/johnLewisPolicy";
 export * from "./retailers/johnLewisProductExtractor";
 export * from "./retailers/johnLewisPurchaseExtractor";
 export * from "./retailers/purchaseExtractor";
+export * from "./retailers/productImage";
 export * from "./retailers/urlSafety";
 export * from "./testing/fixturePriceFetcher";
 export * from "./useCases/monitorPrices";

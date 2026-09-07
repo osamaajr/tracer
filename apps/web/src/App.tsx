@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
   CalendarCheck2,
+  ChevronRight,
   CheckCircle2,
   Clock,
-  ExternalLink,
-  RefreshCw,
+  ShieldCheck,
   Settings,
   ShoppingBag,
   Star,
   Tag,
-  TimerReset,
   UsersRound,
+  X,
 } from "lucide-react";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -24,6 +24,8 @@ interface DashboardPurchase {
   retailerName?: string;
   storeHost?: string;
   productName: string;
+  productUrl?: string;
+  imageUrl?: string;
   pricePaidDisplay: string;
   currentPriceDisplay: string | null;
   purchasedAt: string;
@@ -31,10 +33,20 @@ interface DashboardPurchase {
   lastCheckedAt: string | null;
   captureMethod?: string;
   captureConfidence?: string;
+  recentActivity?: DashboardActivityEvent[];
+}
+
+interface DashboardActivityEvent {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  occurredAt: string;
 }
 
 interface DashboardOpportunity {
   id: string;
+  purchaseId: string;
   title: string;
   potentialSavingDisplay: string;
   originalPriceDisplay: string;
@@ -50,52 +62,6 @@ interface DashboardData {
   opportunities: DashboardOpportunity[];
 }
 
-const demoDashboard: DashboardData = {
-  purchases: [
-    {
-      id: "demo-john-lewis",
-      retailerId: "john-lewis",
-      retailerName: "John Lewis",
-      storeHost: "www.johnlewis.com",
-      productName: "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones",
-      pricePaidDisplay: "£349",
-      currentPriceDisplay: "£319",
-      purchasedAt: "2026-08-30T09:15:00.000Z",
-      protectionStatus: "active",
-      lastCheckedAt: "2026-09-01T08:00:00.000Z",
-      captureMethod: "retailer_adapter",
-      captureConfidence: "high",
-    },
-    {
-      id: "demo-generic-store",
-      retailerId: "store_shop-example-com",
-      retailerName: "Shop",
-      storeHost: "shop.example.com",
-      productName: "Everyday Travel Pack",
-      pricePaidDisplay: "£129",
-      currentPriceDisplay: "£119",
-      purchasedAt: "2026-08-29T17:45:00.000Z",
-      protectionStatus: "active",
-      lastCheckedAt: "2026-08-30T10:30:00.000Z",
-      captureMethod: "generic_schema_org",
-      captureConfidence: "high",
-    },
-  ],
-  opportunities: [
-    {
-      id: "demo-opportunity",
-      title: "Tracer found you £30",
-      potentialSavingDisplay: "£30",
-      originalPriceDisplay: "£349",
-      currentPriceDisplay: "£319",
-      claimBy: "2026-09-06",
-      claimUrl: "https://www.johnlewis.com/customer-services/prices-and-payment/price-promise/request",
-      guidance: "This may qualify under John Lewis Price Promise if the item is identical, in stock, and not excluded.",
-      status: "open",
-    },
-  ],
-};
-
 export function App() {
   const isDashboard = window.location.pathname.startsWith("/dashboard");
   return isDashboard ? <Dashboard /> : <LandingPage />;
@@ -106,6 +72,7 @@ function LandingPage() {
     <main className="landing-shell">
       <Header />
       <HeroSection />
+      <TransitionStatement />
       <HowItWorksSection />
       <WatchingSection />
       <FinalCtaSection />
@@ -227,130 +194,63 @@ function ProductSilhouette() {
   return <img className="product-image" src="/assets/product-headphones.png" alt="" />;
 }
 
+function TransitionStatement() {
+  return (
+    <section className="transition-statement">
+      <h2>Shopping shouldn't end at checkout.</h2>
+      <p>Buy something. Protect it. Tracer takes it from there.</p>
+    </section>
+  );
+}
+
 function HowItWorksSection() {
   return (
-    <section className="how-story-section" id="how-it-works">
-      <div className="how-story-shell">
-        <div className="how-story-copy">
-          <a className="how-story-brand" href="/" aria-label="Tracer home">
-            <img src="/assets/tracer-logo.png" alt="" />
-            <img src="/assets/tracer-wordmark.png" alt="Tracer" />
-          </a>
-          <p className="how-story-kicker">How it works</p>
-          <h2>Shopping shouldn't end at checkout.</h2>
-          <p className="how-story-lede">
-            Tracer watches your purchases 24/7 and notifies you the moment there's a better deal.
-          </p>
-          <ol className="how-story-steps" aria-label="How Tracer works">
-            <li>
-              <span>01</span>
-              <div>
-                <h3>Buy normally</h3>
-                <p>Shop anywhere, no changes to your routine.</p>
-              </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <h3>Protect it</h3>
-                <p>Tracer detects your receipt and activates price protection.</p>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <h3>We keep watching</h3>
-                <p>We monitor price drops and notify you when it's time to save.</p>
-              </div>
-            </li>
-          </ol>
+    <section className="how-section" id="how-it-works">
+      <div className="how-section-inner">
+        <div className="section-heading">
+          <h2>How it works</h2>
         </div>
-        <div className="how-story-stage" aria-label="Tracer purchase protection flow">
-          <article className="how-order-card">
-            <div className="how-browser-bar" aria-hidden="true">
-              <span /><span /><span />
-            </div>
-            <div className="how-order-body">
-              <CheckCircle2 aria-hidden="true" size={36} />
-              <div>
-                <h3>Thank you for your order.</h3>
-                <p>We've sent a confirmation to hello@sam.com</p>
-              </div>
-            </div>
-            <div className="how-order-product">
-              <ProductSilhouette />
-              <div>
-                <strong>Sony WH-1000XM5</strong>
-                <span>Wireless Headphones</span>
-              </div>
-              <b>£349.99</b>
-            </div>
-          </article>
-
-          <svg className="how-flow-arrow how-flow-arrow-one" viewBox="0 0 92 90" aria-hidden="true">
-            <path d="M20 8 C14 45 28 68 74 66" />
-            <path d="M64 55 L76 66 L62 74" />
-          </svg>
-
-          <article className="how-popup-card">
-            <div className="how-popup-bar">
-              <span><img src="/assets/tracer-logo.png" alt="" />tracer</span>
-              <i aria-hidden="true">×</i>
-            </div>
-            <div className="how-popup-content">
-              <CheckCircle2 aria-hidden="true" size={52} />
-              <div>
-                <h3>Purchase detected</h3>
-                <p>We'll watch this item and alert you if the price drops.</p>
-              </div>
-            </div>
-            <div className="how-popup-product">
-              <ProductSilhouette />
-              <div>
-                <strong>Sony WH-1000XM5</strong>
-                <span>Wireless Headphones</span>
-              </div>
-              <b>£349.99</b>
-            </div>
-            <p className="how-active-row"><CheckCircle2 aria-hidden="true" size={14} />Protection active</p>
-          </article>
-
-          <svg className="how-flow-arrow how-flow-arrow-two" viewBox="0 0 92 90" aria-hidden="true">
-            <path d="M18 18 C60 18 75 38 72 76" />
-            <path d="M61 65 L72 78 L82 63" />
-          </svg>
-
-          <article className="how-dashboard-card">
-            <aside aria-hidden="true">
-              <img src="/assets/tracer-logo.png" alt="" />
-              <span><ShoppingBag size={16} /></span>
-              <span><Bell size={16} /></span>
-              <span><Settings size={16} /></span>
-            </aside>
-            <div className="how-dashboard-main">
-              <div className="how-opportunity-strip">
-                <strong>Opportunity found</strong>
-                <span>Price dropped!</span>
-                <button type="button">View details <ArrowRight aria-hidden="true" size={12} /></button>
-              </div>
-              <div className="how-savings-row">
-                <ProductSilhouette />
-                <div>
-                  <strong>Sony WH-1000XM5</strong>
-                  <span>Wireless Headphones</span>
-                  <small>Best Buy</small>
-                </div>
-                <div>
-                  <b>£298.00</b>
-                  <s>£349.99</s>
-                  <em>Save £51.99</em>
-                </div>
-              </div>
-            </div>
-          </article>
+        <div className="steps-layout">
+          <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
+          <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your watchlist." visual={<ProtectMiniature />} />
+          <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
         </div>
       </div>
     </section>
+  );
+}
+
+function StepCard({ number, title, copy, visual }: { number: string; title: string; copy: string; visual: ReactNode }) {
+  return (
+    <article className="step-card">
+      <span className="step-number">{number}</span>
+      <div className="step-visual">{visual}</div>
+      <h3>{title}</h3>
+      <p>{copy}</p>
+    </article>
+  );
+}
+
+function OrderMiniature() {
+  return <div className="order-miniature" aria-hidden="true"><ShoppingBag size={45} /><CheckCircle2 className="mini-check" size={28} /></div>;
+}
+
+function ProtectMiniature() {
+  return (
+    <div className="protect-step-stage" aria-hidden="true">
+      <div className="protect-browser-card"><span /><span /></div>
+      <div className="protect-miniature"><img src="/assets/tracer-logo.png" alt="" /><b>Tracer</b><span>Bought it?</span><button type="button">Protect purchase</button></div>
+    </div>
+  );
+}
+
+function OpportunityMiniature() {
+  return (
+    <div className="opportunity-miniature" aria-hidden="true">
+      <span className="opportunity-bell"><Bell size={17} /></span>
+      <p>£349.99 <span>→</span> £319.99</p>
+      <strong>£30 opportunity found</strong>
+    </div>
   );
 }
 
@@ -444,9 +344,10 @@ function Footer() {
 }
 
 function Dashboard() {
-  const [dashboard, setDashboard] = useState<DashboardData>(demoDashboard);
+  const [dashboard, setDashboard] = useState<DashboardData>({ purchases: [], opportunities: [] });
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "offline">("idle");
-  const [actingOpportunityId, setActingOpportunityId] = useState<string | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
+  const displayName = getDashboardDisplayName();
 
   const fetchDashboard = useCallback(async () => {
     setStatus("loading");
@@ -456,125 +357,309 @@ function Dashboard() {
       if (!response.ok) {
         throw new Error("Dashboard API unavailable");
       }
-      setDashboard((await response.json()) as DashboardData);
+      const nextDashboard = (await response.json()) as DashboardData;
+      setDashboard(nextDashboard);
       setStatus("ready");
     } catch {
-      setDashboard(demoDashboard);
+      setDashboard({ purchases: [], opportunities: [] });
       setStatus("offline");
     }
   }, []);
 
   useEffect(() => { void fetchDashboard(); }, [fetchDashboard]);
 
-  const runMonitoring = useCallback(async () => {
-    setStatus("loading");
-    try {
-      await fetch(`${apiBaseUrl}/api/dev/run-monitoring`, { method: "POST", headers: { "x-afterbuy-user-id": demoUserId } });
-      await fetchDashboard();
-    } catch {
-      setStatus("offline");
-    }
-  }, [fetchDashboard]);
-
-  const updateOpportunity = useCallback(async (opportunityId: string, action: "viewed" | "claim-clicked" | "dismiss") => {
-    setActingOpportunityId(opportunityId);
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/opportunities/${opportunityId}/${action}`, { method: "POST", headers: { "x-afterbuy-user-id": demoUserId } });
-      if (!response.ok) {
-        throw new Error("Opportunity action failed");
-      }
-      await fetchDashboard();
-      return true;
-    } catch {
-      setStatus("offline");
-      return false;
-    } finally {
-      setActingOpportunityId(null);
-    }
-  }, [fetchDashboard]);
-
-  const claimOpportunity = useCallback(async (opportunity: DashboardOpportunity) => {
-    const updated = await updateOpportunity(opportunity.id, "claim-clicked");
-    if (updated) {
-      window.open(opportunity.claimUrl, "_blank", "noopener,noreferrer");
-    }
-  }, [updateOpportunity]);
-
-  const openOpportunity = useMemo(() => dashboard.opportunities.find((opportunity) => isActionableOpportunityStatus(opportunity.status)), [dashboard.opportunities]);
-  const activeOpportunityCount = useMemo(() => dashboard.opportunities.filter((opportunity) => isActionableOpportunityStatus(opportunity.status)).length, [dashboard.opportunities]);
-  const uniqueStoreCount = useMemo(() => new Set(dashboard.purchases.map((purchase) => retailerName(purchase))).size, [dashboard.purchases]);
+  const activeOpportunities = useMemo(
+    () => dashboard.opportunities.filter((opportunity) => isActionableOpportunityStatus(opportunity.status)),
+    [dashboard.opportunities],
+  );
+  const purchasesByAlert = useMemo(() => {
+    const alertMap = new Map<string, DashboardOpportunity[]>();
+    activeOpportunities.forEach((opportunity) => {
+      const current = alertMap.get(opportunity.purchaseId) ?? [];
+      current.push(opportunity);
+      alertMap.set(opportunity.purchaseId, current);
+    });
+    return alertMap;
+  }, [activeOpportunities]);
+  const visiblePurchases = useMemo(() => {
+    return [...dashboard.purchases].sort((left, right) => {
+      return new Date(right.purchasedAt).getTime() - new Date(left.purchasedAt).getTime();
+    });
+  }, [dashboard.purchases]);
+  const selectedPurchase = useMemo(() => {
+    return dashboard.purchases.find((purchase) => purchase.id === selectedPurchaseId) ?? null;
+  }, [dashboard.purchases, selectedPurchaseId]);
 
   return (
     <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <a className="brand" href="/" aria-label="Tracer home"><img className="brand-logo" src="/assets/tracer-logo.png" alt="" /><img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" /></a>
-        <div className="dashboard-actions">
-          <span className={`status-dot ${status}`}>{statusLabel(status)}</span>
-          <button className="icon-button" type="button" onClick={fetchDashboard}><RefreshCw aria-hidden="true" size={16} />Refresh</button>
-          <button className="icon-button dark" type="button" onClick={runMonitoring}><TimerReset aria-hidden="true" size={16} />Run monitor</button>
-        </div>
+      <header className="dashboard-logo-row">
+        <a className="brand" href="/" aria-label="Tracer home">
+          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
+          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
+        </a>
       </header>
 
-      <section className="dashboard-summary">
-        <div><p className="eyebrow">Protected purchases</p><h1>{dashboard.purchases.length}</h1></div>
-        <div><p className="eyebrow">Open opportunities</p><h1>{activeOpportunityCount}</h1></div>
-        <div><p className="eyebrow">Stores watched</p><h1>{uniqueStoreCount}</h1></div>
+      <section className="dashboard-hero">
+        <div>
+          <h1>Good morning, {firstName(displayName)}</h1>
+          <p>Your protected purchases, all in one place.</p>
+        </div>
+        <span className="sr-only" aria-live="polite">{statusLabel(status)}</span>
       </section>
 
-      <section className="dashboard-grid">
-        <div className="table-panel">
-          <div className="panel-heading"><h2>Purchases</h2><span>Any-store capture</span></div>
-          <div className="purchase-list">
-            {dashboard.purchases.map((purchase) => (
-              <article className="purchase-row" key={purchase.id}>
-                <div><h3>{purchase.productName}</h3><p>{retailerName(purchase)} / {purchase.storeHost ?? purchase.retailerId} / purchased {formatDate(purchase.purchasedAt)}</p></div>
-                <dl><div><dt>Paid</dt><dd>{purchase.pricePaidDisplay}</dd></div><div><dt>Current</dt><dd>{purchase.currentPriceDisplay ?? "Waiting"}</dd></div><div><dt>Capture</dt><dd>{captureLabel(purchase)}</dd></div></dl>
-              </article>
-            ))}
+      <section className="dashboard-workspace" aria-label="Protected purchases dashboard">
+        <div className="purchases-heading">
+          <div>
+            <h2>Your purchases</h2>
+            <span>{dashboard.purchases.length} protected</span>
           </div>
+          <span className="sort-copy">Newest first</span>
         </div>
 
-        <aside className="opportunity-panel">
-          <div className="panel-heading"><h2>Opportunity</h2><Bell aria-hidden="true" size={18} /></div>
-          {openOpportunity ? (
-            <article className="dashboard-opportunity">
-              <p className="retailer-label">Policy-backed claim</p>
-              <h3>{openOpportunity.title}</h3>
-              <dl><div><dt>You paid</dt><dd>{openOpportunity.originalPriceDisplay}</dd></div><div><dt>Now</dt><dd>{openOpportunity.currentPriceDisplay}</dd></div><div><dt>Claim by</dt><dd>{formatDate(openOpportunity.claimBy)}</dd></div></dl>
-              <p>{openOpportunity.guidance}</p>
-              <div className="opportunity-actions">
-                <button className="claim-button" type="button" disabled={actingOpportunityId === openOpportunity.id} onClick={() => void claimOpportunity(openOpportunity)}>Claim {openOpportunity.potentialSavingDisplay}<ExternalLink aria-hidden="true" size={16} /></button>
-                <button className="icon-button" type="button" disabled={actingOpportunityId === openOpportunity.id} onClick={() => void updateOpportunity(openOpportunity.id, "dismiss")}>Dismiss</button>
-              </div>
-            </article>
-          ) : <p className="empty-state">No policy-backed opportunity yet. Generic stores can still be watched while retailer policies are added.</p>}
-        </aside>
+        <div className="purchase-list">
+          {visiblePurchases.map((purchase) => (
+            <PurchaseRow
+              key={purchase.id}
+              purchase={purchase}
+              alerts={purchasesByAlert.get(purchase.id) ?? []}
+              selected={selectedPurchase?.id === purchase.id}
+              onSelect={() => setSelectedPurchaseId(purchase.id)}
+            />
+          ))}
+        </div>
+
+        <section className="dashboard-rest-card" aria-label="Monitoring status">
+          <LeafIcon />
+          <div>
+            <h3>You're all set</h3>
+            <p>We're monitoring {dashboard.purchases.length} purchases for price drops.</p>
+          </div>
+          <p>Sit back and we'll keep an eye on the prices for you.</p>
+        </section>
       </section>
+
+      <div className="drawer-overlay" data-open={Boolean(selectedPurchase)} onClick={() => setSelectedPurchaseId(null)} />
+      <PurchaseDetailDrawer
+        purchase={selectedPurchase}
+        onClose={() => setSelectedPurchaseId(null)}
+      />
     </main>
   );
 }
 
+function PurchaseRow({
+  purchase,
+  alerts,
+  selected,
+  onSelect,
+}: {
+  purchase: DashboardPurchase;
+  alerts: DashboardOpportunity[];
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const primaryAlert = alerts[0];
+
+  return (
+    <button className="purchase-row" data-selected={selected} type="button" onClick={onSelect}>
+      <span className="purchase-main">
+        <strong>{purchase.productName}</strong>
+        <small>{retailerName(purchase)}</small>
+      </span>
+      <span className="purchase-date">
+        <small>Purchased</small>
+        {formatDate(purchase.purchasedAt)}
+      </span>
+      <StatusPill purchase={purchase} alert={primaryAlert} />
+      <ChevronRight className="row-chevron" aria-hidden="true" size={22} />
+    </button>
+  );
+}
+
+function StatusPill({ purchase, alert }: { purchase: DashboardPurchase; alert?: DashboardOpportunity | undefined }) {
+  if (alert) {
+    return (
+      <span className="purchase-status alert">
+        <i />
+        <span>
+          <strong>Price drop</strong>
+          <small>{alert.potentialSavingDisplay} less {savingPercent(alert)}</small>
+        </span>
+      </span>
+    );
+  }
+
+  if (!purchase.currentPriceDisplay) {
+    return <span className="purchase-status neutral"><i />Watching</span>;
+  }
+
+  return <span className="purchase-status neutral"><i />No change</span>;
+}
+
+function PurchaseDetailDrawer({
+  purchase,
+  onClose,
+}: {
+  purchase: DashboardPurchase | null;
+  onClose: () => void;
+}) {
+  return (
+    <aside className="purchase-drawer" data-open={Boolean(purchase)} aria-hidden={!purchase} aria-label={purchase ? `${purchase.productName} details` : "Purchase details"}>
+      {purchase ? (
+        <>
+          <button className="drawer-close" type="button" aria-label="Close purchase details" onClick={onClose}>
+            <X aria-hidden="true" size={25} />
+          </button>
+
+          <section className="drawer-product-head">
+            <div>
+              <h2>{purchase.productName}</h2>
+              <p>{retailerName(purchase)}</p>
+              <span className="monitoring-inline"><i />Monitoring active</span>
+            </div>
+          </section>
+
+          <dl className="drawer-values">
+            <div><dt>Purchase date</dt><dd>{formatDate(purchase.purchasedAt)}</dd></div>
+            <div><dt>Paid price</dt><dd>{purchase.pricePaidDisplay}</dd></div>
+            <div><dt>Current price</dt><dd>{purchase.currentPriceDisplay ?? purchase.pricePaidDisplay}</dd></div>
+          </dl>
+
+          <section className="protection-summary">
+            <ShieldCheck aria-hidden="true" size={42} />
+            <div>
+              <h3>Protected for {protectionDays(purchase)} days</h3>
+              <p>Eligible for price protection until {formatDate(protectionUntil(purchase))}.</p>
+            </div>
+          </section>
+
+          <section className="activity-section">
+            <h3>Recent activity</h3>
+            {purchase.recentActivity && purchase.recentActivity.length > 0 ? (
+              <ol className="activity-timeline">
+                {purchase.recentActivity.map((activity, index) => (
+                  <li key={activity.id} data-current={index === 0}>
+                    <time>{formatActivityTime(activity.occurredAt)}</time>
+                    <div>
+                      <h4>{activity.title}</h4>
+                      <p>{activity.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="activity-empty">
+                <h4>No checks yet</h4>
+                <p>Activity will appear here after the next monitoring run.</p>
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
+    </aside>
+  );
+}
+
+function LeafIcon() {
+  return (
+    <span className="leaf-icon" aria-hidden="true">
+      <svg viewBox="0 0 28 28">
+        <path d="M22.8 4.8C13 5.6 6.2 11.1 6.2 20.6c7.4.2 14.7-4.7 16.6-15.8Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M5.2 23.4c4.8-6.2 9.1-9.8 14.4-12.8" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      </svg>
+    </span>
+  );
+}
+
+function formatActivityTime(value: string): string {
+  const date = new Date(value);
+  const now = new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  if (date.toDateString() === now.toDateString()) {
+    return `Today, ${date.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  }
+
+  return formatDate(value);
+}
+
+function protectionDays(purchase: DashboardPurchase): number {
+  const purchasedAt = new Date(purchase.purchasedAt).getTime();
+  const until = protectionUntil(purchase).getTime();
+  return Math.max(1, Math.round((until - purchasedAt) / 86_400_000));
+}
+
+function protectionUntil(purchase: DashboardPurchase): Date {
+  const date = new Date(purchase.purchasedAt);
+  date.setDate(date.getDate() + 60);
+  return date;
+}
+
 function statusLabel(status: "idle" | "loading" | "ready" | "offline"): string {
   if (status === "loading") return "Loading";
-  if (status === "ready") return "API connected";
-  if (status === "offline") return "Demo data";
-  return "Ready";
+  if (status === "ready") return "Local data";
+  if (status === "offline") return "Preview data";
+  return "Local";
 }
 
 function retailerName(purchase: DashboardPurchase): string {
   return purchase.retailerName ?? (purchase.retailerId === "john-lewis" ? "John Lewis" : purchase.retailerId);
 }
 
-function captureLabel(purchase: DashboardPurchase): string {
-  if (purchase.captureConfidence) return purchase.captureConfidence;
-  if (purchase.retailerId === "john-lewis") return "high";
-  return "tracked";
+function retailerAsset(retailerId: string): string | null {
+  const assets: Record<string, string> = {
+    amazon: "/assets/store-amazon.png",
+    apple: "/assets/store-apple.png",
+    argos: "/assets/store-argos.svg",
+    asos: "/assets/store-asos.svg",
+    currys: "/assets/store-currys.png",
+    "john-lewis": "/assets/store-john-lewis.png",
+    nike: "/assets/store-nike.svg",
+  };
+
+  return assets[retailerId] ?? null;
 }
 
 function isActionableOpportunityStatus(status: string): boolean {
   return status === "open" || status === "viewed";
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" }).format(new Date(value));
+function formatDate(value: string | Date): string {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function getDashboardDisplayName(): string {
+  const params = new URLSearchParams(window.location.search);
+  const nameFromUrl = params.get("name")?.trim();
+  if (nameFromUrl) {
+    window.localStorage.setItem("tracerDisplayName", nameFromUrl);
+    return nameFromUrl;
+  }
+
+  return window.localStorage.getItem("tracerDisplayName") ?? "Osama";
+}
+
+function firstName(value: string): string {
+  return value.trim().split(/\s+/)[0] ?? value;
+}
+
+function moneyToNumber(value: string): number | null {
+  const numeric = Number(value.replace(/[^\d.]/g, ""));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function savingPercent(opportunity: DashboardOpportunity): string {
+  const original = moneyToNumber(opportunity.originalPriceDisplay);
+  const saving = moneyToNumber(opportunity.potentialSavingDisplay);
+  if (!original || !saving) {
+    return "";
+  }
+
+  return `(${Math.round((saving / original) * 100)}%)`;
 }

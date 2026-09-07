@@ -22,7 +22,7 @@ const purchaseDraft: PurchaseDraft = {
       productName:
         "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
       quantity: 1,
-      pricePaid: gbp(34_900),
+      pricePaid: gbp(34_999),
       productUrl:
         "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
       productUrlConfidence: "high",
@@ -62,11 +62,79 @@ const droppedSnapshot: ProductPriceSnapshot = {
     "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
   externalProductId: "p1122334",
   observedAt: "2026-09-01T08:00:00.000Z",
-  price: gbp(31_900),
+  price: gbp(31_999),
   availability: "in_stock",
 };
 
 describe("AfterBuy API", () => {
+  it("runs the paid-to-dropped fixture flow through the development endpoint", async () => {
+    const app = await createAfterBuyServer({
+      config: {
+        port: 0,
+        dataFile: ":memory:",
+        devUserId: "user_1",
+        enableDevAuth: true,
+        enableDevEndpoints: true,
+      },
+      repository: new InMemoryAfterBuyRepository(),
+    });
+
+    const protectResponse = await app.inject({
+      method: "POST",
+      url: "/api/purchases/protect",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { purchaseDraft },
+    });
+
+    expect(protectResponse.statusCode).toBe(201);
+
+    const paidResponse = await app.inject({
+      method: "POST",
+      url: "/api/dev/run-monitoring?fixture=paid",
+    });
+    expect(paidResponse.statusCode).toBe(200);
+    expect(paidResponse.json().summary).toMatchObject({
+      observationsCreated: 1,
+      opportunitiesCreated: 0,
+    });
+
+    const droppedResponse = await app.inject({
+      method: "POST",
+      url: "/api/dev/run-monitoring?fixture=dropped",
+    });
+    expect(droppedResponse.statusCode).toBe(200);
+    expect(droppedResponse.json().summary).toMatchObject({
+      observationsCreated: 1,
+      opportunitiesCreated: 1,
+      activityEventsCreated: 2,
+    });
+
+    const repeatResponse = await app.inject({
+      method: "POST",
+      url: "/api/dev/run-monitoring?fixture=dropped",
+    });
+    expect(repeatResponse.json().summary).toMatchObject({
+      observationsCreated: 0,
+      opportunitiesCreated: 0,
+      opportunitiesUpdated: 0,
+      activityEventsCreated: 0,
+    });
+
+    const dashboard = (
+      await app.inject({
+        method: "GET",
+        url: "/api/dashboard",
+        headers: { "x-afterbuy-user-id": "user_1" },
+      })
+    ).json();
+
+    expect(dashboard.purchases[0].currentPriceDisplay).toBe("£319.99");
+    expect(dashboard.opportunities).toHaveLength(1);
+    expect(dashboard.purchases[0].recentActivity).toHaveLength(4);
+
+    await app.close();
+  });
+
   it("protects a purchase and exposes the generated opportunity on the dashboard", async () => {
     const app = await createAfterBuyServer({
       config: {
@@ -107,7 +175,17 @@ describe("AfterBuy API", () => {
     const dashboard = dashboardResponse.json();
 
     expect(dashboard.purchases).toHaveLength(1);
-    expect(dashboard.purchases[0].currentPriceDisplay).toBe("£319");
+    expect(dashboard.purchases[0].currentPriceDisplay).toBe("£319.99");
+    const activityTypes = dashboard.purchases[0].recentActivity.map(
+      (event: { type: string }) => event.type,
+    );
+    expect(activityTypes).toEqual(
+      expect.arrayContaining([
+        "opportunity_created",
+        "price_dropped",
+        "purchase_protected",
+      ]),
+    );
     expect(dashboard.opportunities).toHaveLength(1);
     expect(dashboard.opportunities[0]).toMatchObject({
       potentialSavingDisplay: "£30",
@@ -214,6 +292,44 @@ describe("AfterBuy API", () => {
     await app.close();
   });
 
+  it("protects a purchase when its image URL is malformed", async () => {
+    const genericLineItem = genericPurchaseDraft.lineItems[0];
+    if (!genericLineItem) {
+      throw new Error("Expected generic fixture line item");
+    }
+
+    const app = await createAfterBuyServer({
+      config: {
+        port: 0,
+        dataFile: ":memory:",
+        devUserId: "user_1",
+        enableDevAuth: true,
+        enableDevEndpoints: true,
+      },
+      repository: new InMemoryAfterBuyRepository(),
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/purchases/protect",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: {
+        purchaseDraft: {
+          ...genericPurchaseDraft,
+          lineItems: [{
+            ...genericLineItem,
+            imageUrl: "not-an-image-url",
+          }],
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().rejected).toHaveLength(0);
+
+    await app.close();
+  });
+
   it("reports when a scanned purchase is already protected", async () => {
     const app = await createAfterBuyServer({
       config: {
@@ -260,7 +376,7 @@ describe("AfterBuy API", () => {
       purchase: {
         productName:
           "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
-        pricePaidDisplay: "£349",
+        pricePaidDisplay: "£349.99",
       },
     });
     expect(body.purchase.id).toMatch(/^pur_/);

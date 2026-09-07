@@ -380,7 +380,6 @@
       }
 
       .product-head {
-        gap: 18px;
         padding: 0 14px;
       }
 
@@ -418,6 +417,31 @@
         display: none;
       }
 
+      .product-image[data-has-image="false"][data-fallback="retailer"] .image-fallback {
+        display: none;
+      }
+
+      .image-fallback-text {
+        color: #173b31;
+        display: none;
+        font-size: 10px;
+        font-weight: 700;
+        gap: 5px;
+        letter-spacing: .02em;
+        line-height: 1.1;
+        max-width: 72px;
+        overflow: hidden;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .product-image[data-has-image="false"][data-fallback="retailer"] .image-fallback-text {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+      }
+
       .image-fallback {
         color: #a19a90;
         height: 30px;
@@ -428,6 +452,10 @@
         display: grid;
         gap: 7px;
         min-width: 0;
+      }
+
+      .product-head .product-title {
+        width: 100%;
       }
 
       h2 {
@@ -1052,13 +1080,6 @@
 
         <section class="purchase-card" id="purchase" aria-label="Detected purchase summary">
           <div class="product-head">
-            <div class="product-image" id="productImageFrame" data-has-image="false">
-              <img id="productImage" alt="" />
-              <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
-                <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
-                <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
-              </svg>
-            </div>
             <div class="product-title">
               <h2 id="productName">Detected purchase</h2>
               <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
@@ -1157,13 +1178,6 @@
 
         <section class="success-summary" aria-label="Protected purchase summary">
           <div class="product-head">
-            <div class="product-image" id="summaryImageFrame" data-has-image="false">
-              <img id="summaryImage" alt="" />
-              <svg class="image-fallback" viewBox="0 0 88 72" aria-hidden="true">
-                <path d="M10 22h17l5-8h24l5 8h17v38H10V22Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
-                <circle cx="44" cy="41" r="11" fill="none" stroke="currentColor" stroke-width="5" />
-              </svg>
-            </div>
             <div class="product-title">
               <h2 id="summaryProductName">Protected purchase</h2>
               <p class="item-subtitle" id="summarySubtitle">Monitoring active</p>

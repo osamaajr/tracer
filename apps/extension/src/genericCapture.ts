@@ -5,6 +5,11 @@ import type {
   PurchaseDraft,
   PurchaseLineItemDraft,
 } from "@afterbuy/core";
+import {
+  findOpenGraphImage,
+  findOrderConfirmationImage,
+  firstUsableProductImage,
+} from "@afterbuy/core";
 
 declare global {
   interface Window {
@@ -139,7 +144,7 @@ function extractFromJsonLd(
 
     const items = asArray(
       order.acceptedOffer ?? order.orderedItem ?? order.itemListElement,
-    ).flatMap((entry) => schemaItemFromEntry(entry, sourceUrl, storefront.host));
+    ).flatMap((entry) => schemaItemFromEntry(entry, page, sourceUrl, storefront.host));
 
     if (items.length === 0) {
       continue;
@@ -165,6 +170,7 @@ function extractFromJsonLd(
 
 function schemaItemFromEntry(
   entry: unknown,
+  page: Document,
   sourceUrl: string,
   expectedHost: string,
 ): PurchaseLineItemDraft[] {
@@ -198,7 +204,10 @@ function schemaItemFromEntry(
     productUrlConfidence: "high",
   };
   const sku = firstString(record.sku) ?? firstString(item?.sku);
-  const imageUrl = firstString(record.image) ?? firstString(item?.image);
+  const imageUrl =
+    findOrderConfirmationImage(page, productName, productUrl, sourceUrl) ??
+    firstUsableProductImage(record.image ?? item?.image, sourceUrl) ??
+    findOpenGraphImage(page, sourceUrl);
 
   if (sku) {
     draft.sku = sku;
@@ -256,15 +265,22 @@ function extractDomItems(
       return [];
     }
 
-    return [
-      {
-        productName,
-        quantity: numberFromUnknown(firstText(node, ["[data-afterbuy-quantity]", "[data-quantity]"])) ?? 1,
-        pricePaid: price,
-        productUrl,
-        productUrlConfidence: "medium" as CaptureConfidence,
-      },
-    ];
+    const imageUrl =
+      firstUsableProductImage(node.querySelector<HTMLImageElement>("img")?.src, sourceUrl) ??
+      findOpenGraphImage(page, sourceUrl);
+    const item: PurchaseLineItemDraft = {
+      productName,
+      quantity: numberFromUnknown(firstText(node, ["[data-afterbuy-quantity]", "[data-quantity]"])) ?? 1,
+      pricePaid: price,
+      productUrl,
+      productUrlConfidence: "medium",
+    };
+
+    if (imageUrl) {
+      item.imageUrl = imageUrl;
+    }
+
+    return [item];
   });
 }
 

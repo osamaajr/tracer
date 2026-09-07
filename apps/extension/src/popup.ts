@@ -82,7 +82,7 @@ type PopupState =
 
 const defaultApiBaseUrl = "http://127.0.0.1:4000";
 const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
-const startWithDetectedPreview = import.meta.env.MODE !== "test";
+const startWithDetectedPreview = import.meta.env.MODE === "preview";
 
 const app = getElement<HTMLElement>("app");
 const apiInput = getElement<HTMLInputElement>("apiBaseUrl");
@@ -110,13 +110,9 @@ const productUrlText = getElement<HTMLElement>("productUrlText");
 const windowLabel = getElement<HTMLElement>("windowLabel");
 const windowValue = getElement<HTMLElement>("windowValue");
 const windowChip = getElement<HTMLElement>("windowChip");
-const productImageFrame = getElement<HTMLElement>("productImageFrame");
-const productImage = getElement<HTMLImageElement>("productImage");
 const summaryProductName = getElement<HTMLElement>("summaryProductName");
 const summarySubtitle = getElement<HTMLElement>("summarySubtitle");
 const summaryPaid = getElement<HTMLElement>("summaryPaid");
-const summaryImageFrame = getElement<HTMLElement>("summaryImageFrame");
-const summaryImage = getElement<HTMLImageElement>("summaryImage");
 const successTitle = getElement<HTMLElement>("successTitle");
 const successCopy = getElement<HTMLElement>("successCopy");
 const dashboardCta = getElement<HTMLButtonElement>("dashboardCta");
@@ -155,12 +151,6 @@ const previewPurchaseDraft: PurchaseDraft = {
   ],
 };
 
-productImage.addEventListener("error", () => {
-  productImageFrame.dataset.hasImage = "false";
-});
-summaryImage.addEventListener("error", () => {
-  summaryImageFrame.dataset.hasImage = "false";
-});
 
 void chrome.storage.sync.get("apiBaseUrl").then((stored) => {
   apiInput.value = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : defaultApiBaseUrl;
@@ -434,7 +424,6 @@ function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["su
   matchStatus.dataset.quality = buildMatchQuality(draft, primaryItem);
   renderProductUrl(primaryItem?.productUrl);
   renderPolicyWindow(draft);
-  renderProductImage(primaryItem, productImage, productImageFrame);
 
   protectButton.disabled = false;
   protectButton.dataset.loading = "false";
@@ -460,7 +449,6 @@ function renderProtectedPurchase(options: {
   summaryProductName.textContent = primaryItem?.productName ?? "Protected purchase";
   summarySubtitle.textContent = draft ? buildSubtitle(draft, draft.lineItems.length) : "Monitoring active";
   summaryPaid.textContent = options.pricePaidDisplay ?? (total ? formatMoney(total) : "Protected");
-  renderProductImage(primaryItem, summaryImage, summaryImageFrame);
   renderState(options.title === "Already protected" ? "duplicate" : "protected", options.title, successCopy.textContent);
   dashboardCta.focus();
 
@@ -493,23 +481,6 @@ function renderProductUrl(value: string | undefined): void {
   productUrlRow.dataset.visible = "true";
   productUrl.href = value;
   productUrlText.textContent = compactUrl(value);
-}
-
-function renderProductImage(
-  item: PurchaseLineItemDraft | undefined,
-  image: HTMLImageElement,
-  frame: HTMLElement,
-): void {
-  if (!item?.imageUrl) {
-    frame.dataset.hasImage = "false";
-    image.removeAttribute("src");
-    image.alt = "";
-    return;
-  }
-
-  frame.dataset.hasImage = "true";
-  image.src = item.imageUrl;
-  image.alt = item.productName;
 }
 
 function getExtensionAssetUrl(path: string): string {

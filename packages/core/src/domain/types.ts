@@ -110,7 +110,8 @@ export type OpportunityStatus =
   | "viewed"
   | "claim_clicked"
   | "dismissed"
-  | "expired";
+  | "expired"
+  | "resolved";
 
 export interface OpportunityRecord {
   id: string;
@@ -130,6 +131,50 @@ export interface OpportunityRecord {
   title: string;
   guidance: string;
   claimUrl: string;
+}
+
+export type ActivityEventType =
+  | "purchase_protected"
+  | "price_observed"
+  | "price_dropped"
+  | "price_increased"
+  | "product_unavailable"
+  | "product_available_again"
+  | "policy_window_expired"
+  | "opportunity_created"
+  | "opportunity_updated"
+  | "opportunity_resolved"
+  | "opportunity_expired"
+  | "monitoring_error";
+
+export interface ActivityEventRecord {
+  id: string;
+  userId: string;
+  purchaseId: string;
+  productId: string;
+  opportunityId?: string;
+  type: ActivityEventType;
+  occurredAt: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+  dedupeKey?: string;
+}
+
+export interface ActivityEventCreateInput {
+  userId: string;
+  purchaseId: string;
+  productId: string;
+  opportunityId?: string;
+  type: ActivityEventType;
+  occurredAt: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+  dedupeKey?: string;
+}
+
+export interface ActivityEventWriteResult {
+  event: ActivityEventRecord;
+  created: boolean;
 }
 
 export interface ProductPriceSnapshot {
@@ -203,6 +248,19 @@ export interface OpportunityCreateInput {
   claimUrl: string;
 }
 
+export interface OpportunityUpdateInput {
+  opportunityId: string;
+  userId: string;
+  priceObservationId: string;
+  currentPrice: Money;
+  potentialSaving: Money;
+  title: string;
+  guidance: string;
+  claimUrl: string;
+  claimBy: string;
+  statusUpdatedAt: string;
+}
+
 export interface PurchaseFingerprint {
   userId: string;
   retailerId: RetailerId;
@@ -226,11 +284,13 @@ export interface AfterBuyRepository {
   recordPriceObservation(
     input: PriceObservationCreateInput,
   ): Promise<PriceObservationRecord>;
+  findLatestObservationForProduct(productId: string): Promise<PriceObservationRecord | null>;
   listActivePurchasesForProduct(productId: string): Promise<PurchaseRecord[]>;
   findOpenOpportunityForPurchase(
     purchaseId: string,
   ): Promise<OpportunityRecord | null>;
   createOpportunity(input: OpportunityCreateInput): Promise<OpportunityRecord>;
+  updateOpportunity(input: OpportunityUpdateInput): Promise<OpportunityRecord | null>;
   findOpportunityByIdForUser(
     opportunityId: string,
     userId: string,
@@ -246,6 +306,13 @@ export interface AfterBuyRepository {
   listLatestObservationsByProductIds(
     productIds: string[],
   ): Promise<LatestObservation[]>;
+  recordActivityEvent(
+    input: ActivityEventCreateInput,
+  ): Promise<ActivityEventWriteResult>;
+  listActivityEventsForPurchases(
+    purchaseIds: string[],
+    limitPerPurchase?: number,
+  ): Promise<ActivityEventRecord[]>;
 }
 
 export interface PriceFetcher {

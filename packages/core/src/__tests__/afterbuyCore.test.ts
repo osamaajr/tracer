@@ -53,7 +53,7 @@ describe("John Lewis extraction", () => {
           productName:
             "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
           quantity: 1,
-          pricePaid: gbp(34_900),
+          pricePaid: gbp(34_999),
           externalProductId: "p1122334",
           sku: "JL-SNY-XM6-BLK",
         },
@@ -90,13 +90,81 @@ describe("John Lewis extraction", () => {
     expect(snapshot).toMatchObject({
       retailerId: "john-lewis",
       externalProductId: "p1122334",
-      price: gbp(31_900),
+      price: gbp(31_999),
       availability: "in_stock",
     });
   });
 });
 
 describe("generic store extraction", () => {
+  it("prefers an order-confirmation image and supports structured image objects", () => {
+    const document = parseHTML(`
+      <main>
+        <script type="application/ld+json">
+          ${JSON.stringify({
+            "@type": "Order",
+            orderNumber: "IMG-12345",
+            orderDate: "2026-08-30T12:30:00Z",
+            acceptedOffer: [{
+              price: "84.50",
+              priceCurrency: "GBP",
+              itemOffered: {
+                name: "Trail Pack 24L, Moss Green",
+                url: "https://shop.example.com/products/trail-pack-24l-moss-green",
+                image: { contentUrl: "https://cdn.example.com/json-ld-pack.jpg" },
+              },
+            }],
+          })}
+        </script>
+        <section data-afterbuy-line-item>
+          <h2 data-afterbuy-product-name>Trail Pack 24L, Moss Green</h2>
+          <a href="https://shop.example.com/products/trail-pack-24l-moss-green">View product</a>
+          <img src="https://cdn.example.com/order-confirmation-pack.jpg" alt="Trail Pack" />
+          <span data-afterbuy-price-paid>£84.50</span>
+        </section>
+      </main>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/checkout/confirmation/IMG-12345",
+    );
+
+    expect(draft?.lineItems[0]?.imageUrl).toBe(
+      "https://cdn.example.com/order-confirmation-pack.jpg",
+    );
+  });
+
+  it("ignores unusable image candidates without rejecting the purchase", () => {
+    const document = parseHTML(`
+      <main>
+        <script type="application/ld+json">
+          ${JSON.stringify({
+            "@type": "Order",
+            orderNumber: "IMG-12346",
+            acceptedOffer: [{
+              price: "84.50",
+              priceCurrency: "GBP",
+              itemOffered: {
+                name: "Trail Pack 24L, Moss Green",
+                url: "https://shop.example.com/products/trail-pack-24l-moss-green",
+                image: "data:image/png;base64,invalid",
+              },
+            }],
+          })}
+        </script>
+      </main>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/checkout/confirmation/IMG-12346",
+    );
+
+    expect(draft).not.toBeNull();
+    expect(draft?.lineItems[0]?.imageUrl).toBeUndefined();
+  });
+
   it("extracts a purchase from a schema.org order on an arbitrary public store", () => {
     const document = genericFixtureDocument("order-confirmation.html");
     const draft = extractGenericPurchaseFromDocument(
@@ -173,21 +241,51 @@ describe("product protection and monitoring", () => {
     expect(protectedPurchase.accepted).toHaveLength(1);
     expect(protectedPurchase.accepted[0]?.status).toBe("created");
 
-    const droppedSnapshot = mustExtractProduct(
-      "product-headphones-dropped.html",
+    const purchase = protectedPurchase.accepted[0]?.purchase;
+    if (!purchase) {
+      throw new Error("Expected purchase to be protected");
+    }
+
+    const paidSnapshot = mustExtractProduct(
+      "product-headphones-paid.html",
       "2026-09-01T08:00:00.000Z",
     );
 
-    const summary = await runPriceMonitoringCycle({
+    const paidSummary = await runPriceMonitoringCycle({
       repository,
-      priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
+      priceFetcher: new FixturePriceFetcher([paidSnapshot]),
       now: "2026-09-01T08:00:00.000Z",
     });
 
-    expect(summary).toMatchObject({
+    expect(paidSummary).toMatchObject({
+      checkedProducts: 1,
+      observationsCreated: 1,
+      opportunitiesCreated: 0,
+      activityEventsCreated: 1,
+      failures: [],
+    });
+
+    const monitoredProducts = await repository.listProductsForMonitoring();
+    expect(monitoredProducts[0]?.imageUrl).toBe(
+      "https://johnlewis.scene7.com/is/image/JohnLewis/headphones",
+    );
+
+    const droppedSnapshot = mustExtractProduct(
+      "product-headphones-dropped.html",
+      "2026-09-02T08:00:00.000Z",
+    );
+
+    const dropSummary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
+      now: "2026-09-02T08:00:00.000Z",
+    });
+
+    expect(dropSummary).toMatchObject({
       checkedProducts: 1,
       observationsCreated: 1,
       opportunitiesCreated: 1,
+      activityEventsCreated: 2,
       failures: [],
     });
 
@@ -205,6 +303,33 @@ describe("product protection and monitoring", () => {
     if (!opportunity) {
       throw new Error("Expected opportunity to be created");
     }
+
+    const activityEvents = await repository.listActivityEventsForPurchases([purchase.id]);
+    expect(activityEvents.map((event) => event.type)).toEqual(
+      expect.arrayContaining([
+        "price_dropped",
+        "opportunity_created",
+        "price_observed",
+        "purchase_protected",
+      ]),
+    );
+    expect(activityEvents).toHaveLength(4);
+
+    const repeatDropSummary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
+      now: "2026-09-02T08:00:00.000Z",
+    });
+
+    expect(repeatDropSummary).toMatchObject({
+      checkedProducts: 1,
+      observationsCreated: 0,
+      opportunitiesCreated: 0,
+      opportunitiesUpdated: 0,
+      activityEventsCreated: 0,
+      failures: [],
+    });
+    expect(await repository.listOpportunitiesForUser("user_1")).toHaveLength(1);
 
     const statusResult = await updateOpportunityStatus({
       repository,

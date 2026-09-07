@@ -188,3 +188,36 @@ export const opportunities = pgTable(
       .where(sql`${table.status} IN ('open', 'viewed')`),
   }),
 );
+
+export const activityEvents = pgTable(
+  "activity_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    purchaseId: text("purchase_id")
+      .notNull()
+      .references(() => purchases.id),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id),
+    opportunityId: text("opportunity_id").references(() => opportunities.id),
+    type: text("type").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    metadata: jsonb("metadata").notNull(),
+    dedupeKey: text("dedupe_key"),
+  },
+  (table) => ({
+    userOccurredAt: index("activity_events_user_occurred_at_idx").on(
+      table.userId,
+      table.occurredAt,
+    ),
+    purchaseOccurredAt: index("activity_events_purchase_occurred_at_idx").on(
+      table.purchaseId,
+      table.occurredAt,
+    ),
+    dedupeKey: uniqueIndex("activity_events_dedupe_key_idx").on(table.dedupeKey),
+  }),
+);
