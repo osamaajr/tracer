@@ -18,6 +18,7 @@ import {
   type PurchaseCreateInput,
   type PurchaseFingerprint,
   type PurchaseRecord,
+  type UserMonitoringPreference,
 } from "@afterbuy/core";
 
 interface StoreState {
@@ -26,6 +27,7 @@ interface StoreState {
   observations: PriceObservationRecord[];
   opportunities: OpportunityRecord[];
   activityEvents: ActivityEventRecord[];
+  monitoringPreferences: UserMonitoringPreference[];
 }
 
 const emptyStore: StoreState = {
@@ -34,6 +36,7 @@ const emptyStore: StoreState = {
   observations: [],
   opportunities: [],
   activityEvents: [],
+  monitoringPreferences: [],
 };
 
 export class FileAfterBuyRepository implements AfterBuyRepository {
@@ -45,11 +48,15 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
     return this.mutate((state) => {
       const existing = state.products.find((product) => {
         const sameRetailer = product.retailerId === input.retailerId;
+        if (!sameRetailer) return false;
         const sameExternalId =
           input.externalProductId && product.externalProductId === input.externalProductId;
+        const sameSku = input.sku && product.sku === input.sku;
         const sameUrl = product.canonicalUrl === input.canonicalUrl;
 
-        return sameRetailer && (sameExternalId || sameUrl);
+        if (input.externalProductId && product.externalProductId) return Boolean(sameExternalId);
+        if (input.sku && product.sku) return Boolean(sameSku);
+        return sameUrl;
       });
 
       if (existing) {
@@ -138,7 +145,54 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
 
   async listProductsForMonitoring(): Promise<ProductRecord[]> {
     const state = await this.read();
-    return clone(state.products.filter((product) => product.monitoringStatus !== "paused"));
+    const activeProductIds = new Set(
+      state.purchases
+        .filter(
+          (purchase) =>
+            purchase.protectionStatus === "active" &&
+            isMonitoringEnabled(state, purchase.userId),
+        )
+        .map((purchase) => purchase.productId),
+    );
+    return clone(state.products.filter((product) => activeProductIds.has(product.id)));
+  }
+
+  async listProductsByIds(productIds: string[]): Promise<ProductRecord[]> {
+    const state = await this.read();
+    const ids = new Set(productIds);
+    return clone(state.products.filter((product) => ids.has(product.id)));
+  }
+
+  async getMonitoringPreference(userId: string): Promise<UserMonitoringPreference> {
+    const state = await this.read();
+    return clone(
+      state.monitoringPreferences.find((preference) => preference.userId === userId) ?? {
+        userId,
+        enabled: true,
+        updatedAt: new Date(0).toISOString(),
+      },
+    );
+  }
+
+  async setMonitoringEnabled(
+    userId: string,
+    enabled: boolean,
+    updatedAt: string,
+  ): Promise<UserMonitoringPreference> {
+    return this.mutate((state) => {
+      const existing = state.monitoringPreferences.find(
+        (preference) => preference.userId === userId,
+      );
+      if (existing) {
+        existing.enabled = enabled;
+        existing.updatedAt = updatedAt;
+        return clone(existing);
+      }
+
+      const preference = { userId, enabled, updatedAt };
+      state.monitoringPreferences.push(preference);
+      return clone(preference);
+    });
   }
 
   async recordPriceObservation(
@@ -197,7 +251,9 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
     return clone(
       state.purchases.filter(
         (purchase) =>
-          purchase.productId === productId && purchase.protectionStatus === "active",
+          purchase.productId === productId &&
+          purchase.protectionStatus === "active" &&
+          isMonitoringEnabled(state, purchase.userId),
       ),
     );
   }
@@ -293,6 +349,39 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
     return clone(state.purchases.filter((purchase) => purchase.userId === userId));
   }
 
+  async deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean> {
+    return this.mutate((state) => {
+      const purchaseIndex = state.purchases.findIndex(
+        (purchase) => purchase.id === purchaseId && purchase.userId === userId,
+      );
+
+      if (purchaseIndex === -1) {
+        return false;
+      }
+
+      const [purchase] = state.purchases.splice(purchaseIndex, 1);
+      if (!purchase) {
+        return false;
+      }
+
+      state.opportunities = state.opportunities.filter(
+        (opportunity) => opportunity.purchaseId !== purchaseId,
+      );
+      state.activityEvents = state.activityEvents.filter(
+        (event) => event.purchaseId !== purchaseId,
+      );
+
+      if (!state.purchases.some((candidate) => candidate.productId === purchase.productId)) {
+        state.products = state.products.filter((product) => product.id !== purchase.productId);
+        state.observations = state.observations.filter(
+          (observation) => observation.productId !== purchase.productId,
+        );
+      }
+
+      return true;
+    });
+  }
+
   async listOpportunitiesForUser(userId: string): Promise<OpportunityRecord[]> {
     const state = await this.read();
     return clone(
@@ -380,6 +469,7 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
         observations: parsed.observations ?? [],
         opportunities: parsed.opportunities ?? [],
         activityEvents: parsed.activityEvents ?? [],
+        monitoringPreferences: parsed.monitoringPreferences ?? [],
       };
     } catch (error) {
       if (isMissingFileError(error)) {
@@ -413,4 +503,10 @@ function isMissingFileError(error: unknown): boolean {
     "code" in error &&
     error.code === "ENOENT"
   );
+}
+
+function isMonitoringEnabled(state: StoreState, userId: string): boolean {
+  return state.monitoringPreferences.find(
+    (preference) => preference.userId === userId,
+  )?.enabled !== false;
 }

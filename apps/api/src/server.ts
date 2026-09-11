@@ -8,8 +8,10 @@ import { z } from "zod";
 import {
   findProtectedPurchaseForDraft,
   formatMoney,
+  isLessThan,
   protectPurchase,
   runPriceMonitoringCycle,
+  subtractMoney,
   updateOpportunityStatus,
   validatePurchaseDraft,
   type AfterBuyRepository,
@@ -17,8 +19,10 @@ import {
   type Money,
   type OpportunityRecord,
   type PriceFetcher,
+  type PriceObservationRecord,
   type PurchaseDraft,
   type PurchaseLineItemDraft,
+  type PurchaseRecord,
   firstUsableProductImage,
 } from "@afterbuy/core";
 import { requireAuthenticatedUser } from "./auth";
@@ -72,8 +76,16 @@ const opportunityParamsSchema = z.object({
   opportunityId: z.string().min(1),
 });
 
+const purchaseParamsSchema = z.object({
+  purchaseId: z.string().min(1),
+});
+
 const devMonitoringQuerySchema = z.object({
   fixture: z.enum(["paid", "dropped"]).optional(),
+});
+
+const monitoringSettingsSchema = z.object({
+  enabled: z.boolean(),
 });
 
 type OpportunityRouteRequest = FastifyRequest<{
@@ -194,10 +206,59 @@ export async function createAfterBuyServer(
     };
   });
 
+  app.get("/api/settings", async (request) => {
+    const user = requireAuthenticatedUser(request, config);
+    const monitoring = await repository.getMonitoringPreference(user.id);
+    return { userId: user.id, monitoringEnabled: monitoring.enabled };
+  });
+
+  app.put("/api/settings/monitoring", async (request, reply) => {
+    const user = requireAuthenticatedUser(request, config);
+    const parsed = monitoringSettingsSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "invalid_request",
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const previous = await repository.getMonitoringPreference(user.id);
+    const now = new Date().toISOString();
+    const monitoring = await repository.setMonitoringEnabled(
+      user.id,
+      parsed.data.enabled,
+      now,
+    );
+
+    if (previous.enabled !== monitoring.enabled) {
+      const purchases = await repository.listPurchasesForUser(user.id);
+      const type = monitoring.enabled ? "monitoring_resumed" : "monitoring_paused";
+      for (const purchase of purchases.filter(
+        (candidate) => candidate.protectionStatus === "active",
+      )) {
+        await repository.recordActivityEvent({
+          userId: user.id,
+          purchaseId: purchase.id,
+          productId: purchase.productId,
+          type,
+          occurredAt: now,
+          createdAt: now,
+          metadata: {},
+          dedupeKey: `${purchase.id}:${type}:${now}`,
+        });
+      }
+    }
+
+    return { userId: user.id, monitoringEnabled: monitoring.enabled };
+  });
+
   app.get("/api/dashboard", async (request) => {
     const user = requireAuthenticatedUser(request, config);
     const purchases = await repository.listPurchasesForUser(user.id);
-    const products = await repository.listProductsForMonitoring(new Date().toISOString());
+    const monitoring = await repository.getMonitoringPreference(user.id);
+    const products = await repository.listProductsByIds(
+      purchases.map((purchase) => purchase.productId),
+    );
     const opportunities = await repository.listOpportunitiesForUser(user.id);
     const latestObservations = await repository.listLatestObservationsByProductIds(
       purchases.map((purchase) => purchase.productId),
@@ -223,6 +284,12 @@ export async function createAfterBuyServer(
         const latest = latestByProductId.get(purchase.productId);
         const product = productById.get(purchase.productId);
         const purchaseActivity = activityByPurchaseId.get(purchase.id) ?? [];
+        const state = derivePurchaseMonitoringState({
+          purchase,
+          latest,
+          activity: purchaseActivity,
+          monitoringEnabled: monitoring.enabled,
+        });
 
         return {
           ...purchase,
@@ -232,6 +299,11 @@ export async function createAfterBuyServer(
           currentPrice: latest?.price ?? null,
           currentPriceDisplay: latest ? formatMoney(latest.price) : null,
           lastCheckedAt: latest?.observedAt ?? null,
+          monitoringStatus: state.status,
+          saving: state.saving,
+          savingDisplay: state.saving ? formatMoney(state.saving) : null,
+          savingPercentageBps: state.savingPercentageBps,
+          priceDropDetectedAt: state.priceDropDetectedAt,
           recentActivity: purchaseActivity
             .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
             .map((event) => serializeActivityEvent(event, purchase.retailerName)),
@@ -241,6 +313,25 @@ export async function createAfterBuyServer(
     };
   });
 
+  app.delete<{ Params: { purchaseId: string } }>(
+    "/api/purchases/:purchaseId",
+    async (request, reply) => {
+      const user = requireAuthenticatedUser(request, config);
+      const parsed = purchaseParamsSchema.safeParse(request.params);
+
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "invalid_request" });
+      }
+
+      const deleted = await repository.deletePurchaseForUser(parsed.data.purchaseId, user.id);
+      if (!deleted) {
+        return reply.code(404).send({ error: "purchase_not_found" });
+      }
+
+      return reply.code(204).send();
+    },
+  );
+
   app.get("/api/extension/sync", async (request) => {
     const user = requireAuthenticatedUser(request, config);
     const purchases = await repository.listPurchasesForUser(user.id);
@@ -248,6 +339,30 @@ export async function createAfterBuyServer(
     const actionableOpportunities = opportunities.filter((opportunity) =>
       isActionableOpportunityStatus(opportunity.status),
     );
+    const activity = await repository.listActivityEventsForPurchases(
+      purchases.map((purchase) => purchase.id),
+      100,
+    );
+    const purchaseById = new Map(purchases.map((purchase) => [purchase.id, purchase]));
+    const priceDrops = activity.flatMap((event) => {
+      if (event.type !== "price_dropped") {
+        return [];
+      }
+      const purchase = purchaseById.get(event.purchaseId);
+      const currentPrice = readMoney(event.metadata.currentPrice);
+      const saving = readMoney(event.metadata.savingAgainstPaid);
+      if (!purchase || !currentPrice || !saving || saving.amountMinor <= 0) {
+        return [];
+      }
+      return [{
+        eventId: event.id,
+        purchaseId: purchase.id,
+        productName: purchase.productName,
+        currentPriceDisplay: formatMoney(currentPrice),
+        savingDisplay: formatMoney(saving),
+        detectedAt: event.occurredAt,
+      }];
+    });
 
     return {
       userId: user.id,
@@ -255,6 +370,7 @@ export async function createAfterBuyServer(
       protectedPurchaseCount: purchases.length,
       openOpportunityCount: actionableOpportunities.length,
       opportunities: actionableOpportunities.map(serializeOpportunity),
+      priceDrops,
     };
   });
 
@@ -279,7 +395,10 @@ export async function createAfterBuyServer(
     },
   );
 
-  app.post("/api/monitoring/run", async (request) => {
+  app.post("/api/monitoring/run", async (request, reply) => {
+    if (!config.enableDevEndpoints) {
+      return reply.code(404).send({ error: "not_found" });
+    }
     const user = requireAuthenticatedUser(request, config);
     const summary = await runPriceMonitoringCycle({
       repository,
@@ -306,15 +425,16 @@ export async function createAfterBuyServer(
     }
 
     const fixture = parsed.data.fixture ?? "dropped";
+    const fixtureWasRequested = parsed.data.fixture !== undefined;
     const now =
       fixture === "paid"
         ? "2026-09-01T08:00:00.000Z"
         : "2026-09-02T08:00:00.000Z";
     const summary = await runPriceMonitoringCycle({
       repository,
-      priceFetcher:
-        configuredPriceFetcher ??
-        createDevFixturePriceFetcher(now, fixture),
+      priceFetcher: fixtureWasRequested
+        ? createDevFixturePriceFetcher(now, fixture)
+        : configuredPriceFetcher ?? createDevFixturePriceFetcher(now, fixture),
       now,
     });
 
@@ -412,6 +532,77 @@ function serializeOpportunity(opportunity: OpportunityRecord) {
   };
 }
 
+function derivePurchaseMonitoringState(input: {
+  purchase: PurchaseRecord;
+  latest: PriceObservationRecord | undefined;
+  activity: ActivityEventRecord[];
+  monitoringEnabled: boolean;
+}): {
+  status: "watching" | "price_dropped" | "monitoring_paused" | "unable_to_check" | "unavailable";
+  saving: Money | null;
+  savingPercentageBps: number | null;
+  priceDropDetectedAt: string | null;
+} {
+  if (!input.monitoringEnabled) {
+    return {
+      status: "monitoring_paused",
+      saving: null,
+      savingPercentageBps: null,
+      priceDropDetectedAt: null,
+    };
+  }
+
+  const latestError = input.activity
+    .filter((event) => event.type === "monitoring_error")
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
+  if (
+    latestError &&
+    (!input.latest || latestError.occurredAt >= input.latest.observedAt)
+  ) {
+    return {
+      status: "unable_to_check",
+      saving: null,
+      savingPercentageBps: null,
+      priceDropDetectedAt: null,
+    };
+  }
+
+  if (input.latest?.availability === "out_of_stock") {
+    return {
+      status: "unavailable",
+      saving: null,
+      savingPercentageBps: null,
+      priceDropDetectedAt: null,
+    };
+  }
+
+  if (input.latest && isLessThan(input.latest.price, input.purchase.pricePaid)) {
+    const saving = subtractMoney(input.purchase.pricePaid, input.latest.price);
+    const priceDropEvent = input.activity
+      .filter(
+        (event) =>
+          event.type === "price_dropped" &&
+          Boolean(readMoney(event.metadata.savingAgainstPaid)),
+      )
+      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
+    return {
+      status: "price_dropped",
+      saving,
+      savingPercentageBps: Math.round(
+        (saving.amountMinor * 10_000) / input.purchase.pricePaid.amountMinor,
+      ),
+      priceDropDetectedAt: priceDropEvent?.occurredAt ?? input.latest.observedAt,
+    };
+  }
+
+  return {
+    status: "watching",
+    saving: null,
+    savingPercentageBps: null,
+    priceDropDetectedAt: null,
+  };
+}
+
 function serializeActivityEvent(event: ActivityEventRecord, retailerName: string) {
   const currentPrice = readMoney(event.metadata.currentPrice);
   const potentialSaving = readMoney(event.metadata.potentialSaving);
@@ -442,6 +633,8 @@ function serializeActivityEvent(event: ActivityEventRecord, retailerName: string
 function activityTitle(type: ActivityEventRecord["type"]): string {
   const titles: Record<ActivityEventRecord["type"], string> = {
     purchase_protected: "Purchase protected",
+    monitoring_paused: "Monitoring paused",
+    monitoring_resumed: "Monitoring resumed",
     price_observed: "Price unchanged",
     price_dropped: "Price dropped",
     price_increased: "Price increased",
@@ -452,7 +645,7 @@ function activityTitle(type: ActivityEventRecord["type"]): string {
     opportunity_updated: "Opportunity updated",
     opportunity_resolved: "Opportunity resolved",
     opportunity_expired: "Opportunity expired",
-    monitoring_error: "Monitoring paused",
+    monitoring_error: "Unable to check",
   };
 
   return titles[type];
@@ -469,6 +662,10 @@ function activityDescription(input: {
   switch (input.type) {
     case "purchase_protected":
       return "We're now monitoring this item.";
+    case "monitoring_paused":
+      return "Automatic price checks are paused.";
+    case "monitoring_resumed":
+      return "Automatic price checks have resumed.";
     case "price_observed":
       return input.formattedPrice
         ? `Still ${input.formattedPrice} at ${input.retailerName}.`

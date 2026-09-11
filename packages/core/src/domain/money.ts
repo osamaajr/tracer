@@ -43,6 +43,10 @@ export function parsePrice(
     .replace(/\s+/g, " ")
     .trim();
 
+  if (/(?:^|\s)-\s*(?:£|\$|€|GBP|USD|EUR|\d)/i.test(normalised)) {
+    return null;
+  }
+
   const symbolOrCodeMatch = normalised.match(
     /(?:£|\$|€|GBP|USD|EUR)\s*([0-9]+(?:,[0-9]{3})*|[0-9]+)(?:\.([0-9]{1,2}))?/i,
   );

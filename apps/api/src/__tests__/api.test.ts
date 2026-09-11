@@ -77,13 +77,18 @@ describe("AfterBuy API", () => {
         enableDevEndpoints: true,
       },
       repository: new InMemoryAfterBuyRepository(),
+      priceFetcher: {
+        fetchCurrentPrice: async () => {
+          throw new Error("The deterministic development endpoint used the live fetcher");
+        },
+      },
     });
 
     const protectResponse = await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
       headers: { "x-afterbuy-user-id": "user_1" },
-      payload: { purchaseDraft },
+      payload: { purchaseDraft: genericPurchaseDraft },
     });
 
     expect(protectResponse.statusCode).toBe(201);
@@ -105,8 +110,8 @@ describe("AfterBuy API", () => {
     expect(droppedResponse.statusCode).toBe(200);
     expect(droppedResponse.json().summary).toMatchObject({
       observationsCreated: 1,
-      opportunitiesCreated: 1,
-      activityEventsCreated: 2,
+      opportunitiesCreated: 0,
+      activityEventsCreated: 1,
     });
 
     const repeatResponse = await app.inject({
@@ -128,9 +133,29 @@ describe("AfterBuy API", () => {
       })
     ).json();
 
-    expect(dashboard.purchases[0].currentPriceDisplay).toBe("£319.99");
-    expect(dashboard.opportunities).toHaveLength(1);
-    expect(dashboard.purchases[0].recentActivity).toHaveLength(4);
+    expect(dashboard.purchases[0]).toMatchObject({
+      currentPriceDisplay: "£69.50",
+      monitoringStatus: "price_dropped",
+      savingDisplay: "£15",
+      savingPercentageBps: 1775,
+      priceDropDetectedAt: "2026-09-02T08:00:00.000Z",
+    });
+    expect(dashboard.opportunities).toHaveLength(0);
+
+    const sync = (
+      await app.inject({
+        method: "GET",
+        url: "/api/extension/sync",
+        headers: { "x-afterbuy-user-id": "user_1" },
+      })
+    ).json();
+    expect(sync.priceDrops).toEqual([
+      expect.objectContaining({
+        productName: "Trail Pack 24L, Moss Green",
+        currentPriceDisplay: "£69.50",
+        savingDisplay: "£15",
+      }),
+    ]);
 
     await app.close();
   });
@@ -380,6 +405,90 @@ describe("AfterBuy API", () => {
       },
     });
     expect(body.purchase.id).toMatch(/^pur_/);
+
+    await app.close();
+  });
+
+  it("pauses and resumes scheduled monitoring without deleting purchases", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    let checks = 0;
+    const app = await createAfterBuyServer({
+      config: {
+        port: 0,
+        dataFile: ":memory:",
+        devUserId: "user_1",
+        enableDevAuth: true,
+        enableDevEndpoints: true,
+      },
+      repository,
+      priceFetcher: {
+        fetchCurrentPrice: async () => {
+          checks += 1;
+          return droppedSnapshot;
+        },
+      },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/api/purchases/protect",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { purchaseDraft },
+    });
+
+    const paused = await app.inject({
+      method: "PUT",
+      url: "/api/settings/monitoring",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { enabled: false },
+    });
+    expect(paused.json()).toMatchObject({ monitoringEnabled: false });
+
+    const skipped = await app.inject({
+      method: "POST",
+      url: "/api/monitoring/run",
+      headers: { "x-afterbuy-user-id": "user_1" },
+    });
+    expect(skipped.json().summary.checkedProducts).toBe(0);
+    expect(checks).toBe(0);
+
+    const pausedDashboard = (
+      await app.inject({
+        method: "GET",
+        url: "/api/dashboard",
+        headers: { "x-afterbuy-user-id": "user_1" },
+      })
+    ).json();
+    expect(pausedDashboard.purchases).toHaveLength(1);
+    expect(pausedDashboard.purchases[0].monitoringStatus).toBe("monitoring_paused");
+
+    await app.inject({
+      method: "PUT",
+      url: "/api/settings/monitoring",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: { enabled: true },
+    });
+    const resumed = await app.inject({
+      method: "POST",
+      url: "/api/monitoring/run",
+      headers: { "x-afterbuy-user-id": "user_1" },
+    });
+    expect(resumed.json().summary.checkedProducts).toBe(1);
+    expect(checks).toBe(1);
+
+    const purchases = await repository.listPurchasesForUser("user_1");
+    await app.inject({
+      method: "DELETE",
+      url: `/api/purchases/${purchases[0]?.id}`,
+      headers: { "x-afterbuy-user-id": "user_1" },
+    });
+    const afterClear = await app.inject({
+      method: "POST",
+      url: "/api/monitoring/run",
+      headers: { "x-afterbuy-user-id": "user_1" },
+    });
+    expect(afterClear.json().summary.checkedProducts).toBe(0);
+    expect(checks).toBe(1);
 
     await app.close();
   });

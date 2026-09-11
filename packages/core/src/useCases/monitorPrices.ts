@@ -10,6 +10,11 @@ import { isLessThan, subtractMoney } from "../domain/money";
 import { RetailerPolicyRegistry, defaultPolicyRegistry } from "../policies/policyRegistry";
 import { evaluatePriceObservationForPurchase } from "../policies/evaluateOpportunity";
 import { firstUsableProductImage } from "../retailers/productImage";
+import {
+  isKnownRetailerId,
+  normalizePublicStoreUrl,
+  normalizeRetailerUrl,
+} from "../retailers/urlSafety";
 
 export interface MonitoringSummary {
   checkedProducts: number;
@@ -48,11 +53,15 @@ export async function runPriceMonitoringCycle(
     summary.checkedProducts += 1;
 
     try {
+      const activePurchases = await options.repository.listActivePurchasesForProduct(product.id);
+      if (activePurchases.length === 0) {
+        continue;
+      }
       const previousObservation = await options.repository.findLatestObservationForProduct(
         product.id,
       );
       const snapshot = await options.priceFetcher.fetchCurrentPrice(product);
-      validateSnapshot(product, snapshot);
+      validateSnapshot(product, snapshot, previousObservation, activePurchases);
       const imageUrl = firstUsableProductImage(snapshot.imageUrl);
 
       if (!product.imageUrl && imageUrl) {
@@ -82,8 +91,6 @@ export async function runPriceMonitoringCycle(
         });
         summary.observationsCreated += 1;
       }
-
-      const activePurchases = await options.repository.listActivePurchasesForProduct(product.id);
 
       for (const purchase of activePurchases) {
         summary.activityEventsCreated += await recordObservationActivity({
@@ -125,7 +132,7 @@ export async function runPriceMonitoringCycle(
           metadata: {
             reason: error instanceof Error ? error.message : "Unknown monitoring failure",
           },
-          dedupeKey: `${purchase.id}:monitoring_error:${now.slice(0, 10)}`,
+          dedupeKey: `${purchase.id}:monitoring_error:${now}`,
         });
         if (event.created) {
           summary.activityEventsCreated += 1;
@@ -306,16 +313,54 @@ async function recordObservationActivity(input: {
 }): Promise<number> {
   const { purchase, observation, previousObservation } = input;
   let created = 0;
+  const purchaseActivity = await input.repository.listActivityEventsForPurchases(
+    [purchase.id],
+    100,
+  );
+  const hasProcessedObservation = purchaseActivity.some((event) =>
+    [
+      "price_observed",
+      "price_dropped",
+      "price_increased",
+      "product_unavailable",
+      "product_available_again",
+    ].includes(event.type),
+  );
 
   if (observation.availability === "out_of_stock") {
-    created += await recordActivity(input.repository, {
-      purchase,
-      type: "product_unavailable",
-      occurredAt: observation.observedAt,
-      createdAt: input.now,
-      metadata: { sourceUrl: observation.sourceUrl },
-      dedupeKey: `${purchase.id}:product_unavailable:${observation.observedAt}`,
-    });
+    if (!hasProcessedObservation || previousObservation?.availability !== "out_of_stock") {
+      created += await recordActivity(input.repository, {
+        purchase,
+        type: "product_unavailable",
+        occurredAt: observation.observedAt,
+        createdAt: input.now,
+        metadata: { sourceUrl: observation.sourceUrl },
+        dedupeKey: `${purchase.id}:product_unavailable:${observation.observedAt}`,
+      });
+    }
+    return created;
+  }
+
+  if (!hasProcessedObservation) {
+    if (isLessThan(observation.price, purchase.pricePaid)) {
+      created += await recordPriceMoveActivity({
+        repository: input.repository,
+        purchase,
+        observation,
+        previousPrice: purchase.pricePaid,
+        now: input.now,
+        type: "price_dropped",
+      });
+    } else {
+      created += await recordActivity(input.repository, {
+        purchase,
+        type: "price_observed",
+        occurredAt: observation.observedAt,
+        createdAt: input.now,
+        metadata: { currentPrice: observation.price },
+        dedupeKey: `${purchase.id}:price_observed:${observation.observedAt}`,
+      });
+    }
     return created;
   }
 
@@ -350,24 +395,6 @@ async function recordObservationActivity(input: {
         type: "price_increased",
       });
     }
-  } else if (isLessThan(observation.price, purchase.pricePaid)) {
-    created += await recordPriceMoveActivity({
-      repository: input.repository,
-      purchase,
-      observation,
-      previousPrice: purchase.pricePaid,
-      now: input.now,
-      type: "price_dropped",
-    });
-  } else {
-    created += await recordActivity(input.repository, {
-      purchase,
-      type: "price_observed",
-      occurredAt: observation.observedAt,
-      createdAt: input.now,
-      metadata: { currentPrice: observation.price },
-      dedupeKey: `${purchase.id}:price_observed:${observation.observedAt}`,
-    });
   }
 
   return created;
@@ -399,6 +426,9 @@ async function recordPriceMoveActivity(input: {
       currentPrice: input.observation.price,
       change,
       savingAgainstPaid,
+      savingPercentageBps: savingAgainstPaid
+        ? Math.round((savingAgainstPaid.amountMinor * 10_000) / input.purchase.pricePaid.amountMinor)
+        : undefined,
     },
     dedupeKey: `${input.purchase.id}:${input.type}:${input.observation.id}`,
   });
@@ -443,6 +473,8 @@ async function recordActivity(
 function validateSnapshot(
   product: Parameters<PriceFetcher["fetchCurrentPrice"]>[0],
   snapshot: Awaited<ReturnType<PriceFetcher["fetchCurrentPrice"]>>,
+  previousObservation: PriceObservationRecord | null,
+  purchases: PurchaseRecord[],
 ): void {
   if (snapshot.retailerId.trim().length === 0) {
     throw new Error(`Fetched snapshot for ${product.id} is missing a retailer`);
@@ -462,12 +494,28 @@ function validateSnapshot(
     throw new Error("Fetched product identifier does not match the protected product");
   }
 
+
+  if (snapshot.sku && product.sku && snapshot.sku !== product.sku) {
+    throw new Error("Fetched product SKU does not match the protected product");
+  }
+
   if (snapshot.price.currency !== "GBP") {
     throw new Error(`Unsupported monitoring currency ${snapshot.price.currency}`);
   }
 
   if (snapshot.price.amountMinor <= 0) {
     throw new Error("Fetched product price must be positive");
+  }
+
+  const referenceAmount = Math.max(
+    previousObservation?.price.amountMinor ?? 0,
+    ...purchases.map((purchase) => purchase.pricePaid.amountMinor),
+  );
+  if (
+    referenceAmount - snapshot.price.amountMinor >= 2_000 &&
+    snapshot.price.amountMinor * 10 < referenceAmount
+  ) {
+    throw new Error("Fetched product price failed the monitoring sanity check");
   }
 
   if (Number.isNaN(new Date(snapshot.observedAt).getTime())) {
@@ -478,10 +526,18 @@ function validateSnapshot(
     throw new Error("Fetched product availability is invalid");
   }
 
-  try {
-    new URL(snapshot.productUrl);
-  } catch {
-    throw new Error("Fetched product URL is invalid");
+  const normalized = isKnownRetailerId(product.retailerId)
+    ? normalizeRetailerUrl(product.retailerId, snapshot.productUrl, {
+        requireProductUrl: true,
+      })
+    : normalizePublicStoreUrl(snapshot.productUrl, { expectedHost: product.storeHost });
+
+  if (
+    normalized.productId &&
+    product.externalProductId &&
+    normalized.productId !== product.externalProductId
+  ) {
+    throw new Error("Fetched product URL does not match the protected product");
   }
 }
 

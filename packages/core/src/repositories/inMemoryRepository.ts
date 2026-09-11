@@ -16,6 +16,7 @@ import type {
   PurchaseCreateInput,
   PurchaseFingerprint,
   PurchaseRecord,
+  UserMonitoringPreference,
 } from "../domain/types";
 
 export class InMemoryAfterBuyRepository implements AfterBuyRepository {
@@ -24,15 +25,20 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
   private readonly observations: PriceObservationRecord[] = [];
   private readonly opportunities: OpportunityRecord[] = [];
   private readonly activityEvents: ActivityEventRecord[] = [];
+  private readonly monitoringPreferences = new Map<string, UserMonitoringPreference>();
 
   async upsertProduct(input: ProductUpsertInput): Promise<ProductRecord> {
     const existing = this.products.find((product) => {
       const sameRetailer = product.retailerId === input.retailerId;
+      if (!sameRetailer) return false;
       const sameExternalId =
         input.externalProductId && product.externalProductId === input.externalProductId;
+      const sameSku = input.sku && product.sku === input.sku;
       const sameUrl = product.canonicalUrl === input.canonicalUrl;
 
-      return sameRetailer && (sameExternalId || sameUrl);
+      if (input.externalProductId && product.externalProductId) return Boolean(sameExternalId);
+      if (input.sku && product.sku) return Boolean(sameSku);
+      return sameUrl;
     });
 
     if (existing) {
@@ -114,7 +120,39 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
   }
 
   async listProductsForMonitoring(): Promise<ProductRecord[]> {
-    return this.products.filter((product) => product.monitoringStatus !== "paused");
+    const activeProductIds = new Set(
+      this.purchases
+        .filter(
+          (purchase) =>
+            purchase.protectionStatus === "active" &&
+            this.isMonitoringEnabled(purchase.userId),
+        )
+        .map((purchase) => purchase.productId),
+    );
+    return this.products.filter((product) => activeProductIds.has(product.id));
+  }
+
+  async listProductsByIds(productIds: string[]): Promise<ProductRecord[]> {
+    const ids = new Set(productIds);
+    return this.products.filter((product) => ids.has(product.id));
+  }
+
+  async getMonitoringPreference(userId: string): Promise<UserMonitoringPreference> {
+    return this.monitoringPreferences.get(userId) ?? {
+      userId,
+      enabled: true,
+      updatedAt: new Date(0).toISOString(),
+    };
+  }
+
+  async setMonitoringEnabled(
+    userId: string,
+    enabled: boolean,
+    updatedAt: string,
+  ): Promise<UserMonitoringPreference> {
+    const preference = { userId, enabled, updatedAt };
+    this.monitoringPreferences.set(userId, preference);
+    return preference;
   }
 
   async recordPriceObservation(
@@ -166,7 +204,10 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
 
   async listActivePurchasesForProduct(productId: string): Promise<PurchaseRecord[]> {
     return this.purchases.filter(
-      (purchase) => purchase.productId === productId && purchase.protectionStatus === "active",
+      (purchase) =>
+        purchase.productId === productId &&
+        purchase.protectionStatus === "active" &&
+        this.isMonitoringEnabled(purchase.userId),
     );
   }
 
@@ -249,6 +290,31 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
     return this.purchases.filter((purchase) => purchase.userId === userId);
   }
 
+  async deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean> {
+    const purchaseIndex = this.purchases.findIndex(
+      (purchase) => purchase.id === purchaseId && purchase.userId === userId,
+    );
+
+    if (purchaseIndex === -1) {
+      return false;
+    }
+
+    const [purchase] = this.purchases.splice(purchaseIndex, 1);
+    if (!purchase) {
+      return false;
+    }
+
+    removeMatching(this.opportunities, (opportunity) => opportunity.purchaseId === purchaseId);
+    removeMatching(this.activityEvents, (event) => event.purchaseId === purchaseId);
+
+    if (!this.purchases.some((candidate) => candidate.productId === purchase.productId)) {
+      removeMatching(this.products, (product) => product.id === purchase.productId);
+      removeMatching(this.observations, (observation) => observation.productId === purchase.productId);
+    }
+
+    return true;
+  }
+
   async listOpportunitiesForUser(userId: string): Promise<OpportunityRecord[]> {
     return this.opportunities.filter((opportunity) => opportunity.userId === userId);
   }
@@ -296,5 +362,18 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
         .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
         .slice(0, limitPerPurchase),
     );
+  }
+
+  private isMonitoringEnabled(userId: string): boolean {
+    return this.monitoringPreferences.get(userId)?.enabled !== false;
+  }
+}
+
+function removeMatching<T>(items: T[], predicate: (item: T) => boolean): void {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item && predicate(item)) {
+      items.splice(index, 1);
+    }
   }
 }

@@ -10,7 +10,9 @@ import {
   extractGenericProductFromDocument,
   extractGenericPurchaseFromDocument,
   extractPurchaseFromDocument,
+  extractShopifyAccountPurchaseFromDocument,
   gbp,
+  isShopifyAccountOrderUrl,
   normalizeRetailerUrl,
   normalizePublicStoreUrl,
   parseGbpPrice,
@@ -19,6 +21,7 @@ import {
   protectPurchase,
   runPriceMonitoringCycle,
   updateOpportunityStatus,
+  validatePurchaseDraft,
 } from "../index";
 
 const orderUrl =
@@ -28,11 +31,14 @@ const productUrl =
 
 describe("GBP price parsing", () => {
   it("parses UK currency strings into pence", () => {
+    expect(parseGbpPrice("£349.99")).toEqual(gbp(34_999));
     expect(parseGbpPrice("£349")).toEqual(gbp(34_900));
     expect(parseGbpPrice("GBP 1,299.99")).toEqual(gbp(129_999));
     expect(parsePrice("$19.99")).toEqual(money(1_999, "USD"));
     expect(parsePrice("EUR 50")).toEqual(money(5_000, "EUR"));
     expect(parseGbpPrice("not a price")).toBeNull();
+    expect(parseGbpPrice("-£20")).toBeNull();
+    expect(parseGbpPrice(null)).toBeNull();
   });
 });
 
@@ -225,6 +231,23 @@ describe("generic store extraction", () => {
       availability: "in_stock",
     });
   });
+
+  it("does not treat a monthly finance amount as the product price", () => {
+    const document = parseHTML(`
+      <html><body>
+        <h1>Premium Telescope</h1>
+        <span data-test="product-price">From £12.50 per month</span>
+      </body></html>
+    `).document;
+
+    expect(
+      extractGenericProductFromDocument(
+        document,
+        "https://shop.example.com/products/premium-telescope",
+        "2026-09-01T08:00:00.000Z",
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("product protection and monitoring", () => {
@@ -366,6 +389,28 @@ describe("product protection and monitoring", () => {
     expect(await repository.listPurchasesForUser("user_1")).toHaveLength(1);
   });
 
+  it("uses SKU before canonical URL when distinguishing product variants", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const common = {
+      retailerId: "store_shop-example-com",
+      retailerName: "Shop",
+      storeHost: "shop.example.com",
+      name: "Trail Pack",
+      canonicalUrl: "https://shop.example.com/products/trail-pack",
+      seenAt: "2026-09-01T08:00:00.000Z",
+    };
+    const green = await repository.upsertProduct({ ...common, sku: "PACK-GREEN" });
+    const blue = await repository.upsertProduct({ ...common, sku: "PACK-BLUE" });
+    const greenFromAlternateUrl = await repository.upsertProduct({
+      ...common,
+      canonicalUrl: "https://shop.example.com/products/trail-pack-green",
+      sku: "PACK-GREEN",
+    });
+
+    expect(blue.id).not.toBe(green.id);
+    expect(greenFromAlternateUrl.id).toBe(green.id);
+  });
+
   it("does not create an opportunity when the current price has not fallen", async () => {
     const repository = new InMemoryAfterBuyRepository();
     await protectPurchase(repository, {
@@ -456,6 +501,191 @@ describe("product protection and monitoring", () => {
     });
     expect(await repository.listOpportunitiesForUser("user_1")).toHaveLength(0);
   });
+
+  it("records price movement without unchanged-event spam and preserves valid state on failure", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const result = await protectPurchase(repository, {
+      userId: "user_1",
+      draft: mustExtractGenericPurchase(),
+      now: "2026-08-30T13:00:00.000Z",
+    });
+    const purchase = result.accepted[0]?.purchase;
+    if (!purchase) throw new Error("Expected protected purchase");
+
+    const base = mustExtractGenericProduct(
+      "product-pack-dropped.html",
+      "2026-09-01T08:00:00.000Z",
+    );
+    await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([{ ...base, price: gbp(8_450) }]),
+      now: base.observedAt,
+    });
+
+    const unchanged = { ...base, price: gbp(8_450), observedAt: "2026-09-01T20:00:00.000Z" };
+    const unchangedSummary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([unchanged]),
+      now: unchanged.observedAt,
+    });
+    expect(unchangedSummary).toMatchObject({ observationsCreated: 1, activityEventsCreated: 0 });
+
+    const dropped = { ...base, price: gbp(6_950), observedAt: "2026-09-02T08:00:00.000Z" };
+    await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([dropped]),
+      now: dropped.observedAt,
+    });
+
+    const increased = { ...base, price: gbp(7_450), observedAt: "2026-09-02T20:00:00.000Z" };
+    await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([increased]),
+      now: increased.observedAt,
+    });
+
+    const failure = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: { fetchCurrentPrice: async () => { throw new Error("HTTP 503"); } },
+      now: "2026-09-03T08:00:00.000Z",
+    });
+    expect(failure.failures).toHaveLength(1);
+    expect(await repository.findLatestObservationForProduct(purchase.productId)).toMatchObject({
+      price: gbp(7_450),
+      observedAt: increased.observedAt,
+    });
+
+    const events = await repository.listActivityEventsForPurchases([purchase.id], 20);
+    expect(events.filter((event) => event.type === "price_dropped")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "price_increased")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "price_observed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "monitoring_error")).toHaveLength(1);
+    expect(events.find((event) => event.type === "price_dropped")?.metadata).toMatchObject({
+      change: gbp(1_500),
+      savingAgainstPaid: gbp(1_500),
+      savingPercentageBps: 1775,
+    });
+  });
+
+  it("records availability only when it changes", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const result = await protectPurchase(repository, {
+      userId: "user_1",
+      draft: mustExtractGenericPurchase(),
+      now: "2026-08-30T13:00:00.000Z",
+    });
+    const purchase = result.accepted[0]?.purchase;
+    if (!purchase) throw new Error("Expected protected purchase");
+    const base = mustExtractGenericProduct(
+      "product-pack-dropped.html",
+      "2026-09-01T08:00:00.000Z",
+    );
+
+    for (const snapshot of [
+      { ...base, availability: "out_of_stock" as const },
+      { ...base, availability: "out_of_stock" as const, observedAt: "2026-09-01T20:00:00.000Z" },
+      { ...base, availability: "in_stock" as const, observedAt: "2026-09-02T08:00:00.000Z" },
+    ]) {
+      await runPriceMonitoringCycle({
+        repository,
+        priceFetcher: new FixturePriceFetcher([snapshot]),
+        now: snapshot.observedAt,
+      });
+    }
+
+    const events = await repository.listActivityEventsForPurchases([purchase.id], 20);
+    expect(events.filter((event) => event.type === "product_unavailable")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "product_available_again")).toHaveLength(1);
+  });
+
+  it("rejects an implausible price without overwriting the last valid observation", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const result = await protectPurchase(repository, {
+      userId: "user_1",
+      draft: mustExtractGenericPurchase(),
+      now: "2026-08-30T13:00:00.000Z",
+    });
+    const purchase = result.accepted[0]?.purchase;
+    if (!purchase) throw new Error("Expected protected purchase");
+    const suspicious = {
+      ...mustExtractGenericProduct("product-pack-dropped.html", "2026-09-01T08:00:00.000Z"),
+      price: gbp(349),
+    };
+    const summary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([suspicious]),
+      now: suspicious.observedAt,
+    });
+
+    expect(summary.failures[0]?.reason).toContain("sanity check");
+    expect(await repository.findLatestObservationForProduct(purchase.productId)).toBeNull();
+  });
+});
+
+describe("Shopify account order extraction", () => {
+  const shopifyOrderUrl =
+    "https://shopify.com/83196445016/account/orders/83db5bea386dc55f4246f1df8e3c5c74?buyer_token_attempted=1&locale=en-GB";
+
+  it("extracts the merchant product from Shopify's hosted account order table", () => {
+    const document = parseHTML(`
+      <html>
+        <head><title>Order #5042 - Seven Gates - Account</title></head>
+        <body>
+          <header><a href="https://sevengatesjewellery.com"><img alt="Seven Gates logo"></a></header>
+          <main>
+            <h1>Order #5042</h1>
+            <p>Confirmed 28 Jul</p>
+            <section aria-label="Order summary">
+              <table aria-label="Order items">
+                <tr>
+                  <td>
+                    <a
+                      aria-label="Clover Bracelet Full Silver Charms"
+                      href="https://sevengatesjewellery.com/products/clover-bracelet-full-silver-charm-bracelet?variant=54776061722968"
+                    ><img src="https://sevengatesjewellery.com/cdn/shop/bracelet.jpg"></a>
+                  </td>
+                  <td>Clover Bracelet Full Silver Charms</td>
+                  <td>£35.00</td>
+                </tr>
+              </table>
+            </section>
+          </main>
+        </body>
+      </html>
+    `).document;
+
+    const draft = extractShopifyAccountPurchaseFromDocument(
+      document,
+      shopifyOrderUrl,
+      "2026-09-09T03:56:47.000Z",
+    );
+
+    expect(draft).toMatchObject({
+      retailerId: "store_sevengatesjewellery-com",
+      retailerName: "Seven Gates",
+      storeHost: "sevengatesjewellery.com",
+      sourceUrl: shopifyOrderUrl,
+      purchasedAt: "2026-07-28T00:00:00.000Z",
+      orderReference: "5042",
+      captureMethod: "generic_dom",
+      captureConfidence: "high",
+      lineItems: [{
+        productName: "Clover Bracelet Full Silver Charms",
+        quantity: 1,
+        pricePaid: gbp(3_500),
+        productUrl:
+          "https://sevengatesjewellery.com/products/clover-bracelet-full-silver-charm-bracelet?variant=54776061722968",
+        externalProductId: "54776061722968",
+      }],
+    });
+    expect(draft && validatePurchaseDraft(draft)).toEqual([]);
+  });
+
+  it("only treats Shopify's strict account order route as a hosted order source", () => {
+    expect(isShopifyAccountOrderUrl(shopifyOrderUrl)).toBe(true);
+    expect(isShopifyAccountOrderUrl("https://shopify.com/blog/order-confirmation-design")).toBe(false);
+    expect(isShopifyAccountOrderUrl("https://example.com/831/account/orders/fake")).toBe(false);
+  });
 });
 
 describe("retailer URL safety", () => {
@@ -491,7 +721,7 @@ describe("retailer URL safety", () => {
   it("normalizes public arbitrary-store URLs while blocking local and cross-store URLs", () => {
     expect(
       normalizePublicStoreUrl(
-        "https://shop.example.com/products/trail-pack-24l-moss-green?variant=green#reviews",
+        "https://shop.example.com/products/trail-pack-24l-moss-green?utm_source=email&variant=green&gclid=123#reviews",
         { expectedHost: "shop.example.com" },
       ),
     ).toEqual({

@@ -130,11 +130,37 @@ export function normalizePublicStoreUrl(
 
   parsed.hash = "";
   parsed.hostname = host;
+  removeTrackingParameters(parsed);
+  parsed.searchParams.sort();
 
   return {
     host,
     url: parsed.toString().replace(/\/$/, ""),
   };
+}
+
+const removableQueryParameters = new Set([
+  "aff",
+  "affiliate",
+  "clickid",
+  "fbclid",
+  "gclid",
+  "mc_cid",
+  "mc_eid",
+  "ref",
+  "referral",
+  "session",
+  "sessionid",
+  "sid",
+]);
+
+function removeTrackingParameters(url: URL): void {
+  for (const key of [...url.searchParams.keys()]) {
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey.startsWith("utm_") || removableQueryParameters.has(normalizedKey)) {
+      url.searchParams.delete(key);
+    }
+  }
 }
 
 export function createGenericRetailerIdFromHost(host: string): RetailerId {

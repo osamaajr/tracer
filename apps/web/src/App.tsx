@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import "./landing-b.css";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ArrowDown,
   ArrowRight,
   Bell,
+  CalendarDays,
   CalendarCheck2,
   ChevronRight,
   CheckCircle2,
   Clock,
+  MoreHorizontal,
   ShieldCheck,
   Settings,
   ShoppingBag,
   Star,
   Tag,
+  TrendingUp,
   UsersRound,
   X,
 } from "lucide-react";
@@ -63,21 +68,310 @@ interface DashboardData {
 }
 
 export function App() {
-  const isDashboard = window.location.pathname.startsWith("/dashboard");
-  return isDashboard ? <Dashboard /> : <LandingPage />;
+  const pathname = normalisePathname(window.location.pathname);
+  const isDashboard = pathname.startsWith("/dashboard");
+  useEffect(() => {
+    if (isDashboard) window.location.replace("/");
+  }, [isDashboard]);
+
+  if (isDashboard) return null;
+  if (pathname === "/landing-b") return <LandingPageB />;
+  if (pathname === "/contact") return <ContactPage />;
+  if (pathname === "/privacy") return <PrivacyPage />;
+  if (pathname === "/terms") return <TermsPage />;
+  return <LandingPage />;
+}
+
+function normalisePathname(pathname: string): string {
+  if (pathname === "/") return pathname;
+  return pathname.replace(/\/+$/, "") || "/";
 }
 
 function LandingPage() {
   return (
     <main className="landing-shell">
-      <Header />
+      <LandingHeader />
       <HeroSection />
       <TransitionStatement />
       <HowItWorksSection />
       <WatchingSection />
-      <FinalCtaSection />
       <Footer />
     </main>
+  );
+}
+
+function LandingPageB() {
+  const skyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) return;
+
+    let frame = 0;
+    const updateSky = () => {
+      frame = 0;
+      const shift = Math.min(window.scrollY * 0.035, 24);
+      skyRef.current?.style.setProperty("--landing-b-sky-shift", `${shift}px`);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateSky);
+    };
+
+    updateSky();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <main className="landing-shell landing-shell-b">
+      <div className="landing-b-sky" ref={skyRef}>
+        <LandingHeader />
+        <HeroSectionB />
+        <div className="landing-b-cloud-bridge" aria-hidden="true" />
+      </div>
+      <LandingBValueStatement />
+      <LandingBFeatures />
+      <LandingBDemo />
+      <Footer />
+    </main>
+  );
+}
+
+function HeroSectionB() {
+  return (
+    <section className="hero landing-b-hero" id="install">
+      <div className="hero-copy">
+        <h1>Bought it?<br />We'll keep<br />watching it.</h1>
+        <p className="hero-text">
+          Tracer watches your purchases after checkout and alerts you when prices drop or there's something worth acting on.
+        </p>
+        <a className="primary-button hero-cta" href="#install">
+          <ChromeMark />
+          Add to Chrome - It's free
+        </a>
+      </div>
+      <div className="hero-stage landing-b-hero-stage" aria-label="Tracer purchase monitoring preview">
+        <HeroMonitoringVisual />
+      </div>
+    </section>
+  );
+}
+
+interface FloatingAlertCardProps {
+  className: string;
+  copy: string;
+  icon: ReactNode;
+  time: string;
+  title: string;
+  tone: "red" | "blue" | "amber";
+}
+
+function FloatingAlertCard({ className, copy, icon, time, title, tone }: FloatingAlertCardProps) {
+  return (
+    <article className={`landing-b-alert-card landing-b-hover-card ${className}`} tabIndex={0}>
+      <span className="landing-b-rays" aria-hidden="true"><i /><i /><i /></span>
+      <span className={`landing-b-alert-icon landing-b-alert-icon-${tone}`}>{icon}</span>
+      <div className="landing-b-alert-copy"><strong>{title}</strong><p>{copy}</p></div>
+      <time>{time}</time>
+    </article>
+  );
+}
+
+function HeroMonitoringVisual() {
+  return (
+    <div className="landing-b-card-scene">
+      <article className="landing-b-watch-card landing-b-hover-card" tabIndex={0}>
+        <header>
+          <img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" />
+          <MoreHorizontal aria-hidden="true" size={20} />
+        </header>
+        <div className="landing-b-watch-body">
+          <span className="landing-b-watch-icon"><ShoppingBag aria-hidden="true" size={25} /></span>
+          <div>
+            <h2>Watching your purchase</h2>
+            <p>We'll alert you if the price drops, there are updates, or a refund opportunity.</p>
+          </div>
+        </div>
+        <footer>
+          <span><CheckCircle2 aria-hidden="true" size={14} />Monitoring</span>
+          <span>You're covered</span>
+        </footer>
+      </article>
+
+      <FloatingAlertCard
+        className="landing-b-alert-price"
+        copy="This item is now £28 less."
+        icon={<ArrowDown aria-hidden="true" size={24} />}
+        time="2h ago"
+        title="Price drop detected"
+        tone="red"
+      />
+      <FloatingAlertCard
+        className="landing-b-alert-up"
+        copy="No changes yet. We’ll keep an eye on it."
+        icon={<TrendingUp aria-hidden="true" size={24} />}
+        time="3d ago"
+        title="Still watching"
+        tone="blue"
+      />
+      <FloatingAlertCard
+        className="landing-b-alert-return"
+        copy="You have 4 days left to return this item."
+        icon={<CalendarDays aria-hidden="true" size={23} />}
+        time="5d ago"
+        title="Return window ending soon"
+        tone="amber"
+      />
+    </div>
+  );
+}
+
+function LandingBValueStatement() {
+  return (
+    <section className="landing-b-value">
+      <h2>After checkout,<br />Tracer keeps watching.</h2>
+      <p>We keep checking, so you don’t have to.</p>
+    </section>
+  );
+}
+
+function LandingBFeatures() {
+  return (
+    <section className="landing-b-body-section landing-b-features" aria-label="Tracer benefits">
+      <div className="landing-b-editorial-features">
+        <article className="landing-b-editorial-feature">
+          <div className="landing-b-editorial-copy">
+            <h3>Finds price drops after checkout.</h3>
+            <p>Tracer keeps checking protected purchases and lets you know when the price drops.</p>
+          </div>
+          <div className="landing-b-feature-visual landing-b-drop-visual" aria-label="Tracer price-drop notification example">
+            <div className="landing-b-feature-alert landing-b-feature-alert-combined">
+              <span className="landing-b-feature-alert-icon"><ArrowDown aria-hidden="true" size={25} /></span>
+              <div><strong>Price drop detected</strong><p>Sony WH-1000XM5 is now £319.99.</p></div>
+              <time>Just now</time>
+              <div className="landing-b-feature-price-row">
+                <span><small>You paid</small><strong>£349.99</strong></span>
+                <ArrowRight aria-hidden="true" size={20} />
+                <span><small>Now</small><strong>£319.99</strong></span>
+                <em>£30 less</em>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="landing-b-editorial-feature landing-b-editorial-feature-reversed">
+          <div className="landing-b-editorial-copy">
+            <h3>Keeps monitoring automatically.</h3>
+            <p>Protect a purchase once, and Tracer continues checking it in the background.</p>
+          </div>
+          <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
+            <div className="landing-b-monitor-card">
+              <div className="landing-b-monitor-product">
+                <img className="landing-b-monitor-product-image" src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" />
+                <div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div>
+              </div>
+              <dl>
+                <div><dt>Paid</dt><dd>£349.99</dd></div>
+                <div><dt>Current price</dt><dd>£349.99</dd></div>
+              </dl>
+              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching</span><small><CheckCircle2 aria-hidden="true" size={13} /> Protected · Checked just now</small></footer>
+            </div>
+          </div>
+        </article>
+
+        <article className="landing-b-editorial-feature">
+          <div className="landing-b-editorial-copy">
+            <h3>Alerts you when something changes.</h3>
+            <p>Tracer notifies you when there is a meaningful price change or update worth knowing about.</p>
+          </div>
+          <div className="landing-b-feature-visual landing-b-update-visual" aria-label="Tracer activity alert example">
+            <div className="landing-b-update-card">
+              <header>
+                <span><Bell aria-hidden="true" size={20} /></span>
+                <div><strong>Opportunity found</strong><p>There’s something worth acting on.</p></div>
+                <time>Now</time>
+              </header>
+              <div className="landing-b-update-detail">
+                <span><TrendingUp aria-hidden="true" size={21} /></span>
+                <div><strong>£30 potential saving found</strong><p>Review your price-protection options.</p></div>
+                <ChevronRight aria-hidden="true" size={20} />
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function LandingBDemo() {
+  const [step, setStep] = useState(0);
+  const titles = ["A purchase worth watching.", "Go on with your day.", "A little heads-up. A lower price."];
+  const captions = ["Choose a purchase to protect. Tracer takes it from here.", "Your protected purchase stays on Tracer’s watchlist.", "When the price drops, you’ll know."];
+
+  return (
+    <section className="landing-b-demo" aria-labelledby="landing-b-demo-title">
+      <header className="landing-b-demo-heading">
+        <div><span>TAKE A CLOSER LOOK</span><h2 id="landing-b-demo-title">A small click.<br />A watchful little companion.</h2></div>
+        <p>See what happens after checkout.<br />Try a purchase, from protected to price drop.</p>
+      </header>
+      <div className="landing-b-demo-stage">
+        <div className="landing-b-demo-toolbar"><span><i /><i /><i /></span><small>Tracer in action · Interactive demo</small><span aria-hidden="true"><ShieldCheck size={17} /></span></div>
+        <div className="landing-b-demo-scene">
+          <div className="landing-b-demo-caption"><span>YOUR PURCHASE, AFTER CHECKOUT</span><h3>{titles[step]}</h3><p>{captions[step]}</p></div>
+          <div className="landing-b-demo-preview" key={step}>
+            <div className="landing-b-demo-card">
+              <header><img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" /><span>{step === 0 ? "Purchase detected" : "Protected"}</span></header>
+              <div className="landing-b-demo-product"><img src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" /><div><strong>Sony WH-1000XM5</strong><p>John Lewis</p><b>£349.99</b></div></div>
+              {step === 0 ? <button onClick={() => setStep(1)}>Protect purchase <ArrowRight size={17} /></button> : <div className="landing-b-demo-status"><CheckCircle2 size={18} /><span>{step === 1 ? "Monitoring your purchase" : "Price drop detected"}</span></div>}
+            </div>
+            {step === 2 && <div className="landing-b-demo-notification"><span><ArrowDown size={25} /></span><div><strong>Now £30 less.</strong><p>Your headphones are now £319.99.</p></div><Bell size={18} /></div>}
+          </div>
+        </div>
+        <div className="landing-b-demo-controls"><div role="group" aria-label="Demo stages">{["Protect", "Monitor", "Get notified"].map((label, index) => <button key={label} aria-pressed={step === index} onClick={() => setStep(index)}><span>{index + 1}</span>{label}</button>)}</div><button className="landing-b-demo-next" onClick={() => setStep((step + 1) % 3)}>{step === 2 ? "Replay demo" : "Next moment"}<ArrowRight size={17} /></button></div>
+      </div>
+    </section>
+  );
+}
+
+function LandingHeader({ homeHref = "/", installHref = "#install" }: { homeHref?: string; installHref?: string }) {
+  const [floating, setFloating] = useState(false);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      // Hysteresis avoids flickering around the transition point.
+      setFloating((previous) => window.scrollY > (previous ? 20 : 48));
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <div className="landing-header-space">
+      <header className="site-header landing-header" data-floating={floating}>
+        <a className="brand" href={homeHref} aria-label="Tracer home">
+          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
+          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
+        </a>
+        <a className="header-cta" href={installHref}>
+          <ChromeMark />
+          Add to Chrome
+          <ArrowRight aria-hidden="true" size={16} />
+        </a>
+      </header>
+    </div>
   );
 }
 
@@ -89,10 +383,10 @@ function Header() {
         <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
       </a>
       <nav className="nav-links" aria-label="Primary navigation">
-        <a href="#how-it-works">How it works</a>
-        <a href="#privacy">Privacy</a>
-        <a href="#faq">FAQ</a>
-        <a href="#support">Support</a>
+        <a href="/#how-it-works">How it works</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/#faq">FAQ</a>
+        <a href="/contact">Support</a>
       </nav>
       <a className="header-cta" href="#install">
         <ChromeMark />
@@ -105,15 +399,15 @@ function Header() {
 
 function ChromeMark() {
   return (
-    <span className="chrome-mark" aria-hidden="true">
-      <i />
-    </span>
+    <svg className="chrome-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z" fill="currentColor" />
+    </svg>
   );
 }
 
 function HeroSection() {
   return (
-    <section className="hero">
+    <section className="hero" id="install">
       <div className="hero-copy">
         <h1>Bought it?<br />We'll keep<br />watching it.</h1>
         <p className="hero-text">
@@ -306,44 +600,202 @@ function MetricPanel() {
   );
 }
 
-function FinalCtaSection() {
-  return (
-    <section className="final-cta-section" id="install">
-      <div>
-        <img src="/assets/tracer-logo.png" alt="" />
-        <p className="eyebrow">Install Tracer</p>
-        <h2>Start protecting your purchases today</h2>
-        <p>Join thousands of shoppers who let Tracer watch their back.</p>
-        <a className="primary-button" href="/dashboard"><ChromeMark />Add to Chrome - It's free</a>
-      </div>
-    </section>
-  );
-}
-
 function Footer() {
   return (
     <footer className="site-footer" id="faq">
-      <div className="footer-brand-block">
-        <a className="brand" href="/" aria-label="Tracer home">
+      <div className="footer-row">
+        <div className="brand" aria-label="Tracer">
           <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
           <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
-        </a>
-        <p>Your purchases don't end at checkout.</p>
+        </div>
+        <nav className="footer-links" aria-label="Footer navigation">
+          <a href="/contact">Contact</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
       </div>
-      <nav className="footer-links" aria-label="Footer navigation">
-        <div><h3>Product</h3><a href="#how-it-works">How it works</a><a href="#privacy">Privacy</a><a href="#faq">FAQ</a><a href="#support">Support</a></div>
-        <div><h3>Company</h3><a href="#support">About</a><a href="#support">Blog</a><a href="#support">Careers</a><a href="#support">Contact</a></div>
-        <div><h3>Legal</h3><a href="#privacy">Privacy Policy</a><a href="#support">Terms of Service</a></div>
-      </nav>
-      <div className="footer-card">
-        <p>Made with care in the UK</p>
-        <p>© 2026 Tracer. All rights reserved.</p>
-      </div>
+      <p className="footer-copyright">© 2026 Tracer. All rights reserved.</p>
     </footer>
   );
 }
 
-function Dashboard() {
+function SitePage({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    document.title = `${title} · Tracer`;
+  }, [title]);
+
+  return (
+    <main className="site-page-shell landing-shell-b landing-b-subpage">
+      <LandingHeader homeHref="/landing-b" installHref="/landing-b#install" />
+      <div className="site-page-main">
+        <header className="site-page-intro">
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </header>
+        {children}
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
+function ContactPage() {
+  return (
+    <SitePage
+      title="Contact"
+      description="Questions, feedback, or support requests? Get in touch and we’ll do our best to help."
+    >
+      <section className="contact-card" aria-labelledby="contact-email-heading">
+        <div>
+          <p className="contact-label" id="contact-email-heading">Email</p>
+          <a className="contact-address" href="mailto:osama.alnajar.26@gmail.com">
+            osama.alnajar.26@gmail.com
+          </a>
+          <p>Tracer is currently in its early version, so email is the best way to get in touch.</p>
+        </div>
+        <a className="primary-button contact-button" href="mailto:osama.alnajar.26@gmail.com">
+          Email us
+          <ArrowRight aria-hidden="true" size={16} />
+        </a>
+      </section>
+    </SitePage>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <SitePage title="Privacy Policy" description="How Tracer handles your data.">
+      <article className="policy-document">
+        <PolicySection title="Introduction">
+          <p>Tracer helps you monitor purchases you choose to protect after checkout. Privacy and minimal data collection are part of how the product is designed: Tracer aims to use only the information needed to provide its core features.</p>
+        </PolicySection>
+
+        <PolicySection title="What Tracer stores">
+          <p>Tracer may store the details needed to protect and monitor a purchase, including:</p>
+          <ul>
+            <li>Product and retailer names.</li>
+            <li>Purchase date and purchase price, when available.</li>
+            <li>Monitoring status and price-related information.</li>
+            <li>Your notification and monitoring preferences.</li>
+          </ul>
+        </PolicySection>
+
+        <PolicySection title="What Tracer does not aim to collect" emphasis>
+          <p>Tracer is designed to avoid unnecessary data collection.</p>
+          <ul>
+            <li>Tracer does not require access to your email inbox.</li>
+            <li>Tracer does not ask for your payment-card details.</li>
+            <li>Tracer saves only the purchases you choose to protect.</li>
+            <li>Tracer is intended to use only the information needed for its core functionality.</li>
+          </ul>
+        </PolicySection>
+
+        <PolicySection title="How data is used">
+          <p>Stored information is used to monitor protected purchases, surface relevant price changes or purchase updates, power your saved-purchase list, and remember your settings.</p>
+        </PolicySection>
+
+        <PolicySection title="Browser and extension storage">
+          <p>Tracer may store relevant purchase and settings data locally in your browser or extension storage in order to power the product experience.</p>
+        </PolicySection>
+
+        <PolicySection title="Third-party services">
+          <p>Tracer may rely on third-party services or infrastructure to operate certain parts of the product. Where applicable, those services may process limited data needed to provide the service.</p>
+        </PolicySection>
+
+        <PolicySection title="Your controls">
+          <p>You can turn monitoring on or off, turn price-drop alerts on or off, and clear protected purchases from your device through the extension settings.</p>
+        </PolicySection>
+
+        <PolicySection title="Data retention">
+          <p>Tracer keeps relevant data only as needed to support its functionality, or until you clear it where that control is available.</p>
+        </PolicySection>
+
+        <PolicySection title="Changes to this policy">
+          <p>We may update this policy from time to time as Tracer evolves. The latest version will be published on this page.</p>
+        </PolicySection>
+
+        <PolicySection title="Contact">
+          <p>If you have privacy-related questions, contact <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
+        </PolicySection>
+      </article>
+    </SitePage>
+  );
+}
+
+function TermsPage() {
+  return (
+    <SitePage title="Terms of Service" description="The basic terms for using Tracer.">
+      <article className="policy-document">
+        <PolicySection title="Acceptance of terms">
+          <p>By using Tracer, you agree to these terms. If you do not agree, please do not use the service.</p>
+        </PolicySection>
+
+        <PolicySection title="What Tracer is">
+          <p>Tracer is a tool designed to help users monitor selected purchases after checkout and surface information that may be useful.</p>
+        </PolicySection>
+
+        <PolicySection title="Use of the service">
+          <p>You agree to use Tracer lawfully and responsibly, and not to misuse, disrupt, or attempt to interfere with the service.</p>
+        </PolicySection>
+
+        <PolicySection title="Service availability">
+          <p>Tracer is provided on an “as is” and “as available” basis. Features, monitoring coverage, and availability may change over time, and uninterrupted service is not guaranteed.</p>
+        </PolicySection>
+
+        <PolicySection title="Accuracy and limitations" emphasis>
+          <p>Tracer aims to surface useful information, but it does not guarantee perfect retailer coverage, uninterrupted monitoring, or completely accurate and up-to-date price or policy information at all times.</p>
+        </PolicySection>
+
+        <PolicySection title="Your responsibility">
+          <p>You remain responsible for your purchase decisions, claims, retailer interactions, and for checking relevant details before acting on an alert or update from Tracer.</p>
+        </PolicySection>
+
+        <PolicySection title="Intellectual property">
+          <p>The Tracer product, brand, and site content belong to Tracer unless otherwise stated. These terms do not transfer ownership of that material to you.</p>
+        </PolicySection>
+
+        <PolicySection title="Changes to the service">
+          <p>Tracer may update, modify, suspend, or discontinue features as the product develops.</p>
+        </PolicySection>
+
+        <PolicySection title="Changes to these terms">
+          <p>We may update these terms from time to time. The latest version will be published on this page.</p>
+        </PolicySection>
+
+        <PolicySection title="Contact">
+          <p>If you have questions about these terms, contact <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
+        </PolicySection>
+      </article>
+    </SitePage>
+  );
+}
+
+function PolicySection({
+  title,
+  emphasis = false,
+  children,
+}: {
+  title: string;
+  emphasis?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className="policy-section" data-emphasis={emphasis}>
+      <h2>{title}</h2>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function _Dashboard() {
   const [dashboard, setDashboard] = useState<DashboardData>({ purchases: [], opportunities: [] });
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "offline">("idle");
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
@@ -612,7 +1064,7 @@ function retailerName(purchase: DashboardPurchase): string {
   return purchase.retailerName ?? (purchase.retailerId === "john-lewis" ? "John Lewis" : purchase.retailerId);
 }
 
-function retailerAsset(retailerId: string): string | null {
+function _retailerAsset(retailerId: string): string | null {
   const assets: Record<string, string> = {
     amazon: "/assets/store-amazon.png",
     apple: "/assets/store-apple.png",

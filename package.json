@@ -14,6 +14,7 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
+    "verify:monitoring": "esbuild scripts/verify-monitoring-e2e.ts --bundle --platform=node --format=esm --outfile=/private/tmp/tracer-monitoring-e2e.mjs && node /private/tmp/tracer-monitoring-e2e.mjs",
     "lint": "eslint ."
   },
   "devDependencies": {

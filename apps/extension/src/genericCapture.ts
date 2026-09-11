@@ -6,9 +6,11 @@ import type {
   PurchaseLineItemDraft,
 } from "@afterbuy/core";
 import {
+  extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
   firstUsableProductImage,
+  isShopifyAccountOrderUrl,
 } from "@afterbuy/core";
 
 declare global {
@@ -23,6 +25,7 @@ interface ScanRequest {
 
 interface ScanResponse {
   ok: boolean;
+  failureReason?: "not_purchase_page" | "incomplete" | "scan_error";
   draft?: PurchaseDraft;
   summary?: {
     retailerName: string;
@@ -49,12 +52,30 @@ if (!window.__afterbuyGenericCaptureReady) {
         return false;
       }
 
-      const draft = extractPurchaseFromPage(document, window.location.href);
+      let draft: PurchaseDraft | null;
 
-      if (!draft) {
+      try {
+        draft = extractPurchaseFromPage(document, window.location.href);
+      } catch {
         sendResponse({
           ok: false,
-          error: "No order confirmation data found on this page.",
+          failureReason: "scan_error",
+          error: "Tracer could not safely scan this page.",
+        });
+        return false;
+      }
+
+      if (!draft) {
+        const failureReason = looksLikeOrderConfirmation(document, window.location.href)
+          ? "incomplete"
+          : "not_purchase_page";
+        sendResponse({
+          ok: false,
+          failureReason,
+          error:
+            failureReason === "incomplete"
+              ? "This looks like an order page, but Tracer could not read enough reliable details."
+              : "No order confirmation data found on this page.",
         });
         return false;
       }
@@ -83,10 +104,19 @@ if (!window.__afterbuyGenericCaptureReady) {
   );
 }
 
-function extractPurchaseFromPage(page: Document, sourceUrl: string): PurchaseDraft | null {
+export function extractPurchaseFromPage(page: Document, sourceUrl: string): PurchaseDraft | null {
   const demoDraft = extractLocalDemoDraft(page, sourceUrl);
   if (demoDraft) {
     return demoDraft;
+  }
+
+  if (isKnownNonRetailContentUrl(sourceUrl)) {
+    return null;
+  }
+
+  const shopifyDraft = extractShopifyAccountPurchaseFromDocument(page, sourceUrl);
+  if (shopifyDraft) {
+    return shopifyDraft;
   }
 
   const storefront = storefrontFromUrl(sourceUrl);
@@ -446,6 +476,14 @@ function storefrontFromUrl(rawUrl: string): Storefront | null {
 }
 
 function looksLikeOrderConfirmation(page: Document, sourceUrl: string): boolean {
+  if (isKnownNonRetailContentUrl(sourceUrl)) {
+    return false;
+  }
+
+  if (isShopifyAccountOrderUrl(sourceUrl)) {
+    return true;
+  }
+
   const haystack = `${page.title} ${sourceUrl} ${page.body?.textContent ?? ""}`.toLowerCase();
   return (
     haystack.includes("order confirmation") ||
@@ -454,6 +492,35 @@ function looksLikeOrderConfirmation(page: Document, sourceUrl: string): boolean 
     haystack.includes("order number") ||
     haystack.includes("order reference")
   );
+}
+
+function isKnownNonRetailContentUrl(sourceUrl: string): boolean {
+  const contentHosts = [
+    "behance.net",
+    "canva.com",
+    "dribbble.com",
+    "facebook.com",
+    "figma.com",
+    "google.com",
+    "imgur.com",
+    "instagram.com",
+    "pexels.com",
+    "pinterest.com",
+    "reddit.com",
+    "shutterstock.com",
+    "twitter.com",
+    "unsplash.com",
+    "vecteezy.com",
+    "vectorstock.com",
+    "x.com",
+  ];
+
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
+    return contentHosts.some((contentHost) => host === contentHost || host.endsWith(`.${contentHost}`));
+  } catch {
+    return true;
+  }
 }
 
 function normalizeSameHostUrl(
@@ -523,25 +590,33 @@ function parseJson(value: string): unknown {
 }
 
 function findTypedNode(value: unknown, type: string): Record<string, unknown> | null {
-  const record = asRecord(value);
+  const pending: unknown[] = [value];
+  const visited = new Set<object>();
+  const maxVisitedNodes = 5_000;
 
-  if (record && hasType(record, type)) {
-    return record;
-  }
-
-  for (const child of asArray(value)) {
-    const match = findTypedNode(child, type);
-    if (match) {
-      return match;
+  while (pending.length > 0 && visited.size < maxVisitedNodes) {
+    const current = pending.pop();
+    if (typeof current !== "object" || current === null || visited.has(current)) {
+      continue;
     }
-  }
 
-  if (record) {
-    for (const child of Object.values(record)) {
-      const match = findTypedNode(child, type);
-      if (match) {
-        return match;
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) {
+        pending.push(current[index]);
       }
+      continue;
+    }
+
+    const record = current as Record<string, unknown>;
+    if (hasType(record, type)) {
+      return record;
+    }
+
+    const children = Object.values(record);
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      pending.push(children[index]);
     }
   }
 

@@ -135,6 +135,8 @@ export interface OpportunityRecord {
 
 export type ActivityEventType =
   | "purchase_protected"
+  | "monitoring_paused"
+  | "monitoring_resumed"
   | "price_observed"
   | "price_dropped"
   | "price_increased"
@@ -274,6 +276,12 @@ export interface LatestObservation {
   observation: PriceObservationRecord;
 }
 
+export interface UserMonitoringPreference {
+  userId: string;
+  enabled: boolean;
+  updatedAt: string;
+}
+
 export interface AfterBuyRepository {
   upsertProduct(input: ProductUpsertInput): Promise<ProductRecord>;
   createPurchase(input: PurchaseCreateInput): Promise<PurchaseRecord>;
@@ -281,6 +289,13 @@ export interface AfterBuyRepository {
     fingerprint: PurchaseFingerprint,
   ): Promise<PurchaseRecord | null>;
   listProductsForMonitoring(now: string): Promise<ProductRecord[]>;
+  listProductsByIds(productIds: string[]): Promise<ProductRecord[]>;
+  getMonitoringPreference(userId: string): Promise<UserMonitoringPreference>;
+  setMonitoringEnabled(
+    userId: string,
+    enabled: boolean,
+    updatedAt: string,
+  ): Promise<UserMonitoringPreference>;
   recordPriceObservation(
     input: PriceObservationCreateInput,
   ): Promise<PriceObservationRecord>;
@@ -302,6 +317,7 @@ export interface AfterBuyRepository {
     statusUpdatedAt: string,
   ): Promise<OpportunityRecord | null>;
   listPurchasesForUser(userId: string): Promise<PurchaseRecord[]>;
+  deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean>;
   listOpportunitiesForUser(userId: string): Promise<OpportunityRecord[]>;
   listLatestObservationsByProductIds(
     productIds: string[],

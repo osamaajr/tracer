@@ -16,51 +16,123 @@ const maxHtmlBytes = 2_000_000;
 const requestTimeoutMs = 10_000;
 const maxRedirects = 5;
 
+export interface HttpPriceFetcherOptions {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+  fetchImpl?: typeof fetch;
+  resolveHost?: (host: string) => Promise<Array<{ address: string }>>;
+  sleep?: (milliseconds: number) => Promise<void>;
+}
+
 export class HttpPriceFetcher implements PriceFetcher {
-  async fetchCurrentPrice(product: ProductRecord): Promise<ProductPriceSnapshot> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  private readonly maxAttempts: number;
+  private readonly retryDelayMs: number;
+  private readonly fetchImpl: typeof fetch;
+  private readonly resolveHost: (host: string) => Promise<Array<{ address: string }>>;
+  private readonly sleep: (milliseconds: number) => Promise<void>;
 
-    try {
-      const response = await fetchWithValidatedRedirects(product, controller.signal);
-
-      if (!response.ok) {
-        throw new Error(`Product page returned ${response.status}`);
-      }
-
-      const html = (await response.text()).slice(0, maxHtmlBytes);
-      const document = parseHTML(html).document;
-      const observedAt = new Date().toISOString();
-      const snapshot =
-        extractJohnLewisProductFromDocument(document, product.canonicalUrl, observedAt) ??
-        extractGenericProductFromDocument(document, product.canonicalUrl, observedAt);
-
-      if (!snapshot) {
-        throw new Error("No product price could be extracted");
-      }
-
-      return {
-        ...snapshot,
-        retailerId: product.retailerId,
-        retailerName: snapshot.retailerName ?? product.retailerName,
-        storeHost: snapshot.storeHost ?? product.storeHost,
-      };
-    } finally {
-      clearTimeout(timeout);
-    }
+  constructor(options: HttpPriceFetcherOptions = {}) {
+    this.maxAttempts = Math.max(1, options.maxAttempts ?? 2);
+    this.retryDelayMs = Math.max(0, options.retryDelayMs ?? 500);
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.resolveHost = options.resolveHost ?? (async (host) => lookup(host, { all: true }));
+    this.sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => {
+      setTimeout(resolve, milliseconds);
+    }));
   }
+
+  async fetchCurrentPrice(product: ProductRecord): Promise<ProductPriceSnapshot> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+
+      try {
+        const response = await fetchWithValidatedRedirects(
+          product,
+          controller.signal,
+          this.fetchImpl,
+          this.resolveHost,
+        );
+
+        if (!response.ok) {
+          throw new ProductPageHttpError(response.status);
+        }
+
+        const html = await readLimitedHtml(response, maxHtmlBytes);
+        const document = parseHTML(html).document;
+        const observedAt = new Date().toISOString();
+        const snapshot = product.retailerId === "john-lewis"
+          ? extractJohnLewisProductFromDocument(document, product.canonicalUrl, observedAt)
+          : extractGenericProductFromDocument(document, product.canonicalUrl, observedAt);
+
+        if (!snapshot) {
+          throw new Error("No product price could be extracted");
+        }
+
+        return {
+          ...snapshot,
+          retailerId: product.retailerId,
+          retailerName: snapshot.retailerName ?? product.retailerName,
+          storeHost: snapshot.storeHost ?? product.storeHost,
+        };
+      } catch (error) {
+        lastError = error;
+        if (attempt >= this.maxAttempts || !isRetryableFetchError(error)) {
+          throw error;
+        }
+        await this.sleep(this.retryDelayMs * 2 ** (attempt - 1));
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw lastError;
+  }
+}
+
+async function readLimitedHtml(response: Response, byteLimit: number): Promise<string> {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > byteLimit) {
+    throw new Error("Product page response exceeded the size limit");
+  }
+
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let html = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytesRead += value.byteLength;
+    if (bytesRead > byteLimit) {
+      await reader.cancel();
+      throw new Error("Product page response exceeded the size limit");
+    }
+    html += decoder.decode(value, { stream: true });
+  }
+
+  return html + decoder.decode();
 }
 
 async function fetchWithValidatedRedirects(
   product: ProductRecord,
   signal: AbortSignal,
+  fetchImpl: typeof fetch,
+  resolveHost: (host: string) => Promise<Array<{ address: string }>>,
 ): Promise<Response> {
   let currentUrl = normalizeProductFetchUrl(product, product.canonicalUrl);
 
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
-    await assertPublicDnsTarget(currentUrl.host);
+    await assertPublicDnsTarget(currentUrl.host, resolveHost);
 
-    const response = await fetch(currentUrl.url, {
+    const response = await fetchImpl(currentUrl.url, {
       headers: {
         accept: "text/html,application/xhtml+xml",
         "user-agent":
@@ -100,12 +172,42 @@ function isRedirectResponse(status: number): boolean {
   return status >= 300 && status < 400;
 }
 
-async function assertPublicDnsTarget(host: string): Promise<void> {
-  const addresses = await lookup(host, { all: true });
+async function assertPublicDnsTarget(
+  host: string,
+  resolveHost: (host: string) => Promise<Array<{ address: string }>>,
+): Promise<void> {
+  const addresses = await resolveHost(host);
 
   if (addresses.some(({ address }) => isPrivateOrLocalAddress(address))) {
     throw new Error(`Product page host ${host} resolved to a private address`);
   }
+}
+
+class ProductPageHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Product page returned ${status}`);
+  }
+}
+
+function isRetryableFetchError(error: unknown): boolean {
+  if (error instanceof ProductPageHttpError) {
+    return error.status === 429 || error.status >= 500;
+  }
+
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  if (error instanceof TypeError) {
+    return true;
+  }
+
+  return Boolean(
+    typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string",
+  );
 }
 
 function isPrivateOrLocalAddress(address: string): boolean {

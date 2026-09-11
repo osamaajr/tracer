@@ -89,16 +89,16 @@ export function extractGenericProductFromDocument(
     document.querySelector("h1")?.textContent?.trim() ??
     document.title.trim();
   const priceCurrency = firstString(offer?.priceCurrency) ?? "GBP";
+  const fallbackPriceText = document
+    .querySelector<HTMLElement>(
+      "[data-afterbuy-current-price], [data-test='product-price'], [itemprop='price']",
+    )
+    ?.textContent?.trim();
   const price =
     parsePrice(firstString(offer?.price) ?? String(offer?.price ?? ""), priceCurrency) ??
-    parsePrice(
-      document
-        .querySelector<HTMLElement>(
-          "[data-afterbuy-current-price], [data-test='product-price'], [itemprop='price'], .price",
-        )
-        ?.textContent?.trim(),
-      priceCurrency,
-    );
+    (isInstallmentPrice(fallbackPriceText)
+      ? null
+      : parsePrice(fallbackPriceText, priceCurrency));
 
   if (!productName || !price) {
     return null;
@@ -133,6 +133,10 @@ export function extractGenericProductFromDocument(
   }
 
   return snapshot;
+}
+
+function isInstallmentPrice(value: string | undefined): boolean {
+  return Boolean(value && /(per\s+month|monthly|\/\s*mo\b|finance|instalment|installment)/i.test(value));
 }
 
 export function looksLikeOrderConfirmation(document: Document, sourceUrl: string): boolean {

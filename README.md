@@ -49,6 +49,7 @@ npm run dev:api
 npm run dev:web
 npm run dev -w @afterbuy/extension
 npm run monitor -w @afterbuy/api
+npm run verify:monitoring
 ```
 
 The API defaults to `http://localhost:4000`. The web app defaults to `http://localhost:5173`.
@@ -60,19 +61,24 @@ To load the extension locally:
 3. Enable Developer mode.
 4. Load `apps/extension/dist` as an unpacked extension.
 
+Keep `npm run dev` running while using the local extension: saving purchases and checking protection require the API on port 4000. After rebuilding the extension, click Reload on its card in `chrome://extensions`.
+
 The popup can scan the active HTTPS tab for generic order data. The content script also runs on HTTPS pages and shows an automatic prompt only when the order can be confidently parsed.
 
 ## Demo Flows
 
-The John Lewis fixture represents Sony headphones bought for `£349`. The dev monitoring fetcher observes the same product at `£319`, creating a `£30` potential Price Promise opportunity when the purchase is still within 7 days.
+The deterministic monitoring fixture represents a Trail Pack bought for `£84.50`. Run the paid state first, then the dropped state at `£69.50`; both use the production monitoring use case.
 
 ```sh
 curl -X POST http://localhost:4000/api/purchases/protect \
   -H "content-type: application/json" \
   -H "x-afterbuy-user-id: dev-user-afterbuy" \
-  --data @packages/core/fixtures/john-lewis/protect-purchase-request.json
+  --data @packages/core/fixtures/generic-store/protect-purchase-request.json
 
-curl -X POST http://localhost:4000/api/dev/run-monitoring \
+curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=paid' \
+  -H "x-afterbuy-user-id: dev-user-afterbuy"
+
+curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=dropped' \
   -H "x-afterbuy-user-id: dev-user-afterbuy"
 
 curl http://localhost:4000/api/dashboard \
@@ -82,16 +88,9 @@ curl http://localhost:4000/api/extension/sync \
   -H "x-afterbuy-user-id: dev-user-afterbuy"
 ```
 
-The generic fixture represents an arbitrary `shop.example.com` order. It can be protected and listed on the dashboard, but it will not create a claim opportunity until a verified policy exists for that store.
+The generic fixture also proves that price tracking is independent of retailer refund-policy support. Policy opportunities remain a separate optional capability.
 
-```sh
-curl -X POST http://localhost:4000/api/purchases/protect \
-  -H "content-type: application/json" \
-  -H "x-afterbuy-user-id: dev-user-afterbuy" \
-  --data @packages/core/fixtures/generic-store/protect-purchase-request.json
-```
-
-The monitoring worker checks immediately and then every 12 hours by default. Set `AFTERBUY_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
+The API scheduler checks immediately and then every 12 hours by default. Set `AFTERBUY_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
 
 Product images are optional. Tracer prefers an order-confirmation image, then JSON-LD or Open Graph metadata, and ignores unusable candidates without rejecting the purchase. The dashboard and extension use intentional fallback visuals when an image is missing or later becomes unavailable.
 
@@ -104,7 +103,7 @@ AFTERBUY_DATA_FILE=/tmp/tracer-consumer-flow.json npm run dev
 npm run build -w @afterbuy/extension
 ```
 
-Load `apps/extension/dist` from `chrome://extensions`, then open `http://127.0.0.1:5173/tracer-demo-order.html`. Click the Tracer toolbar icon. The popup scans the completed demo order and shows `Purchase detected`; `Protect this purchase` persists it. `View protected items` opens the dashboard. Run the paid and dropped fixture commands above to see the dashboard move from £349.99 to £319.99 and create the activity/opportunity state.
+Load `apps/extension/dist` from `chrome://extensions`, then open `http://127.0.0.1:5173/tracer-demo-order.html`. Click the Tracer toolbar icon. The popup scans the completed demo order and shows `Purchase detected`; `Protect this purchase` persists it. Open `Your items` from the three-dot menu. Run the paid and dropped fixture commands above to see that item move from Watching at £84.50 to Price dropped at £69.50 with a £15 saving.
 
 ## Quality Checks
 

@@ -141,7 +141,7 @@ function normalizeProductImageUrl(value: string, baseUrl?: string): string | nul
 function looksLikeNonProductAsset(url: URL): boolean {
   const value = `${url.pathname} ${url.search}`.toLowerCase();
 
-  return /(?:favicon|tracking[-_]?pixel|transparent\.gif|sprite|wordmark|(?:^|[\/_-])logo(?:[._/-]|$))/.test(
+  return /(?:favicon|tracking[-_]?pixel|transparent\.gif|sprite|wordmark|(?:^|[/_-])logo(?:[._/-]|$))/.test(
     value,
   );
 }

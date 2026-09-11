@@ -7,16 +7,16 @@ import {
 
 type DevFixturePriceVariant = "paid" | "dropped";
 
-const johnLewisHeadphonesFixture: ProductPriceSnapshot = {
-  retailerId: "john-lewis",
-  productUrl:
-    "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
-  productName:
-    "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
-  externalProductId: "p1122334",
-  sku: "JL-SNY-XM6-BLK",
+const trailPackFixture: ProductPriceSnapshot = {
+  retailerId: "store_shop-example-com",
+  retailerName: "Shop",
+  storeHost: "shop.example.com",
+  productUrl: "https://shop.example.com/products/trail-pack-24l-moss-green",
+  productName: "Trail Pack 24L, Moss Green",
+  externalProductId: "acme-pack-24-moss",
+  sku: "TP24-MOSS",
   observedAt: "2026-09-01T08:00:00.000Z",
-  price: gbp(31_999),
+  price: gbp(8_450),
   availability: "in_stock",
 };
 
@@ -26,12 +26,12 @@ export function createDevFixturePriceFetcher(
 ): PriceFetcher {
   return new FixturePriceFetcher([
     {
-      ...johnLewisHeadphonesFixture,
+      ...trailPackFixture,
       observedAt:
         variant === "paid"
           ? "2026-09-01T08:00:00.000Z"
           : "2026-09-02T08:00:00.000Z",
-      price: variant === "paid" ? gbp(34_999) : gbp(31_999),
+      price: variant === "paid" ? gbp(8_450) : gbp(6_950),
     },
   ]);
 }

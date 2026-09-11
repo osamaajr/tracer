@@ -13,6 +13,7 @@ import {
   normalizePublicStoreUrl,
   normalizeRetailerUrl,
 } from "../retailers/urlSafety";
+import { isShopifyAccountOrderUrl } from "../retailers/shopifyAccountPurchaseExtractor";
 
 export interface ProtectPurchaseCommand {
   userId: string;
@@ -157,6 +158,8 @@ export function validatePurchaseDraft(draft: PurchaseDraft): string[] {
     try {
       if (isKnownRetailerId(draft.retailerId)) {
         normalizeRetailerUrl(draft.retailerId, draft.sourceUrl);
+      } else if (isShopifyAccountOrderUrl(draft.sourceUrl)) {
+        normalizePublicStoreUrl(draft.sourceUrl);
       } else {
         normalizePublicStoreUrl(draft.sourceUrl, { expectedHost: draft.storeHost });
       }

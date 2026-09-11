@@ -1,4 +1,8 @@
 import type { PurchaseDraft } from "@afterbuy/core";
+import {
+  buildPriceDropNotifications,
+  type SyncedPriceDrop,
+} from "./priceDropNotifications";
 
 interface ProtectPurchaseMessage {
   type: "AFTERBUY_PROTECT_PURCHASE";
@@ -14,10 +18,28 @@ interface CheckPurchaseProtectionMessage {
   purchaseDraft: PurchaseDraft;
 }
 
+interface PurchasePageCandidateMessage {
+  type: "TRACER_PURCHASE_PAGE_CANDIDATE";
+  url: string;
+}
+
+interface GetCachedPageScanMessage {
+  type: "TRACER_GET_CACHED_PAGE_SCAN";
+  tabId: number;
+  url: string;
+}
+
 type ExtensionMessage =
   | ProtectPurchaseMessage
   | SyncOpportunitiesMessage
-  | CheckPurchaseProtectionMessage;
+  | CheckPurchaseProtectionMessage
+  | PurchasePageCandidateMessage
+  | GetCachedPageScanMessage;
+
+interface PageScanResponse {
+  ok: boolean;
+  draft?: PurchaseDraft;
+}
 
 interface ExtensionOpportunity {
   id: string;
@@ -32,22 +54,29 @@ interface ExtensionSyncResponse {
   protectedPurchaseCount: number;
   openOpportunityCount: number;
   opportunities: ExtensionOpportunity[];
+  priceDrops: SyncedPriceDrop[];
 }
 
 const defaultApiBaseUrl =
   import.meta.env.VITE_AFTERBUY_API_BASE_URL ?? "http://127.0.0.1:4000";
-const defaultDashboardBaseUrl =
-  import.meta.env.VITE_AFTERBUY_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173";
 const defaultUserId = import.meta.env.VITE_AFTERBUY_USER_ID ?? "dev-user-afterbuy";
 const syncAlarmName = "TRACER_OPPORTUNITY_SYNC";
 const syncPeriodMinutes = 60;
+const autoOpenedPageByTab = new Map<number, string>();
+const autoOpeningTabs = new Set<number>();
+const pageScanCache = new Map<number, { url: string; response: PageScanResponse }>();
+let apiBaseUrlPromise: Promise<string> | null = null;
+let userIdPromise: Promise<string> | null = null;
+let priceDropAlertsEnabledPromise: Promise<boolean> | null = null;
 
 chrome.runtime.onInstalled.addListener(() => {
   void ensureSyncAlarm();
+  void syncMonitoringPreference();
 });
 
 chrome.runtime.onStartup.addListener(() => {
   void ensureSyncAlarm();
+  void syncMonitoringPreference();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -57,12 +86,58 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.notifications.onClicked.addListener((notificationId) => {
-  if (notificationId.startsWith("tracer-opportunity:")) {
-    void openDashboard();
+  if (notificationId.startsWith("tracer-price-drop:")) {
+    void chrome.action.openPopup();
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  autoOpenedPageByTab.delete(tabId);
+  autoOpeningTabs.delete(tabId);
+  pageScanCache.delete(tabId);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "loading" || changeInfo.url) {
+    autoOpenedPageByTab.delete(tabId);
+    pageScanCache.delete(tabId);
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "sync" && changes.apiBaseUrl) {
+    apiBaseUrlPromise = null;
+  }
+  if (areaName === "sync" && changes.priceDropAlertsEnabled) {
+    priceDropAlertsEnabledPromise = null;
+  }
+  if (areaName === "sync" && changes.monitoringEnabled) {
+    void syncMonitoringPreference();
+  }
+  if (areaName === "local" && changes.tracerUserId) {
+    userIdPromise = null;
   }
 });
 
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
+  if (message.type === "TRACER_PURCHASE_PAGE_CANDIDATE") {
+    void openPopupForDetectedPurchase(message, _sender).then((detected) => {
+      sendResponse({ detected });
+    });
+    return true;
+  }
+
+  if (message.type === "TRACER_GET_CACHED_PAGE_SCAN") {
+    const cached = pageScanCache.get(message.tabId);
+    const url = canonicalPageKey(message.url);
+    sendResponse(
+      cached && url === cached.url
+        ? { ok: true, response: cached.response }
+        : { ok: false },
+    );
+    return false;
+  }
+
   if (message.type === "AFTERBUY_PROTECT_PURCHASE") {
     void protectPurchase(message.purchaseDraft)
       .then((response) => {
@@ -111,12 +186,65 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return false;
 });
 
-void ensureSyncAlarm();
+async function openPopupForDetectedPurchase(
+  message: PurchasePageCandidateMessage,
+  sender: chrome.runtime.MessageSender,
+): Promise<boolean> {
+  const tab = sender.tab;
+  if (!tab?.id || !tab.active || autoOpeningTabs.has(tab.id)) {
+    return false;
+  }
+
+  const canonicalUrl = canonicalPageKey(message.url);
+  if (!canonicalUrl) {
+    return false;
+  }
+
+  const pageKey = `${canonicalUrl}|${sender.documentId ?? "current-document"}`;
+  if (autoOpenedPageByTab.get(tab.id) === pageKey) {
+    return true;
+  }
+
+  autoOpeningTabs.add(tab.id);
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["genericCapture.js"],
+    });
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: "AFTERBUY_SCAN_PAGE",
+    }) as PageScanResponse;
+    if (!response?.ok || !response.draft) {
+      return false;
+    }
+
+    pageScanCache.set(tab.id, { url: canonicalUrl, response });
+    autoOpenedPageByTab.set(tab.id, pageKey);
+    await chrome.action.openPopup(
+      typeof tab.windowId === "number" ? { windowId: tab.windowId } : undefined,
+    );
+    return true;
+  } catch {
+    // The page may navigate or close between detection and opening the popup.
+    return false;
+  } finally {
+    autoOpeningTabs.delete(tab.id);
+  }
+}
+
+function canonicalPageKey(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
 
 async function protectPurchase(purchaseDraft: PurchaseDraft): Promise<unknown> {
-  const apiBaseUrl = await getApiBaseUrl();
-  const userId = await getUserId();
-  const response = await fetch(`${apiBaseUrl}/api/purchases/protect`, {
+  const [apiBaseUrl, userId] = await Promise.all([getApiBaseUrl(), getUserId()]);
+  const response = await fetchApi(`${apiBaseUrl}/api/purchases/protect`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -134,7 +262,7 @@ async function protectPurchase(purchaseDraft: PurchaseDraft): Promise<unknown> {
   await createNotification({
     id: `tracer-protected:${Date.now()}`,
     title: "Purchase protected",
-    message: "Tracer will watch this order for policy-backed pay backs.",
+    message: "Tracer will monitor this item for price drops.",
   });
   void syncOpportunities({ notify: true });
 
@@ -142,9 +270,8 @@ async function protectPurchase(purchaseDraft: PurchaseDraft): Promise<unknown> {
 }
 
 async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<unknown> {
-  const apiBaseUrl = await getApiBaseUrl();
-  const userId = await getUserId();
-  const response = await fetch(`${apiBaseUrl}/api/purchases/protection-status`, {
+  const [apiBaseUrl, userId] = await Promise.all([getApiBaseUrl(), getUserId()]);
+  const response = await fetchApi(`${apiBaseUrl}/api/purchases/protection-status`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -162,9 +289,8 @@ async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<un
 }
 
 async function syncOpportunities(options: { notify: boolean }): Promise<ExtensionSyncResponse> {
-  const apiBaseUrl = await getApiBaseUrl();
-  const userId = await getUserId();
-  const response = await fetch(`${apiBaseUrl}/api/extension/sync`, {
+  const [apiBaseUrl, userId] = await Promise.all([getApiBaseUrl(), getUserId()]);
+  const response = await fetchApi(`${apiBaseUrl}/api/extension/sync`, {
     headers: {
       "x-afterbuy-user-id": userId,
     },
@@ -178,33 +304,44 @@ async function syncOpportunities(options: { notify: boolean }): Promise<Extensio
   const sync = (await response.json()) as ExtensionSyncResponse;
 
   if (options.notify) {
-    await notifyNewOpportunities(sync.opportunities);
+    await notifyNewPriceDrops(sync.priceDrops ?? [], await getPriceDropAlertsEnabled());
   }
 
   return sync;
 }
 
-async function notifyNewOpportunities(opportunities: ExtensionOpportunity[]): Promise<void> {
-  const stored = await chrome.storage.local.get("notifiedOpportunityIds");
-  const notifiedIds = Array.isArray(stored.notifiedOpportunityIds)
-    ? new Set(stored.notifiedOpportunityIds.filter((id): id is string => typeof id === "string"))
+async function notifyNewPriceDrops(
+  priceDrops: SyncedPriceDrop[],
+  alertsEnabled: boolean,
+): Promise<void> {
+  const stored = await chrome.storage.local.get("notifiedPriceDropEventIds");
+  const notifiedIds = Array.isArray(stored.notifiedPriceDropEventIds)
+    ? new Set(stored.notifiedPriceDropEventIds.filter((id): id is string => typeof id === "string"))
     : new Set<string>();
 
-  for (const opportunity of opportunities) {
-    if (notifiedIds.has(opportunity.id)) {
-      continue;
+  if (!alertsEnabled) {
+    for (const drop of priceDrops) {
+      notifiedIds.add(drop.eventId);
     }
-
-    await createNotification({
-      id: `tracer-opportunity:${opportunity.id}`,
-      title: opportunity.title,
-      message: `${opportunity.potentialSavingDisplay} may be claimable. Open Tracer to review it.`,
+    await chrome.storage.local.set({
+      notifiedPriceDropEventIds: Array.from(notifiedIds).slice(-200),
     });
-    notifiedIds.add(opportunity.id);
+    return;
+  }
+
+  const notifications = buildPriceDropNotifications(priceDrops, notifiedIds, alertsEnabled);
+
+  for (const notification of notifications) {
+    await createNotification({
+      id: `tracer-price-drop:${notification.eventId}`,
+      title: notification.title,
+      message: notification.message,
+    });
+    notifiedIds.add(notification.eventId);
   }
 
   await chrome.storage.local.set({
-    notifiedOpportunityIds: Array.from(notifiedIds).slice(-100),
+    notifiedPriceDropEventIds: Array.from(notifiedIds).slice(-200),
   });
 }
 
@@ -221,11 +358,6 @@ async function createNotification(input: {
   });
 }
 
-async function openDashboard(): Promise<void> {
-  const dashboardBaseUrl = await getDashboardBaseUrl();
-  await chrome.tabs.create({ url: `${dashboardBaseUrl.replace(/\/$/, "")}/dashboard` });
-}
-
 async function ensureSyncAlarm(): Promise<void> {
   const existing = await chrome.alarms.get(syncAlarmName);
 
@@ -237,29 +369,81 @@ async function ensureSyncAlarm(): Promise<void> {
   }
 }
 
-async function getApiBaseUrl(): Promise<string> {
-  const stored = await chrome.storage.sync.get("apiBaseUrl");
-  const configured = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : "";
-
-  return configured || defaultApiBaseUrl;
+async function syncMonitoringPreference(): Promise<void> {
+  try {
+    const [stored, apiBaseUrl, userId] = await Promise.all([
+      chrome.storage.sync.get("monitoringEnabled"),
+      getApiBaseUrl(),
+      getUserId(),
+    ]);
+    const response = await fetchApi(`${apiBaseUrl}/api/settings/monitoring`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-afterbuy-user-id": userId,
+      },
+      body: JSON.stringify({ enabled: stored.monitoringEnabled !== false }),
+    });
+    if (!response.ok) {
+      throw new Error(`Settings sync returned ${response.status}`);
+    }
+  } catch {
+    // The next startup, settings change, or popup open retries the preference sync.
+  }
 }
 
-async function getDashboardBaseUrl(): Promise<string> {
-  const stored = await chrome.storage.sync.get("dashboardBaseUrl");
-  const configured =
-    typeof stored.dashboardBaseUrl === "string" ? stored.dashboardBaseUrl : "";
-
-  return configured || defaultDashboardBaseUrl;
+function getApiBaseUrl(): Promise<string> {
+  apiBaseUrlPromise ??= chrome.storage.sync.get("apiBaseUrl").then((stored) => {
+    const configured = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : "";
+    return configured || defaultApiBaseUrl;
+  }).catch((error: unknown) => {
+    apiBaseUrlPromise = null;
+    throw error;
+  });
+  return apiBaseUrlPromise;
 }
 
-async function getUserId(): Promise<string> {
-  const stored = await chrome.storage.local.get("tracerUserId");
-  const configured = typeof stored.tracerUserId === "string" ? stored.tracerUserId : "";
+function getPriceDropAlertsEnabled(): Promise<boolean> {
+  priceDropAlertsEnabledPromise ??= chrome.storage.sync.get("priceDropAlertsEnabled")
+    .then((stored) => stored.priceDropAlertsEnabled !== false)
+    .catch((error: unknown) => {
+      priceDropAlertsEnabledPromise = null;
+      throw error;
+    });
+  return priceDropAlertsEnabledPromise;
+}
 
-  if (configured) {
-    return configured;
+function getUserId(): Promise<string> {
+  userIdPromise ??= chrome.storage.local.get("tracerUserId").then(async (stored) => {
+    const configured = typeof stored.tracerUserId === "string" ? stored.tracerUserId : "";
+
+    if (configured) {
+      return configured;
+    }
+
+    await chrome.storage.local.set({ tracerUserId: defaultUserId });
+    return defaultUserId;
+  }).catch((error: unknown) => {
+    userIdPromise = null;
+    throw error;
+  });
+  return userIdPromise;
+}
+
+async function fetchApi(url: string, options: RequestInit): Promise<Response> {
+  const local = ["localhost", "127.0.0.1"].includes(new URL(url).hostname);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < (local ? 4 : 1); attempt += 1) {
+    try {
+      return await fetch(url, { ...options, signal: AbortSignal.timeout(5000) });
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 750));
+    }
   }
 
-  await chrome.storage.local.set({ tracerUserId: defaultUserId });
-  return defaultUserId;
+  throw new Error(local
+    ? "Tracer’s local service is offline. Start the app with npm run dev, then retry."
+    : "Cannot connect to Tracer. Check your connection and retry.", { cause: lastError });
 }
