@@ -5,18 +5,12 @@ import {
   ArrowRight,
   Bell,
   CalendarDays,
-  CalendarCheck2,
   ChevronRight,
   CheckCircle2,
-  Clock,
   MoreHorizontal,
   ShieldCheck,
-  Settings,
   ShoppingBag,
-  Star,
-  Tag,
   TrendingUp,
-  UsersRound,
   X,
 } from "lucide-react";
 
@@ -79,25 +73,12 @@ export function App() {
   if (pathname === "/contact") return <ContactPage />;
   if (pathname === "/privacy") return <PrivacyPage />;
   if (pathname === "/terms") return <TermsPage />;
-  return <LandingPage />;
+  return <LandingPageB />;
 }
 
 function normalisePathname(pathname: string): string {
   if (pathname === "/") return pathname;
   return pathname.replace(/\/+$/, "") || "/";
-}
-
-function LandingPage() {
-  return (
-    <main className="landing-shell">
-      <LandingHeader />
-      <HeroSection />
-      <TransitionStatement />
-      <HowItWorksSection />
-      <WatchingSection />
-      <Footer />
-    </main>
-  );
 }
 
 function LandingPageB() {
@@ -219,10 +200,10 @@ function HeroMonitoringVisual() {
       />
       <FloatingAlertCard
         className="landing-b-alert-return"
-        copy="You have 4 days left to return this item."
+        copy="Your protected purchase is on our watchlist."
         icon={<CalendarDays aria-hidden="true" size={23} />}
         time="5d ago"
-        title="Return window ending soon"
+        title="Monitoring active"
         tone="amber"
       />
     </div>
@@ -234,6 +215,7 @@ function LandingBValueStatement() {
     <section className="landing-b-value">
       <h2>After checkout,<br />Tracer keeps watching.</h2>
       <p>We keep checking, so you don’t have to.</p>
+      <p className="landing-b-watchlist-note">Not ready to buy? Save products from shops across the web to Tracer, and come back when you’re ready. Protect them after checkout.</p>
     </section>
   );
 }
@@ -277,7 +259,7 @@ function LandingBFeatures() {
                 <div><dt>Paid</dt><dd>£349.99</dd></div>
                 <div><dt>Current price</dt><dd>£349.99</dd></div>
               </dl>
-              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching</span><small><CheckCircle2 aria-hidden="true" size={13} /> Protected · Checked just now</small></footer>
+              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching</span><small><CheckCircle2 aria-hidden="true" size={13} /> Checked just now</small></footer>
             </div>
           </div>
         </article>
@@ -375,228 +357,11 @@ function LandingHeader({ homeHref = "/", installHref = "#install" }: { homeHref?
   );
 }
 
-function Header() {
-  return (
-    <header className="site-header">
-      <a className="brand" href="/" aria-label="Tracer home">
-        <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
-        <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
-      </a>
-      <nav className="nav-links" aria-label="Primary navigation">
-        <a href="/#how-it-works">How it works</a>
-        <a href="/privacy">Privacy</a>
-        <a href="/#faq">FAQ</a>
-        <a href="/contact">Support</a>
-      </nav>
-      <a className="header-cta" href="#install">
-        <ChromeMark />
-        Add to Chrome
-        <ArrowRight aria-hidden="true" size={16} />
-      </a>
-    </header>
-  );
-}
-
 function ChromeMark() {
   return (
     <svg className="chrome-mark" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z" fill="currentColor" />
     </svg>
-  );
-}
-
-function HeroSection() {
-  return (
-    <section className="hero" id="install">
-      <div className="hero-copy">
-        <h1>Bought it?<br />We'll keep<br />watching it.</h1>
-        <p className="hero-text">
-          Tracer watches your purchases after checkout and alerts you when prices drop or there's something worth acting on.
-        </p>
-        <a className="primary-button hero-cta" href="#install">
-          <ChromeMark />
-          Add to Chrome - It's free
-        </a>
-      </div>
-      <div className="hero-stage" aria-label="Tracer purchase protection preview">
-        <OrderWindow />
-        <ExtensionPreview />
-      </div>
-    </section>
-  );
-}
-
-function OrderWindow() {
-  return (
-    <article className="order-window" aria-label="Order confirmation example">
-      <div className="browser-dots" aria-hidden="true"><span /><span /><span /><i /></div>
-      <div className="receipt-brand">JOHN LEWIS</div>
-      <div className="order-check"><CheckCircle2 aria-hidden="true" size={34} /></div>
-      <h2>Thank you, Osama</h2>
-      <p>Your order has been placed</p>
-      <dl className="order-summary">
-        <div><dt>Order number</dt><dd>JL1234567890</dd></div>
-        <div><dt>Order total</dt><dd>£349.99</dd></div>
-      </dl>
-      <button type="button">View order details</button>
-    </article>
-  );
-}
-
-function ExtensionPreview() {
-  return (
-    <article className="extension-preview" aria-label="Tracer popup preview">
-      <div className="extension-topbar">
-        <div>
-          <img className="mini-logo" src="/assets/tracer-logo.png" alt="" />
-          <img className="extension-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
-        </div>
-        <div className="extension-actions"><Settings aria-hidden="true" size={14} /></div>
-      </div>
-      <div className="extension-copy">
-        <h2>Purchase detected</h2>
-        <p>We'll monitor this purchase for price drops and opportunities worth acting on.</p>
-      </div>
-      <section className="mini-product-card" aria-label="Protected purchase preview">
-        <div className="mini-product-head">
-          <ProductSilhouette />
-          <div>
-            <h3>Sony WH-1000XM5</h3>
-            <p>Wireless Noise Cancelling Headphones</p>
-          </div>
-        </div>
-        <dl>
-          <div><dt>Paid</dt><dd>£349.99</dd></div>
-          <div><dt>Retailer</dt><dd>John Lewis</dd></div>
-          <div><dt>Purchase date</dt><dd>30 Aug 2026</dd></div>
-          <div><dt>Product match</dt><dd className="exact-match">Exact match</dd></div>
-        </dl>
-        <div className="eligibility-row"><strong>Eligible window</strong><span>Until 30 Aug 2027</span></div>
-      </section>
-      <div className="mini-feature-row">
-        <span><Tag aria-hidden="true" size={15} /><strong>PRICE DROPS</strong><small>We'll watch for changes</small></span>
-        <span><CalendarCheck2 aria-hidden="true" size={15} /><strong>POLICY WINDOWS</strong><small>We'll track known eligibility</small></span>
-        <span><Bell aria-hidden="true" size={15} /><strong>ALERTS</strong><small>We'll tell you when it matters</small></span>
-      </div>
-      <button className="protect-preview" type="button">Protect purchase</button>
-      <p className="extension-privacy">Only the details needed to track this purchase are saved.</p>
-    </article>
-  );
-}
-
-function ProductSilhouette() {
-  return <img className="product-image" src="/assets/product-headphones.png" alt="" />;
-}
-
-function TransitionStatement() {
-  return (
-    <section className="transition-statement">
-      <h2>Shopping shouldn't end at checkout.</h2>
-      <p>Buy something. Protect it. Tracer takes it from there.</p>
-    </section>
-  );
-}
-
-function HowItWorksSection() {
-  return (
-    <section className="how-section" id="how-it-works">
-      <div className="how-section-inner">
-        <div className="section-heading">
-          <h2>How it works</h2>
-        </div>
-        <div className="steps-layout">
-          <StepCard number="01" title="Buy normally" copy="Complete your purchase on any supported retailer's website." visual={<OrderMiniature />} />
-          <StepCard number="02" title="Protect it" copy="Tracer recognises the purchase. One click adds it to your watchlist." visual={<ProtectMiniature />} />
-          <StepCard number="03" title="We keep watching" copy="If the price changes or there's something worth acting on, Tracer tells you." visual={<OpportunityMiniature />} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StepCard({ number, title, copy, visual }: { number: string; title: string; copy: string; visual: ReactNode }) {
-  return (
-    <article className="step-card">
-      <span className="step-number">{number}</span>
-      <div className="step-visual">{visual}</div>
-      <h3>{title}</h3>
-      <p>{copy}</p>
-    </article>
-  );
-}
-
-function OrderMiniature() {
-  return <div className="order-miniature" aria-hidden="true"><ShoppingBag size={45} /><CheckCircle2 className="mini-check" size={28} /></div>;
-}
-
-function ProtectMiniature() {
-  return (
-    <div className="protect-step-stage" aria-hidden="true">
-      <div className="protect-browser-card"><span /><span /></div>
-      <div className="protect-miniature"><img src="/assets/tracer-logo.png" alt="" /><b>Tracer</b><span>Bought it?</span><button type="button">Protect purchase</button></div>
-    </div>
-  );
-}
-
-function OpportunityMiniature() {
-  return (
-    <div className="opportunity-miniature" aria-hidden="true">
-      <span className="opportunity-bell"><Bell size={17} /></span>
-      <p>£349.99 <span>→</span> £319.99</p>
-      <strong>£30 opportunity found</strong>
-    </div>
-  );
-}
-
-function WatchingSection() {
-  const checklist = [
-    "Price drops",
-    "Policy & eligibility windows",
-    "Refund & claim opportunities",
-    "Back in stock alerts (coming soon)",
-    "Works across leading retailers",
-  ];
-
-  return (
-    <section className="chapter watching-section">
-      <div className="chapter-copy">
-        <h2>We watch so you don't have to.</h2>
-        <ul className="watch-checklist">
-          {checklist.map((item) => <li key={item}><CheckCircle2 aria-hidden="true" size={17} />{item}</li>)}
-        </ul>
-      </div>
-      <MetricPanel />
-    </section>
-  );
-}
-
-function MetricPanel() {
-  const metrics = [
-    { icon: <UsersRound aria-hidden="true" size={30} />, value: "12,847+", label: "Purchases protected" },
-    { icon: <Tag aria-hidden="true" size={30} />, value: "£268,431+", label: "Opportunities found" },
-    { icon: <Clock aria-hidden="true" size={30} />, value: "3.2 min", label: "Average time saved per purchase" },
-  ];
-
-  return (
-    <aside className="metric-panel" aria-label="Tracer proof panel">
-      <div className="metric-row">
-        {metrics.map((metric) => (
-          <div className="metric-item" key={metric.label}>
-            <span>{metric.icon}</span>
-            <div><strong>{metric.value}</strong><small>{metric.label}</small></div>
-          </div>
-        ))}
-      </div>
-      <div className="rating-row">
-        <span className="laurel" aria-hidden="true">‹</span>
-        <div>
-          <h3>Trusted by thousands of smart shoppers</h3>
-          <div className="stars" aria-label="4.9 out of 5 stars">{Array.from({ length: 5 }, (_, index) => <Star key={index} aria-hidden="true" size={24} fill="currentColor" />)}</div>
-          <p><strong>4.9 out of 5</strong><br />Chrome Web Store</p>
-        </div>
-        <span className="laurel" aria-hidden="true">›</span>
-      </div>
-    </aside>
   );
 }
 
@@ -634,7 +399,7 @@ function SitePage({
 
   return (
     <main className="site-page-shell landing-shell-b landing-b-subpage">
-      <LandingHeader homeHref="/landing-b" installHref="/landing-b#install" />
+      <LandingHeader homeHref="/" installHref="/#install" />
       <div className="site-page-main">
         <header className="site-page-intro">
           <h1>{title}</h1>

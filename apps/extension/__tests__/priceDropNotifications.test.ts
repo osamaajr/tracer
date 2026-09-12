@@ -11,6 +11,11 @@ const drop: SyncedPriceDrop = {
 };
 
 describe("price-drop notifications", () => {
+  it("deduplicates repeated events in the same sync without mutating delivered IDs", () => {
+    const delivered = new Set<string>();
+    expect(buildPriceDropNotifications([drop, { ...drop }], delivered, true)).toHaveLength(1);
+    expect(delivered.size).toBe(0);
+  });
   it("creates one notification for a new real drop when alerts are enabled", () => {
     expect(buildPriceDropNotifications([drop], new Set(), true)).toEqual([
       {

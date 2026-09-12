@@ -553,7 +553,7 @@
 .landing-b-update-card {
   background: #fffdfa;
   border: 1px solid rgb(77 88 99 / 10%);
-  box-shadow: 0 20px 54px rgb(39 44 48 / 9%);
+  box-shadow: 0 2px 5px rgb(39 44 48 / 3%), 0 16px 36px rgb(39 44 48 / 6%);
 }
 
 .landing-b-feature-alert,
@@ -566,7 +566,7 @@
 .landing-b-feature-visual:hover .landing-b-feature-alert,
 .landing-b-feature-visual:hover .landing-b-monitor-card,
 .landing-b-feature-visual:hover .landing-b-update-card {
-  box-shadow: 0 28px 64px rgb(39 44 48 / 13%);
+  box-shadow: 0 4px 8px rgb(39 44 48 / 3%), 0 20px 42px rgb(39 44 48 / 9%);
   transform: translateY(-5px);
 }
 
@@ -577,27 +577,27 @@
 
 .landing-b-feature-alert {
   align-items: center;
-  border-radius: 18px;
+  border-radius: 22px;
   display: grid;
   gap: 13px;
   grid-template-columns: 48px minmax(0, 1fr) auto;
   min-height: 188px;
-  padding: 18px 20px;
+  padding: 24px;
   position: relative;
-  transform: rotate(3deg);
-  width: min(100%, 474px);
+  transform: rotate(0deg);
+  width: min(100%, 454px);
   z-index: 2;
 }
 
 .landing-b-feature-visual:hover .landing-b-feature-alert {
-  transform: translateY(-5px) rotate(1deg);
+  transform: translateY(-4px);
 }
 
 .landing-b-feature-alert-icon {
   align-items: center;
-  background: #ffe2e5;
+  background: #e9f1e8;
   border-radius: 50%;
-  color: #ed334b;
+  color: #39724a;
   display: inline-flex;
   height: 48px;
   justify-content: center;
@@ -609,7 +609,7 @@
 .landing-b-update-card strong {
   color: #22231f;
   display: block;
-  font-size: .84rem;
+  font-size: .9rem;
   line-height: 1.25;
 }
 
@@ -617,7 +617,7 @@
 .landing-b-monitor-card p,
 .landing-b-update-card p {
   color: #6d6e6c;
-  font-size: .72rem;
+  font-size: .76rem;
   line-height: 1.4;
   margin: 6px 0 0;
 }
@@ -638,7 +638,7 @@
   grid-column: 1 / -1;
   grid-template-columns: 64px minmax(0, 1fr);
   margin-top: 3px;
-  padding-top: 15px;
+  padding-top: 20px;
 }
 
 .landing-b-feature-price-row span {
@@ -654,17 +654,20 @@
 }
 
 .landing-b-feature-price-row strong {
-  font-size: .88rem;
+  font-size: 1.2rem;
+  letter-spacing: -.025em;
 }
 
 .landing-b-feature-price-row em {
   background: #e4f4e8;
   border-radius: 999px;
   color: #22603b;
-  font-size: .72rem;
+  font-size: .76rem;
   font-style: normal;
   font-weight: 730;
-  padding: 6px 9px;
+  padding: 7px 10px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .landing-b-monitor-visual {
@@ -673,16 +676,16 @@
 }
 
 .landing-b-monitor-card {
-  border-radius: 18px;
-  padding: 14px 24px 20px;
+  border-radius: 22px;
+  padding: 24px;
   position: relative;
-  left: -10px;
-  transform: rotate(-2deg);
-  width: min(100%, 426px);
+  left: 0;
+  transform: rotate(0deg);
+  width: min(100%, 454px);
 }
 
 .landing-b-monitor-visual:hover .landing-b-monitor-card {
-  transform: translateY(-5px) rotate(-1deg);
+  transform: translateY(-4px);
 }
 
 .landing-b-monitor-card header,
@@ -732,18 +735,22 @@
 
 .landing-b-monitor-card dl {
   display: grid;
-  gap: 7px;
-  margin: 13px 0;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  margin: 18px 0;
 }
 
 .landing-b-monitor-card dl div {
   align-items: center;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: #f6f4ef;
+  border-radius: 12px;
 }
 
 .landing-b-monitor-card dd {
-  font-size: .82rem;
+  font-size: 1.05rem;
   font-weight: 730;
   margin: 0;
 }
@@ -771,14 +778,14 @@
 }
 
 .landing-b-update-card {
-  border-radius: 18px;
-  padding: 19px;
-  transform: rotate(2deg);
-  width: min(100%, 444px);
+  border-radius: 22px;
+  padding: 24px;
+  transform: rotate(0deg);
+  width: min(100%, 454px);
 }
 
 .landing-b-update-visual:hover .landing-b-update-card {
-  transform: translateY(-5px) rotate(1deg);
+  transform: translateY(-4px);
 }
 
 .landing-b-update-card > header {
@@ -805,22 +812,23 @@
 
 .landing-b-update-detail {
   align-items: center;
-  background: #f3efe8;
+  background: #f1f5ee;
+  border: 1px solid #e3ebdf;
   border-radius: 15px;
   display: grid;
   gap: 11px;
   grid-template-columns: 36px minmax(0, 1fr) auto;
-  margin-top: 13px;
-  padding: 12px;
+  margin-top: 20px;
+  padding: 16px;
 }
 
 .landing-b-update-card:hover .landing-b-update-detail {
-  transform: translateX(4px);
+  transform: translateY(-2px);
 }
 
 .landing-b-update-detail > span {
   background: #fffdfa;
-  color: #3d5e7a;
+  color: #39724a;
   height: 36px;
   width: 36px;
 }
@@ -1239,3 +1247,5 @@
     background-position: center top;
   }
 }
+
+.landing-b-value .landing-b-watchlist-note { max-width:490px; margin:24px auto 0; font-size:.9rem; line-height:1.65; color:#737870; }

@@ -22,8 +22,13 @@ export function buildPriceDropNotifications(
     return [];
   }
 
+  const seen = new Set(notifiedEventIds);
   return priceDrops
-    .filter((drop) => !notifiedEventIds.has(drop.eventId))
+    .filter((drop) => {
+      if (seen.has(drop.eventId)) return false;
+      seen.add(drop.eventId);
+      return true;
+    })
     .sort((left, right) => left.detectedAt.localeCompare(right.detectedAt))
     .map((drop) => ({
       eventId: drop.eventId,

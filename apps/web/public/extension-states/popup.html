@@ -1568,7 +1568,7 @@
         }
       }
       /* Landing B: shared brand, editorial headings, pearl surfaces and sky accents. */
-      @font-face { font-family: 'Tracer Serif'; src: url('/assets/TracerSerif.woff2') format('woff2'); font-weight: 300 800; font-display: swap; }
+      @font-face { font-family: 'Tracer Serif'; src: url('/extension-states/assets/TracerSerif.woff2') format('woff2'); font-weight: 300 800; font-display: swap; }
       :root { --ink:#22231f; --muted:#626a72; --panel:#fffdfa; --line:#dce3e9; --radius:18px; }
       body { width:380px; height:590px; max-height:590px; overflow:hidden; background:#faf8f3; }
       main { width:380px; height:590px; background:#faf8f3; border:0; border-radius:0; padding:20px; }
@@ -1833,11 +1833,11 @@
         <button class="popup-back" id="popupBack" type="button" aria-label="Back">←</button>
         <div class="brand" aria-label="Tracer">
           <div class="fan-mark" aria-hidden="true">
-            <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" />
-            <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" />
-            <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" />
+            <img class="fan-panel fan-left" src="/extension-states/assets/logo-panels/tracer-panel-left.png" alt="" />
+            <img class="fan-panel fan-center" src="/extension-states/assets/logo-panels/tracer-panel-center.png" alt="" />
+            <img class="fan-panel fan-right" src="/extension-states/assets/logo-panels/tracer-panel-right.png" alt="" />
           </div>
-          <img class="wordmark-image" src="/assets/tracer-outline.png" alt="Tracer" />
+          <img class="wordmark-image" src="/extension-states/assets/tracer-outline.png" alt="Tracer" />
         </div>
         <div class="top-actions">
           <span class="active-pill">Active</span>
@@ -2194,6 +2194,45 @@
 
       <button id="scan" type="button" hidden>Scan current tab</button>
     </main>
-    <script type="module" src="/src/popup.ts"></script>
+    
+<style>body{margin:0 auto;box-shadow:none}.preview-label{font:600 11px/1.2 system-ui;text-align:center;padding:9px;background:#fffdfa;color:#596777;letter-spacing:.02em}</style>
+<script>
+const state = new URLSearchParams(location.search).get('state') || 'detected';
+document.title = 'Tracer · ' + state + ' preview';
+const app = document.getElementById('app');
+app.dataset.screen = state === 'items-empty' || state === 'items-paused' ? 'items' : state === 'clear-confirmation' ? 'settings' : state === 'offline-saved' ? 'protected' : state;
+const set = (id,text) => {const el=document.getElementById(id);if(el)el.textContent=text;};
+set('productName','Sony WH-1000XM5');set('summaryProductName','Sony WH-1000XM5');set('totalPaid','£349.99');set('summaryPaid','£349.99');set('retailer','John Lewis');set('windowValue','Known retailer eligibility');
+set('detailName','Sony WH-1000XM5');
+if(state==='incomplete'){set('stateTitle','A few details are missing.');set('stateCopy','Review the purchase details before protecting this item.');}
+if(state==='offline-saved'){set('successTitle','Purchase saved');set('successCopy','Saved on this device. Monitoring starts automatically when Tracer reconnects.');set('summaryStatus','Watching');}
+if(state==='duplicate'){document.querySelectorAll('.success-hero h1').forEach(el=>el.textContent='Already protected.');}
+if(state==='review'){document.getElementById('reviewPanel').dataset.visible='true';document.getElementById('reviewProductName').value='Sony WH-1000XM5';document.getElementById('reviewPrice').value='349.99';document.getElementById('reviewDate').value='2026-09-11T10:00';document.getElementById('reviewUrl').value='https://www.johnlewis.com/';}
+if(state==='items'){set('itemsCount','1 item');document.getElementById('itemsList').innerHTML='<button class="item-row" data-alert="true" data-paused="false"><span><strong>Sony WH-1000XM5</strong><span>● Price dropped</span></span><em>£30</em><i>›</i></button>';}
+if(state==='items-paused'){set('itemsCount','1 item');document.getElementById('itemsList').innerHTML='<button class="item-row" data-alert="false" data-paused="true"><span><strong>Sony WH-1000XM5</strong><span>● Paused</span></span><em></em><i>›</i></button>';}
+if(state==='items-empty'){set('itemsCount','0 items');document.getElementById('itemsList').innerHTML='<div class="items-message"><strong>No protected purchases yet</strong><span>Protect a purchase after checkout to see it here.</span></div>';}
+if(state==='detail'){document.getElementById('itemFacts').innerHTML='<div class="detail-row"><dt>Retailer</dt><dd>John Lewis</dd></div><div class="detail-row"><dt>Paid</dt><dd>£349.99</dd></div><div class="detail-row"><dt>Current price</dt><dd>£319.99</dd></div>';}
+if(state==='clear-confirmation'){document.getElementById('clearPurchasesPill').dataset.confirming='true';document.getElementById('clearConfirmation').hidden=false;}
+if(state.startsWith('watchlist')) {
+  app.dataset.screen='watchlist';
+  document.getElementById('watchProduct').innerHTML='<img src="/extension-states/assets/product-headphones.png" alt=""><strong>Women’s Light beige/Gingham check Oversized flannel shirt | H&amp;M GB</strong><p>H&amp;M</p><p class="saved-price">£37.99 · price when saved</p>';
+  if(state!=='watchlist') {
+    set('watchHeading',state==='watchlist-duplicate'?'Already saved.':state==='watchlist'?'Save for later.':'Saved.');
+    set('saveToTracer',state==='watchlist-duplicate'?'Already saved':'Saved');
+    document.getElementById('saveToTracer').dataset.status=state==='watchlist-duplicate'?'existing':'saved';
+    document.getElementById('saveToTracer').disabled=true;
+    set('watchFeedback','Find it in Your items → Saved. Buy it, then protect your purchase with Tracer.');
+  }
+}
+if(state==='saved-items'||state==='saved-empty') {
+  app.dataset.screen='items';
+  document.getElementById('savedTab').setAttribute('aria-pressed','true');
+  document.getElementById('protectedTab').setAttribute('aria-pressed','false');
+  document.getElementById('savedHint').hidden=false;
+  set('itemsCount',state==='saved-items'?'1 item':'0 items');
+  document.getElementById('itemsList').innerHTML=state==='saved-empty'?'<div class="items-message"><strong>A place for your maybes.</strong><span>Open Tracer on a product page and choose Save to Tracer.</span></div>':'<article class="saved-row" data-has-image="true"><img src="/extension-states/assets/product-headphones.png" alt=""><div class="saved-copy"><strong>Sony WH-1000XM5</strong><p>johnlewis.com</p><p>£349.99 · price when saved</p></div><footer><a href="https://www.johnlewis.com" target="_blank" rel="noopener noreferrer">Open item ↗</a><button type="button">Remove</button></footer></article>';
+}
+const label=document.createElement('div');label.className='preview-label';label.textContent='Design preview · '+state+' · sample data';document.body.prepend(label);
+</script>
   </body>
 </html>

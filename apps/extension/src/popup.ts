@@ -1,3 +1,4 @@
+import { normalizeSavedUrl, type SavedProduct, type SavedItem } from "@afterbuy/core";
 import { populateConfetti } from "./confetti";
 import {
   addCalendarDays,
@@ -28,11 +29,13 @@ interface ProtectResponse {
   accepted: Array<{
     status: "created" | "duplicate";
     purchase?: Pick<PurchaseRecord, "id">;
+    pendingSync?: boolean;
   }>;
   rejected: Array<{
     productName: string;
     reason: string;
   }>;
+  pendingSync?: boolean;
 }
 
 type ProtectMessageResponse =
@@ -57,6 +60,7 @@ type CheckProtectionMessageResponse =
 
 interface ProtectionStatusResponse {
   protected: boolean;
+  pendingSync?: boolean;
   purchase: (Pick<PurchaseRecord, "id" | "pricePaid" | "productName"> & {
     pricePaidDisplay?: string;
   }) | null;
@@ -68,6 +72,8 @@ interface DashboardPurchase extends PurchaseRecord {
   savingDisplay?: string | null;
   savingPercentageBps?: number | null;
   priceDropDetectedAt?: string | null;
+  pendingSync?: boolean;
+  pendingDraftId?: string;
 }
 
 interface DashboardOpportunity {
@@ -79,6 +85,12 @@ interface DashboardOpportunity {
 interface DashboardData {
   purchases: DashboardPurchase[];
   opportunities: DashboardOpportunity[];
+}
+
+interface PendingProtectedPurchase {
+  id: string;
+  draft: PurchaseDraft;
+  queuedAt: string;
 }
 
 interface CachedScanMessageResponse {
@@ -97,6 +109,7 @@ type SyncMessageResponse =
   | { ok: false; error?: string };
 
 type PopupState =
+  | "watchlist"
   | "detecting"
   | "detected"
   | "protected"
@@ -104,7 +117,6 @@ type PopupState =
   | "empty"
   | "incomplete"
   | "review"
-  | "error"
   | "items"
   | "detail"
   | "settings";
@@ -113,6 +125,7 @@ const defaultApiBaseUrl = "http://127.0.0.1:4000";
 const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
 const defaultUserId = "dev-user-afterbuy";
 const scanTimeoutMs = 3_500;
+const pendingPurchasesStorageKey = "tracerPendingPurchases";
 const startWithDetectedPreview = import.meta.env.MODE === "preview";
 
 const app = getElement<HTMLElement>("app");
@@ -145,6 +158,12 @@ const clearConfirmation = getElement<HTMLElement>("clearConfirmation");
 const clearConfirmationMessage = getElement<HTMLElement>("clearConfirmationMessage");
 const cancelClearPurchases = getElement<HTMLButtonElement>("cancelClearPurchases");
 const confirmClearPurchases = getElement<HTMLButtonElement>("confirmClearPurchases");
+const clearSavedItems = getElement<HTMLButtonElement>("clearSavedItems");
+const clearSavedPill = getElement<HTMLElement>("clearSavedPill");
+const clearSavedConfirmation = getElement<HTMLElement>("clearSavedConfirmation");
+const clearSavedConfirmationMessage = getElement<HTMLElement>("clearSavedConfirmationMessage");
+const cancelClearSaved = getElement<HTMLButtonElement>("cancelClearSaved");
+const confirmClearSaved = getElement<HTMLButtonElement>("confirmClearSaved");
 const stateTitle = getElement<HTMLElement>("stateTitle");
 const stateCopy = getElement<HTMLElement>("stateCopy");
 const reviewPanel = getElement<HTMLElement>("reviewPanel");
@@ -166,6 +185,7 @@ const summarySubtitle = getElement<HTMLElement>("summarySubtitle");
 const summaryPaid = getElement<HTMLElement>("summaryPaid");
 const successTitle = getElement<HTMLElement>("successTitle");
 const successCopy = getElement<HTMLElement>("successCopy");
+const summaryStatus = getElement<HTMLElement>("summaryStatus");
 const dashboardCta = getElement<HTMLButtonElement>("dashboardCta");
 const protectedItemsCta = getElement<HTMLButtonElement>("protectedItemsCta");
 const howItWorksButton = getElement<HTMLButtonElement>("howItWorks");
@@ -188,6 +208,18 @@ let activeScanRunId = 0;
 let dashboardCache: DashboardData | null = null;
 let confettiPopulated = false;
 let tracerUserIdPromise: Promise<string> | null = null;
+let monitoringEnabled = true;
+
+let savedProduct: SavedProduct | null = null;
+const savedTab = getElement<HTMLButtonElement>('savedTab');
+const protectedTab = getElement<HTMLButtonElement>('protectedTab');
+const saveToTracer = getElement<HTMLButtonElement>('saveToTracer');
+const watchFeedback = getElement<HTMLElement>('watchFeedback');
+savedTab.addEventListener('click', () => { void showSavedItems(); });
+protectedTab.addEventListener('click', () => { void showProtectedItems(); });
+getElement('viewSaved').addEventListener('click', () => { itemsReturnState = 'watchlist'; void showSavedItems(); });
+getElement('continueBrowsing').addEventListener('click', () => window.close());
+saveToTracer.addEventListener('click', () => { void saveCurrentProduct(); });
 
 const previewPurchaseDraft: PurchaseDraft = {
   retailerId: "example-store",
@@ -225,7 +257,7 @@ const preferencesReady = chrome.storage.sync.get([
   apiInput.value = apiBaseUrl;
   dashboardLink.href = buildDashboardUrl();
   setSwitchValue(priceDropAlertsToggle, stored.priceDropAlertsEnabled !== false);
-  const monitoringEnabled = stored.monitoringEnabled !== false;
+  monitoringEnabled = stored.monitoringEnabled !== false;
   setSwitchValue(monitoringToggle, monitoringEnabled);
   void persistMonitoringSetting(monitoringEnabled).catch(() => undefined);
 });
@@ -245,10 +277,12 @@ saveButton.addEventListener("click", () => {
     !value.startsWith("http://127.0.0.1:") &&
     !value.startsWith("https://")
   ) {
-    renderState("error", "Check the API URL.", "Use a local development URL or an HTTPS API URL.");
+    apiInput.setAttribute("aria-invalid", "true");
+    apiInput.focus();
     return;
   }
 
+  apiInput.removeAttribute("aria-invalid");
   void chrome.storage.sync.set({ apiBaseUrl: value }).then(() => {
     apiBaseUrl = value;
     dashboardCache = null;
@@ -264,10 +298,6 @@ maybeLaterButton.addEventListener("click", () => {
   window.close();
 });
 stateCloseButton.addEventListener("click", () => {
-  if (currentState === "error" && capturedDraft) {
-    protectButton.click();
-    return;
-  }
   window.close();
 });
 settingsToggle.addEventListener("click", openSettings);
@@ -301,6 +331,18 @@ clearConfirmation.addEventListener("keydown", (event) => {
 confirmClearPurchases.addEventListener("click", () => {
   void clearAllProtectedPurchases();
 });
+clearSavedItems.addEventListener("click", showClearSavedConfirmation);
+cancelClearSaved.addEventListener("click", () => {
+  hideClearSavedConfirmation();
+  clearSavedItems.focus();
+});
+clearSavedConfirmation.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !confirmClearSaved.disabled) {
+    hideClearSavedConfirmation();
+    clearSavedItems.focus();
+  }
+});
+confirmClearSaved.addEventListener("click", () => { void clearAllSavedItems(); });
 deleteItem.addEventListener("click", () => { void deleteSelectedPurchase(); });
 
 dashboardCta.addEventListener("click", openProtectedItems);
@@ -335,7 +377,7 @@ saveReviewButton.addEventListener("click", () => {
   const reviewed = buildReviewedDraft(capturedDraft);
 
   if (!reviewed.ok) {
-    renderState("error", "One detail needs attention.", reviewed.error);
+    renderState("review", "One detail needs attention.", reviewed.error);
     return;
   }
 
@@ -364,11 +406,12 @@ protectButton.addEventListener("click", () => {
   protectButton.disabled = true;
   protectButton.dataset.loading = "true";
   protectButton.textContent = "Protecting...";
+  const draftToProtect = capturedDraft;
 
   chrome.runtime.sendMessage(
     {
       type: "AFTERBUY_PROTECT_PURCHASE",
-      purchaseDraft: capturedDraft,
+      purchaseDraft: draftToProtect,
     },
     (response?: ProtectMessageResponse) => {
       protectButton.dataset.loading = "false";
@@ -378,13 +421,17 @@ protectButton.addEventListener("click", () => {
         const rejected = response.response.rejected;
         const protectedPurchase = accepted[0]?.purchase;
         const duplicate = accepted.some((item) => item.status === "duplicate");
+        const pendingSync = response.response.pendingSync === true || accepted.some((item) => item.pendingSync);
 
         if (accepted.length === 0) {
           protectButton.disabled = false;
-          protectButton.textContent = "Retry";
+          protectButton.textContent = "Protect this purchase";
+          reviewPanel.dataset.visible = "true";
+          reviewDetailsButton.setAttribute("aria-expanded", "true");
+          populateReviewForm(draftToProtect);
           renderState(
-            "error",
-            "Protection needs review.",
+            "review",
+            "Check these details.",
             rejected[0]?.reason ?? "Tracer could not protect this purchase yet.",
           );
           return;
@@ -393,15 +440,14 @@ protectButton.addEventListener("click", () => {
         protectedPurchaseId = protectedPurchase?.id ?? null;
         dashboardCache = null;
         renderProtectedPurchase({
-          title: duplicate ? "Already protected" : "Purchase protected",
-          newlyProtected: !duplicate,
+          title: duplicate ? "Already protected" : pendingSync ? "Purchase saved" : "Purchase protected",
+          newlyProtected: !duplicate && !pendingSync,
+          pendingSync,
         });
         return;
       }
 
-      protectButton.disabled = false;
-      protectButton.textContent = "Retry";
-      renderState("error", "Could not protect this purchase.", response?.error ?? "Try again shortly.");
+      void protectPurchaseOffline(draftToProtect);
     },
   );
 });
@@ -410,7 +456,7 @@ async function scanActiveTab(): Promise<void> {
   const runId = ++activeScanRunId;
   capturedDraft = null;
   protectedPurchaseId = null;
-  renderState("detecting", "Looking for reliable order details...", "This usually takes a few seconds.");
+  renderState("detecting", "Looking for an item to save...", "This usually takes a moment.");
   reviewPanel.dataset.visible = "false";
   scanButton.disabled = true;
   protectButton.disabled = true;
@@ -426,49 +472,29 @@ async function scanActiveTab(): Promise<void> {
     if (!tab?.id || !isScannableTabUrl(tab.url)) {
       renderState(
         "empty",
-        "No purchase found",
-        "We couldn’t find a recent purchase on this page.",
+        "Nothing to save here",
+        "Open Tracer on a product page to save it for later.",
       );
       return;
     }
 
     const cachedResponse = await getCachedPageScan(tab.id, tab.url ?? "");
-    let response = cachedResponse;
-
-    if (!response) {
-      await withTimeout(
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ["genericCapture.js"],
-        }),
-        scanTimeoutMs,
-        "Page scan timed out.",
-      );
-
+    if (!cachedResponse) {
+      if (await offerSaveProduct(tab.id, runId)) return;
       if (runId !== activeScanRunId) return;
-      response = await sendScanMessage(tab.id);
+      renderState(
+        "empty",
+        "Nothing to save here",
+        "Open Tracer on a product page to save it for later.",
+      );
+      return;
     }
 
     if (runId !== activeScanRunId) return;
+    const response = cachedResponse;
 
     if (!response.ok || !response.draft) {
-      if (
-        response.failureReason === "incomplete" ||
-        (!response.failureReason && isLikelyPurchasePage(tab.url))
-      ) {
-        renderState(
-          "incomplete",
-          "We need a little more detail.",
-          "This looks like an order page, but Tracer could not read enough reliable details.",
-        );
-        return;
-      }
-
-      renderState(
-        "empty",
-        "No purchase found",
-        "We couldn’t find a recent purchase on this page.",
-      );
+      renderState("empty", "Nothing to save here", "Open Tracer on a product page to save it for later.");
       return;
     }
 
@@ -485,6 +511,10 @@ async function scanActiveTab(): Promise<void> {
         newlyProtected: false,
       };
 
+      if (protectionStatus.pendingSync) {
+        protectedOptions.pendingSync = true;
+      }
+
       if (protectionStatus.purchase?.pricePaidDisplay) {
         protectedOptions.pricePaidDisplay = protectionStatus.purchase.pricePaidDisplay;
       }
@@ -499,7 +529,11 @@ async function scanActiveTab(): Promise<void> {
     if (/error page|cannot access|receiving end does not exist|frame with id|timed out/i.test(message)) {
       renderState("empty", "No purchase found", "We couldn’t find a recent purchase on this page.");
     } else {
-      renderState("error", "Scan failed.", message || "Unable to scan this page.");
+      renderState(
+        "incomplete",
+        "We couldn’t read this page yet.",
+        message ? "Refresh the order page, then scan again." : "Open the completed order page and scan again.",
+      );
     }
   } finally {
     if (runId === activeScanRunId) {
@@ -552,8 +586,9 @@ function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["su
 }
 
 function renderProtectedPurchase(options: {
-  title: "Purchase protected" | "Already protected";
+  title: "Purchase protected" | "Purchase saved" | "Already protected";
   newlyProtected: boolean;
+  pendingSync?: boolean;
   pricePaidDisplay?: string;
 }): void {
   const draft = capturedDraft;
@@ -562,9 +597,12 @@ function renderProtectedPurchase(options: {
 
   successTitle.textContent = options.title;
   successCopy.textContent =
-    options.title === "Already protected"
-      ? "We’re already watching this purchase for price drops."
-      : "We’re now watching for price drops. We’ll let you know when it changes.";
+    options.pendingSync
+      ? "Saved on this device. Monitoring starts automatically when Tracer reconnects."
+      : options.title === "Already protected"
+        ? "We’re already watching this purchase for price drops."
+        : "We’re now watching for price drops. We’ll let you know when it changes.";
+  summaryStatus.textContent = options.pendingSync ? "Watching" : "Monitoring active";
   app.dataset.celebrate = String(options.newlyProtected);
   summaryProductName.textContent = primaryItem?.productName ?? "Protected purchase";
   summarySubtitle.textContent = draft ? buildSubtitle(draft, draft.lineItems.length) : "Monitoring active";
@@ -587,10 +625,10 @@ function renderProtectedPurchase(options: {
 function renderState(state: PopupState, title: string, copy: string): void {
   currentState = state;
   app.dataset.screen = state;
-  app.dataset.retryable = String(state === "error" && capturedDraft !== null);
+  app.dataset.retryable = "false";
   stateTitle.textContent = title;
   stateCopy.textContent = copy;
-  stateCloseButton.textContent = state === "error" && capturedDraft ? "Retry" : "Maybe later";
+  stateCloseButton.textContent = "Maybe later";
 
   if (state !== "protected" && state !== "duplicate") {
     app.dataset.celebrate = "false";
@@ -698,35 +736,6 @@ function buildReviewedDraft(
   };
 }
 
-function sendScanMessage(tabId: number): Promise<ScanResponse> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (response: ScanResponse) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeoutId);
-      resolve(response);
-    };
-    const timeoutId = window.setTimeout(() => {
-      finish({ ok: false, error: "Page scan timed out." });
-    }, scanTimeoutMs);
-
-    chrome.tabs.sendMessage(tabId, { type: "AFTERBUY_SCAN_PAGE" }, (response?: ScanResponse) => {
-      const lastError = chrome.runtime.lastError;
-
-      if (lastError) {
-        finish({
-          ok: false,
-          error: lastError.message ?? "Tracer could not talk to this page.",
-        });
-        return;
-      }
-
-      finish(response ?? { ok: false, error: "Tracer did not receive a scan response." });
-    });
-  });
-}
-
 function getCachedPageScan(tabId: number, url: string): Promise<ScanResponse | null> {
   return new Promise((resolve) => {
     chrome.runtime.sendMessage(
@@ -739,8 +748,8 @@ function getCachedPageScan(tabId: number, url: string): Promise<ScanResponse | n
   });
 }
 
-function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusResponse | null> {
-  return new Promise((resolve) => {
+async function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusResponse | null> {
+  const remote = await new Promise<ProtectionStatusResponse | null>((resolve) => {
     let settled = false;
     const finish = (response: ProtectionStatusResponse | null) => {
       if (settled) return;
@@ -761,6 +770,105 @@ function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusRe
       },
     );
   });
+
+  if (remote) {
+    return remote;
+  }
+
+  const pending = (await getPendingPurchases()).find((purchase) => samePurchaseDraft(purchase.draft, draft));
+  const primaryItem = pending?.draft.lineItems[0];
+  return pending && primaryItem
+    ? {
+        protected: true,
+        purchase: {
+          id: pending.id,
+          productName: primaryItem.productName,
+          pricePaid: primaryItem.pricePaid,
+          pricePaidDisplay: formatMoney(primaryItem.pricePaid),
+        },
+      }
+    : { protected: false, purchase: null };
+}
+
+async function protectPurchaseOffline(draft: PurchaseDraft): Promise<void> {
+  try {
+    const pending = await getPendingPurchases();
+    const existing = pending.find((purchase) => samePurchaseDraft(purchase.draft, draft));
+    const purchase = existing ?? {
+      id: buildPendingPurchaseId(draft),
+      draft,
+      queuedAt: new Date().toISOString(),
+    };
+
+    if (!existing) {
+      await chrome.storage.local.set({
+        [pendingPurchasesStorageKey]: [...pending, purchase],
+      });
+    }
+
+    protectedPurchaseId = purchase.id;
+    dashboardCache = null;
+    renderProtectedPurchase({
+      title: existing ? "Already protected" : "Purchase saved",
+      newlyProtected: false,
+      pendingSync: true,
+    });
+  } catch {
+    protectButton.disabled = false;
+    protectButton.textContent = "Protect this purchase";
+    reviewPanel.dataset.visible = "true";
+    reviewDetailsButton.setAttribute("aria-expanded", "true");
+    populateReviewForm(draft);
+    renderState(
+      "review",
+      "Keep this purchase ready.",
+      "Tracer could not save to this browser yet. Check the details and try once more.",
+    );
+  }
+}
+
+async function getPendingPurchases(): Promise<PendingProtectedPurchase[]> {
+  const stored = await chrome.storage.local.get(pendingPurchasesStorageKey);
+  const pending = stored[pendingPurchasesStorageKey];
+  if (!Array.isArray(pending)) {
+    return [];
+  }
+
+  return pending.filter((purchase): purchase is PendingProtectedPurchase => {
+    if (!purchase || typeof purchase !== "object") return false;
+    const candidate = purchase as Partial<PendingProtectedPurchase>;
+    return typeof candidate.id === "string" && Boolean(candidate.draft) && typeof candidate.queuedAt === "string";
+  });
+}
+
+function samePurchaseDraft(left: PurchaseDraft, right: PurchaseDraft): boolean {
+  if (
+    left.retailerId !== right.retailerId ||
+    left.purchasedAt !== right.purchasedAt ||
+    (left.orderReference && right.orderReference && left.orderReference !== right.orderReference)
+  ) {
+    return false;
+  }
+
+  const leftItem = left.lineItems[0];
+  const rightItem = right.lineItems[0];
+  if (!leftItem || !rightItem) return false;
+  return (
+    leftItem.productName.trim().toLowerCase() === rightItem.productName.trim().toLowerCase() &&
+    leftItem.pricePaid.currency === rightItem.pricePaid.currency &&
+    leftItem.pricePaid.amountMinor === rightItem.pricePaid.amountMinor
+  );
+}
+
+function buildPendingPurchaseId(draft: PurchaseDraft): string {
+  const item = draft.lineItems[0];
+  const input = `${draft.retailerId}|${draft.orderReference ?? ""}|${draft.purchasedAt}|${item?.productName ?? "purchase"}|${item?.pricePaid.amountMinor ?? 0}`;
+  let hash = 2_166_136_261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return `local_${(hash >>> 0).toString(36)}`;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
@@ -907,6 +1015,18 @@ function closeSettings(): void {
   const returnState = settingsReturnState;
   renderState(returnState, "", "");
 
+  if (returnState === "items" && dashboardCache) {
+    renderProtectedItems(dashboardCache, itemsLoadRunId);
+  }
+
+  if (returnState === "detail" && dashboardCache && selectedPurchaseId) {
+    const purchase = dashboardCache.purchases.find((item) => item.id === selectedPurchaseId);
+    if (purchase) {
+      const opportunity = dashboardCache.opportunities.find((item) => item.purchaseId === purchase.id);
+      showItemDetail(purchase, opportunity);
+    }
+  }
+
   if (returnState === "detecting") {
     void scanActiveTab();
   }
@@ -925,10 +1045,11 @@ async function toggleSetting(
   setSwitchValue(toggle, next);
 
   try {
-    if (key === "monitoringEnabled") {
-      await persistMonitoringSetting(next);
-    }
     await chrome.storage.sync.set({ [key]: next });
+    if (key === "monitoringEnabled") {
+      monitoringEnabled = next;
+      void persistMonitoringSetting(next).catch(() => undefined);
+    }
   } catch {
     setSwitchValue(toggle, previous);
   }
@@ -1046,6 +1167,55 @@ async function clearAllProtectedPurchases(): Promise<void> {
   }
 }
 
+function showClearSavedConfirmation(): void {
+  clearSavedConfirmationMessage.textContent = "This can’t be undone.";
+  clearSavedConfirmationMessage.dataset.error = "false";
+  clearSavedPill.dataset.confirming = "true";
+  clearSavedItems.setAttribute("aria-expanded", "true");
+  clearSavedItems.inert = true;
+  clearSavedConfirmation.inert = false;
+  confirmClearSaved.focus();
+}
+
+function hideClearSavedConfirmation(): void {
+  clearSavedPill.dataset.confirming = "false";
+  clearSavedItems.setAttribute("aria-expanded", "false");
+  clearSavedItems.inert = false;
+  clearSavedConfirmation.inert = true;
+  confirmClearSaved.disabled = false;
+  cancelClearSaved.disabled = false;
+  clearSavedItems.disabled = false;
+  clearSavedConfirmationMessage.dataset.error = "false";
+}
+
+async function clearAllSavedItems(): Promise<void> {
+  if (clearSavedItems.disabled || confirmClearSaved.disabled) return;
+  clearSavedItems.disabled = true;
+  confirmClearSaved.disabled = true;
+  cancelClearSaved.disabled = true;
+  clearSavedItems.setAttribute("aria-busy", "true");
+  try {
+    await watchlistRequest<void>('CLEAR');
+    if (savedProduct && settingsReturnState === 'watchlist') {
+      getElement('watchHeading').textContent = 'Save for later.';
+      saveToTracer.textContent = 'Save to Tracer';
+      saveToTracer.dataset.status = 'ready';
+      saveToTracer.disabled = false;
+      watchFeedback.textContent = '';
+    }
+    hideClearSavedConfirmation();
+  } catch (error) {
+    console.error("Tracer could not clear saved items", error);
+    clearSavedConfirmationMessage.textContent = "Couldn’t clear saved items. Try again.";
+    clearSavedConfirmationMessage.dataset.error = "true";
+    confirmClearSaved.disabled = false;
+    cancelClearSaved.disabled = false;
+  } finally {
+    clearSavedItems.disabled = false;
+    clearSavedItems.setAttribute("aria-busy", "false");
+  }
+}
+
 function navigateBack(): void {
   popupMenu.hidden = true;
   menuToggle.setAttribute("aria-expanded", "false");
@@ -1072,6 +1242,7 @@ function navigateBack(): void {
 }
 
 async function showProtectedItems(options: { force?: boolean } = {}): Promise<void> {
+  setItemsSegment(false);
   const loadRunId = ++itemsLoadRunId;
   selectedPurchaseId = null;
   renderState("items", "Protected purchases", "");
@@ -1083,7 +1254,7 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
   itemsList.replaceChildren();
   try {
     await preferencesReady;
-    const userId = await getTracerUserId();
+    const [userId, pendingPurchases] = await Promise.all([getTracerUserId(), getPendingPurchases()]);
     const response = await withTimeout(
       fetch(`${apiBaseUrl}/api/dashboard`, { headers: { "x-afterbuy-user-id": userId } }),
       5_000,
@@ -1096,18 +1267,60 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
     if (loadRunId !== itemsLoadRunId || currentState !== "items") {
       return;
     }
-    dashboardCache = {
+    dashboardCache = mergePendingDashboard({
       purchases: raw.purchases ?? [],
       opportunities: raw.opportunities ?? [],
-    };
+    }, pendingPurchases);
     renderProtectedItems(dashboardCache, loadRunId);
   } catch {
     if (loadRunId !== itemsLoadRunId || currentState !== "items") {
       return;
     }
-    itemsCount.textContent = "—";
-    renderItemsMessage("Couldn’t load your items", "Check the local service and try again.", true);
+    const pendingPurchases = await getPendingPurchases();
+    if (pendingPurchases.length > 0) {
+      dashboardCache = mergePendingDashboard({ purchases: [], opportunities: [] }, pendingPurchases);
+      renderProtectedItems(dashboardCache, loadRunId);
+      return;
+    }
+    itemsCount.textContent = "0 items";
+    renderItemsMessage("No locally saved purchases", "Tracer will also check your synced items when it reconnects.", true);
   }
+}
+
+function mergePendingDashboard(data: DashboardData, pending: PendingProtectedPurchase[]): DashboardData {
+  const remoteKeys = new Set(data.purchases.map((purchase) => `${purchase.retailerId}|${purchase.orderReference ?? ""}|${purchase.purchasedAt}|${purchase.productName.trim().toLowerCase()}`));
+  const localPurchases = pending.flatMap((pendingPurchase) => pendingPurchase.draft.lineItems.map((item, index) => {
+    const purchase: DashboardPurchase = {
+      id: index === 0 ? pendingPurchase.id : `${pendingPurchase.id}_${index}`,
+      userId: defaultUserId,
+      retailerId: pendingPurchase.draft.retailerId,
+      retailerName: pendingPurchase.draft.retailerName,
+      storeHost: pendingPurchase.draft.storeHost,
+      productId: `${pendingPurchase.id}_product_${index}`,
+      productName: item.productName,
+      productUrl: item.productUrl ?? pendingPurchase.draft.sourceUrl,
+      pricePaid: item.pricePaid,
+      quantity: item.quantity,
+      purchasedAt: pendingPurchase.draft.purchasedAt,
+      sourceUrl: pendingPurchase.draft.sourceUrl,
+      createdAt: pendingPurchase.queuedAt,
+      protectionStatus: "active",
+      captureMethod: pendingPurchase.draft.captureMethod,
+      captureConfidence: pendingPurchase.draft.captureConfidence,
+      currentPriceDisplay: null,
+      monitoringStatus: "watching",
+      pendingSync: true,
+      pendingDraftId: pendingPurchase.id,
+    };
+    if (pendingPurchase.draft.orderReference) purchase.orderReference = pendingPurchase.draft.orderReference;
+    if (item.externalProductId) purchase.externalProductId = item.externalProductId;
+    return purchase;
+  })).filter((purchase) => !remoteKeys.has(`${purchase.retailerId}|${purchase.orderReference ?? ""}|${purchase.purchasedAt}|${purchase.productName.trim().toLowerCase()}`));
+
+  return {
+    purchases: [...localPurchases, ...data.purchases],
+    opportunities: data.opportunities,
+  };
 }
 
 function renderProtectedItems(data: DashboardData, loadRunId: number): void {
@@ -1134,16 +1347,18 @@ function renderProtectedItems(data: DashboardData, loadRunId: number): void {
 
   purchases.forEach((purchase) => {
     const opportunity = opportunitiesByPurchase.get(purchase.id);
-    const priceDropped = purchase.monitoringStatus === "price_dropped";
+    const monitoringPaused = !monitoringEnabled;
+    const priceDropped = !monitoringPaused && purchase.monitoringStatus === "price_dropped";
     const savingDisplay = purchase.savingDisplay ?? opportunity?.potentialSavingDisplay ?? "";
     const row = document.createElement("button");
     row.className = "item-row";
     row.dataset.alert = String(priceDropped);
+    row.dataset.paused = String(monitoringPaused);
     const copy = document.createElement("span");
     const name = document.createElement("strong");
     name.textContent = purchase.productName;
     const status = document.createElement("span");
-    status.textContent = monitoringStatusLabel(purchase.monitoringStatus);
+    status.textContent = monitoringPaused ? "● Paused" : monitoringStatusLabel(purchase.monitoringStatus);
     copy.append(name, status);
     const saving = document.createElement("em");
     saving.textContent = priceDropped ? savingDisplay : "";
@@ -1181,16 +1396,20 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
   selectedPurchaseId = purchase.id;
   renderState("detail", purchase.productName, "");
   detailName.textContent = purchase.productName;
-  const priceDropped = purchase.monitoringStatus === "price_dropped";
+  const monitoringPaused = !monitoringEnabled;
+  const priceDropped = !monitoringPaused && purchase.monitoringStatus === "price_dropped";
   const savingDisplay = purchase.savingDisplay ?? opportunity?.potentialSavingDisplay ?? "";
   detailStatus.dataset.alert = String(priceDropped);
-  detailStatus.dataset.error = String(purchase.monitoringStatus === "unable_to_check");
-  detailStatus.textContent = priceDropped
+  detailStatus.dataset.error = String(!monitoringPaused && purchase.monitoringStatus === "unable_to_check");
+  detailStatus.dataset.paused = String(monitoringPaused);
+  detailStatus.textContent = monitoringPaused
+    ? "● Paused"
+    : priceDropped
     ? `● Price dropped by ${savingDisplay}`
     : monitoringStatusLabel(purchase.monitoringStatus);
   deleteItem.disabled = false;
   itemFacts.replaceChildren();
-  const facts: Array<[string, string]> = [["Paid", formatMoney(purchase.pricePaid)], ["Current price", purchase.currentPriceDisplay ?? "Watching"]];
+  const facts: Array<[string, string]> = [["Paid", formatMoney(purchase.pricePaid)], ["Current price", monitoringPaused ? "Paused" : purchase.currentPriceDisplay ?? "Watching"]];
   if (priceDropped && savingDisplay) facts.push(["Saving", savingDisplay]);
   facts.forEach(([label, value]) => { const row = document.createElement("div"); const dt = document.createElement("dt"); dt.textContent = label; const dd = document.createElement("dd"); dd.textContent = value; row.append(dt, dd); itemFacts.append(row); });
 }
@@ -1215,11 +1434,26 @@ async function deleteSelectedPurchase(): Promise<void> {
   }
 
   const purchaseId = selectedPurchaseId;
+  const selectedPurchase = dashboardCache?.purchases.find((purchase) => purchase.id === purchaseId);
   deleteItem.disabled = true;
   deleteItem.dataset.loading = "true";
   deleteItem.setAttribute("aria-busy", "true");
 
   try {
+    if (selectedPurchase?.pendingDraftId) {
+      await removePendingPurchase(selectedPurchase.pendingDraftId);
+      protectedPurchaseId = protectedPurchaseId === selectedPurchase.pendingDraftId ? null : protectedPurchaseId;
+      selectedPurchaseId = null;
+      dashboardCache = dashboardCache
+        ? {
+            purchases: dashboardCache.purchases.filter((purchase) => purchase.pendingDraftId !== selectedPurchase.pendingDraftId),
+            opportunities: dashboardCache.opportunities,
+          }
+        : null;
+      await showProtectedItems();
+      return;
+    }
+
     await preferencesReady;
     const userId = await getTracerUserId();
     const response = await withTimeout(
@@ -1261,6 +1495,13 @@ async function deleteSelectedPurchase(): Promise<void> {
     deleteItem.dataset.loading = "false";
     deleteItem.setAttribute("aria-busy", "false");
   }
+}
+
+async function removePendingPurchase(pendingDraftId: string): Promise<void> {
+  const pending = await getPendingPurchases();
+  await chrome.storage.local.set({
+    [pendingPurchasesStorageKey]: pending.filter((purchase) => purchase.id !== pendingDraftId),
+  });
 }
 
 function getTracerUserId(): Promise<string> {
@@ -1355,44 +1596,6 @@ function isScannableTabUrl(value: string | undefined): boolean {
   );
 }
 
-function isLikelyPurchasePage(value: string | undefined): boolean {
-  if (!value) {
-    return false;
-  }
-
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase().replace(/^www\./, "");
-    const nonRetailHosts = [
-      "behance.net",
-      "canva.com",
-      "dribbble.com",
-      "figma.com",
-      "google.com",
-      "imgur.com",
-      "instagram.com",
-      "pexels.com",
-      "pinterest.com",
-      "reddit.com",
-      "shutterstock.com",
-      "unsplash.com",
-      "vecteezy.com",
-      "vectorstock.com",
-    ];
-    if (nonRetailHosts.some((contentHost) => host === contentHost || host.endsWith(`.${contentHost}`))) {
-      return false;
-    }
-    if (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/")) {
-      return false;
-    }
-    const pageSignal = `${url.hostname} ${url.pathname} ${url.search}`.toLowerCase();
-
-    return /checkout|order|confirmation|receipt|thank|complete|success|purchase/.test(pageSignal);
-  } catch {
-    return false;
-  }
-}
-
 function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -1410,4 +1613,131 @@ function getElement<T extends HTMLElement>(id: string): T {
   }
 
   return element as T;
+}
+
+
+async function watchlistRequest<T>(type: string, payload: Record<string, unknown> = {}): Promise<T> {
+  const response = await chrome.runtime.sendMessage({type: `TRACER_WATCHLIST_${type}`, ...payload}) as {ok:boolean; result:T; error?:string};
+  if (!response?.ok) throw new Error(response?.error || 'Saved items are unavailable. Please try again.');
+  return response.result;
+}
+
+async function offerSaveProduct(tabId: number, runId: number): Promise<boolean> {
+  try {
+    await withTimeout(chrome.scripting.executeScript({target:{tabId}, files:['watchlistCapture.js']}), scanTimeoutMs, 'Product scan timed out.');
+    const response = await withTimeout(chrome.tabs.sendMessage(tabId, {type:'TRACER_EXTRACT_SAVED_PRODUCT'}), scanTimeoutMs, 'Product scan timed out.') as {product: SavedProduct | null};
+    if (runId !== activeScanRunId) return true;
+    if (!response?.product) return false;
+    savedProduct = response.product;
+    const savedItems = await watchlistRequest<SavedItem[]>('LIST').catch(() => []);
+    if (runId !== activeScanRunId) return true;
+    const alreadySaved = savedItems.some((item) =>
+      normalizeSavedUrl(item.canonicalUrl) === normalizeSavedUrl(savedProduct!.canonicalUrl)
+    );
+    renderSavedProduct(getElement('watchProduct'), savedProduct);
+    saveToTracer.disabled = alreadySaved;
+    saveToTracer.textContent = alreadySaved ? 'Already saved' : 'Save to Tracer';
+    saveToTracer.dataset.status = alreadySaved ? 'existing' : 'ready';
+    getElement('watchHeading').textContent = alreadySaved ? 'Already saved.' : 'Save for later.';
+    watchFeedback.textContent = '';
+    renderState('watchlist', '', '');
+    return true;
+  } catch { return false; }
+}
+
+async function saveCurrentProduct(): Promise<void> {
+  if (!savedProduct) return;
+  saveToTracer.disabled = true;
+  saveToTracer.textContent = 'Saving…';
+  saveToTracer.dataset.status = 'saving';
+  try {
+    await watchlistRequest<{duplicate:boolean}>('SAVE', {product:savedProduct});
+    getElement('watchHeading').textContent = 'Saved.';
+    saveToTracer.textContent = 'Saved';
+    saveToTracer.dataset.status = 'saved';
+    watchFeedback.textContent = 'Find it in Your items → Saved. Buy it, then protect your purchase with Tracer.';
+  } catch (error) {
+    watchFeedback.textContent = error instanceof Error ? error.message : 'Could not save this item.';
+    saveToTracer.disabled = false;
+    saveToTracer.textContent = 'Try saving again';
+    saveToTracer.dataset.status = 'ready';
+  }
+}
+
+function setItemsSegment(saved: boolean): void {
+  savedTab.setAttribute('aria-pressed', String(saved));
+  protectedTab.setAttribute('aria-pressed', String(!saved));
+  getElement('savedHint').hidden = !saved;
+}
+
+function renderSavedProduct(container: HTMLElement, item: SavedProduct): void {
+  container.replaceChildren();
+  container.dataset.hasImage = String(Boolean(item.imageUrl));
+  if (item.imageUrl) {
+    const image = document.createElement('img');
+    image.src = item.imageUrl;
+    image.alt = '';
+    image.referrerPolicy = 'no-referrer';
+    image.addEventListener('error', () => {
+      image.remove();
+      container.dataset.hasImage = 'false';
+    });
+    container.append(image);
+  }
+  const copy = document.createElement('div');
+  copy.className = 'saved-copy';
+  const title = document.createElement('strong');
+  title.textContent = item.name;
+  const retailer = document.createElement('p');
+  retailer.textContent = item.retailer;
+  copy.append(title, retailer);
+  if (item.savedPrice) {
+    const price = document.createElement('p');
+    price.className = 'saved-price';
+    price.textContent = `${formatMoney(item.savedPrice)} · price when saved`;
+    copy.append(price);
+  }
+  container.append(copy);
+}
+
+async function showSavedItems(): Promise<void> {
+  const runId = ++itemsLoadRunId;
+  setItemsSegment(true);
+  renderState('items', 'Your items', '');
+  itemsList.replaceChildren();
+  itemsCount.textContent = '…';
+  try {
+    const items = await watchlistRequest<SavedItem[]>('LIST');
+    if (runId !== itemsLoadRunId || currentState !== 'items') return;
+    itemsCount.textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'}`;
+    if (!items.length) {
+      renderItemsMessage('A place for your maybes.', 'Open Tracer on a product page and choose Save to Tracer.');
+      return;
+    }
+    for (const item of items.reverse()) {
+      const row = document.createElement('article');
+      row.className = 'saved-row';
+      renderSavedProduct(row, item);
+      const footer = document.createElement('footer');
+      const open = document.createElement('a');
+      open.textContent = 'Open item ↗';
+      open.href = item.canonicalUrl;
+      open.target = '_blank';
+      open.rel = 'noopener noreferrer';
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = 'Remove';
+      remove.setAttribute('aria-label', `Remove ${item.name} from Saved`);
+      remove.addEventListener('click', () => {
+        remove.disabled = true;
+        void watchlistRequest('REMOVE', {id:item.id}).then(() => showSavedItems()).catch(() => { remove.textContent = 'Retry removal'; remove.disabled = false; });
+      });
+      footer.append(open, remove);
+      row.append(footer);
+      itemsList.append(row);
+    }
+  } catch {
+    if (runId !== itemsLoadRunId || currentState !== 'items') return;
+    renderItemsMessage('Saved items unavailable', 'Select Saved to try again. Your protected purchases are separate.');
+  }
 }

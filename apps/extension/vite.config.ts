@@ -6,7 +6,7 @@ export default defineConfig({
     name: "standalone-content-scripts",
     async closeBundle() {
       // Chrome injects these as classic scripts, so they cannot import shared chunks.
-      for (const name of ["contentScript", "genericCapture"]) {
+      for (const name of ["contentScript", "genericCapture", "watchlistCapture"]) {
         await build({
           configFile: false,
           publicDir: false,

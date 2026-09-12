@@ -18,3 +18,5 @@ export * from "./useCases/monitorPrices";
 export * from "./useCases/findProtectedPurchaseForDraft";
 export * from "./useCases/protectPurchase";
 export * from "./useCases/updateOpportunityStatus";
+export * from "./retailers/watchlistExtractor";
+export * from "./domain/watchlist";
