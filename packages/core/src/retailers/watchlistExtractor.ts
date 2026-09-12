@@ -2,7 +2,7 @@ import type { SavedProduct } from "../domain/watchlist";
 import type { PurchaseDraft, PurchaseLineItemDraft } from '../domain/types';
 import { parsePrice } from '../domain/money';
 import { asRecord, extractJsonLdObjects, flattenJsonLd, jsonLdHasType, firstString } from './jsonLd';
-import { selectProductImage, findOpenGraphImage } from './productImage';
+import { findProductPageImage } from './productImage';
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -67,7 +67,13 @@ export function extractSavedProduct(document: Document, pageUrl: string): SavedP
       const price = parsePrice(rawPrice, currency);
       if (price) result.savedPrice = price;
     }
-    const image = selectProductImage([{value: product?.image, source:'json_ld'}, {value: findOpenGraphImage(document, page.url), source:'open_graph'}], page.url);
+    const image = findProductPageImage(document, page.url, {
+      structuredImage: product?.image,
+      productName: name,
+      retailerSelectors: retailerId === 'john-lewis'
+        ? ["[data-test*='product-image' i] img", "[data-testid*='product-image' i] img"]
+        : undefined,
+    });
     if (image) result.imageUrl = image.url;
     const sku = firstString(product?.sku);
     const productId = firstString(product?.productID) || normalizeRetailerUrl(retailerId, url).productId;

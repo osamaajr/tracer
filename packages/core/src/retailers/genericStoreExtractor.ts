@@ -12,7 +12,12 @@ import {
   deriveRetailerNameFromHost,
   normalizePublicStoreUrl,
 } from "./urlSafety";
-import { findOpenGraphImage, findOrderConfirmationImage, selectProductImage } from "./productImage";
+import {
+  findOpenGraphImage,
+  findOrderConfirmationImage,
+  findProductPageImage,
+  selectProductImage,
+} from "./productImage";
 
 export function extractGenericPurchaseFromDocument(
   document: Document,
@@ -117,13 +122,10 @@ export function extractGenericProductFromDocument(
   };
 
   const sku = firstString(product?.sku);
-  const image = selectProductImage(
-    [
-      { value: product?.image, source: "json_ld" },
-      { value: findOpenGraphImage(document, productUrl), source: "open_graph" },
-    ],
-    productUrl,
-  );
+  const image = findProductPageImage(document, productUrl, {
+    structuredImage: product?.image,
+    productName,
+  });
 
   if (sku) {
     snapshot.sku = sku;
@@ -230,6 +232,7 @@ function extractLineItemFromJsonLdEntry(
       { value: findOpenGraphImage(document, sourceUrl), source: "open_graph" },
     ],
     sourceUrl,
+    name,
   );
 
   if (sku) {
@@ -333,14 +336,23 @@ function extractLineItemFromDomElement(
   const image = selectProductImage(
     [
       {
-        value:
-          element.querySelector<HTMLImageElement>("img")?.currentSrc ??
-          element.querySelector<HTMLImageElement>("img")?.src ??
-          element.querySelector<HTMLImageElement>("img")?.getAttribute("data-src"),
+        value: (() => {
+          const productImage = element.querySelector<HTMLImageElement>("img");
+          return [
+            productImage?.getAttribute("srcset"),
+            productImage?.getAttribute("data-srcset"),
+            productImage?.getAttribute("data-zoom-image"),
+            productImage?.currentSrc,
+            productImage?.getAttribute("data-src"),
+            productImage?.getAttribute("src"),
+          ];
+        })(),
         source: "order_confirmation",
+        alt: element.querySelector<HTMLImageElement>("img")?.alt,
       },
     ],
     sourceUrl,
+    name,
   );
 
   if (image) {

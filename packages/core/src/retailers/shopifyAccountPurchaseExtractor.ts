@@ -1,6 +1,6 @@
 import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { parsePrice } from "../domain/money";
-import { firstUsableProductImage } from "./productImage";
+import { selectProductImage } from "./productImage";
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -120,10 +120,20 @@ function extractLineItem(root: Element, sourceUrl: string): PurchaseLineItemDraf
   };
   const productUrl = new URL(normalized.url);
   const variantId = productUrl.searchParams.get("variant");
-  const imageUrl = firstUsableProductImage(
-    root.querySelector("img")?.getAttribute("src") ?? undefined,
-    sourceUrl,
-  );
+  const productImage = root.querySelector<HTMLImageElement>("img");
+  const imageUrl = selectProductImage([{
+    value: [
+      productImage?.getAttribute("srcset"),
+      productImage?.getAttribute("data-srcset"),
+      productImage?.getAttribute("data-zoom-image"),
+      productImage?.getAttribute("data-src"),
+      productImage?.getAttribute("src"),
+    ],
+    source: "order_confirmation",
+    width: Number(productImage?.getAttribute("width")) || undefined,
+    height: Number(productImage?.getAttribute("height")) || undefined,
+    alt: productImage?.alt,
+  }], sourceUrl, productName)?.url;
 
   if (variantId && /^\d+$/.test(variantId)) {
     item.externalProductId = variantId;

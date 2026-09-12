@@ -9,8 +9,8 @@ import {
   extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
-  firstUsableProductImage,
   isShopifyAccountOrderUrl,
+  selectProductImage,
 } from "@afterbuy/core";
 
 declare global {
@@ -234,10 +234,14 @@ function schemaItemFromEntry(
     productUrlConfidence: "high",
   };
   const sku = firstString(record.sku) ?? firstString(item?.sku);
-  const imageUrl =
-    findOrderConfirmationImage(page, productName, productUrl, sourceUrl) ??
-    firstUsableProductImage(record.image ?? item?.image, sourceUrl) ??
-    findOpenGraphImage(page, sourceUrl);
+  const imageUrl = selectProductImage([
+    {
+      value: findOrderConfirmationImage(page, productName, productUrl, sourceUrl),
+      source: "order_confirmation",
+    },
+    { value: record.image ?? item?.image, source: "json_ld" },
+    { value: findOpenGraphImage(page, sourceUrl), source: "open_graph" },
+  ], sourceUrl, productName)?.url;
 
   if (sku) {
     draft.sku = sku;
@@ -295,9 +299,24 @@ function extractDomItems(
       return [];
     }
 
-    const imageUrl =
-      firstUsableProductImage(node.querySelector<HTMLImageElement>("img")?.src, sourceUrl) ??
-      findOpenGraphImage(page, sourceUrl);
+    const productImage = node.querySelector<HTMLImageElement>("img");
+    const imageUrl = selectProductImage([
+      {
+        value: [
+          productImage?.getAttribute("srcset"),
+          productImage?.getAttribute("data-srcset"),
+          productImage?.getAttribute("data-zoom-image"),
+          productImage?.currentSrc,
+          productImage?.getAttribute("data-src"),
+          productImage?.getAttribute("src"),
+        ],
+        source: "order_confirmation",
+        width: Number(productImage?.getAttribute("width")) || undefined,
+        height: Number(productImage?.getAttribute("height")) || undefined,
+        alt: productImage?.alt,
+      },
+      { value: findOpenGraphImage(page, sourceUrl), source: "open_graph" },
+    ], sourceUrl, productName)?.url;
     const item: PurchaseLineItemDraft = {
       productName,
       quantity: numberFromUnknown(firstText(node, ["[data-afterbuy-quantity]", "[data-quantity]"])) ?? 1,

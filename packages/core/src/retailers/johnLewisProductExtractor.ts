@@ -1,7 +1,7 @@
 import { parseGbpPrice } from "../domain/money";
 import type { ProductPriceSnapshot } from "../domain/types";
 import { asRecord, extractJsonLdObjects, findJsonLdByType, firstString } from "./jsonLd";
-import { findOpenGraphImage, selectProductImage } from "./productImage";
+import { findProductPageImage } from "./productImage";
 import { normalizeRetailerUrl } from "./urlSafety";
 
 export function extractJohnLewisProductFromDocument(
@@ -27,13 +27,15 @@ export function extractJohnLewisProductFromDocument(
         )
         ?.textContent?.trim(),
     );
-  const image = selectProductImage(
-    [
-      { value: jsonLdProduct?.image, source: "json_ld" },
-      { value: findOpenGraphImage(document, productUrl), source: "open_graph" },
+  const image = findProductPageImage(document, productUrl, {
+    structuredImage: jsonLdProduct?.image,
+    productName: name,
+    retailerSelectors: [
+      "[data-test*='product-image' i] img",
+      "[data-testid*='product-image' i] img",
+      "[class*='product-image' i] img",
     ],
-    productUrl,
-  );
+  });
   const sku = firstString(jsonLdProduct?.sku);
 
   if (!name || !price) {

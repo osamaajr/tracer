@@ -192,6 +192,7 @@ function extractLineItemFromOffer(
       },
     ],
     sourceUrl,
+    productName,
   );
 
   if (image) {
@@ -253,14 +254,19 @@ function extractLineItemFromElement(element: HTMLElement): PurchaseLineItemDraft
     item.sku = sku;
   }
 
-  const image = selectProductImage(
-    [
-      {
-        value: elementImageUrl(element),
-        source: "order_confirmation",
-      },
+  const productImage = element.querySelector<HTMLImageElement>("img");
+  const image = selectProductImage([{
+    value: [
+      productImage?.getAttribute("srcset"),
+      productImage?.getAttribute("data-srcset"),
+      productImage?.getAttribute("data-zoom-image"),
+      elementImageUrl(element),
     ],
-  );
+    source: "order_confirmation",
+    width: Number(productImage?.getAttribute("width")) || undefined,
+    height: Number(productImage?.getAttribute("height")) || undefined,
+    alt: productImage?.alt,
+  }], undefined, productName);
 
   if (image) {
     item.imageUrl = image.url;
