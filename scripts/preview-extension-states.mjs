@@ -28,6 +28,9 @@ if(state==='items-paused'){set('itemsCount','1 item');document.getElementById('i
 if(state==='items-empty'){set('itemsCount','0 items');document.getElementById('itemsList').innerHTML='<div class="items-message"><strong>No protected purchases yet</strong><span>Protect a purchase after checkout to see it here.</span></div>';}
 if(state==='detail'){document.getElementById('itemFacts').innerHTML='<div class="detail-row"><dt>Retailer</dt><dd>John Lewis</dd></div><div class="detail-row"><dt>Paid</dt><dd>£349.99</dd></div><div class="detail-row"><dt>Current price</dt><dd>£319.99</dd></div>';}
 if(state==='clear-confirmation'){document.getElementById('clearPurchasesPill').dataset.confirming='true';document.getElementById('clearConfirmation').hidden=false;}
+const wireClearAction=(pillId,buttonId,confirmationId,cancelId,confirmId,messageId,onConfirm)=>{const pill=document.getElementById(pillId),button=document.getElementById(buttonId),confirmation=document.getElementById(confirmationId),cancel=document.getElementById(cancelId),confirm=document.getElementById(confirmId),message=document.getElementById(messageId);if(!pill||!button||!confirmation||!cancel||!confirm||!message)return;const hide=()=>{pill.dataset.confirming='false';button.setAttribute('aria-expanded','false');button.inert=false;confirmation.inert=true;confirm.disabled=false;cancel.disabled=false;button.disabled=false;message.dataset.error='false';};const show=()=>{message.textContent='This can’t be undone.';message.dataset.error='false';pill.dataset.confirming='true';button.setAttribute('aria-expanded','true');button.inert=true;confirmation.inert=false;confirm.focus();};button.addEventListener('click',show);cancel.addEventListener('click',hide);confirm.addEventListener('click',()=>{if(confirm.disabled)return;confirm.disabled=true;onConfirm();hide();});if(pill.dataset.confirming==='true'){confirmation.inert=false;button.inert=true;}};
+wireClearAction('clearPurchasesPill','clearProtectedPurchases','clearConfirmation','cancelClearPurchases','confirmClearPurchases','clearConfirmationMessage',()=>{set('itemsCount','0 items');set('menuItemsCount','(0)');const list=document.getElementById('itemsList');if(list)list.innerHTML='<div class="items-message"><strong>No protected purchases</strong><span>Items you protect will appear here.</span></div>';});
+wireClearAction('clearSavedPill','clearSavedItems','clearSavedConfirmation','cancelClearSaved','confirmClearSaved','clearSavedConfirmationMessage',()=>{set('itemsCount','0 items');const list=document.getElementById('itemsList');if(list)list.innerHTML='<div class="items-message"><strong>A place for your maybes.</strong><span>Open Tracer on a product page and choose Save to Tracer.</span></div>';});
 if(state.startsWith('watchlist')) {
   app.dataset.screen='watchlist';
   document.getElementById('watchProduct').innerHTML='<img src="/extension-states/assets/product-headphones.png" alt=""><strong>Women’s Light beige/Gingham check Oversized flannel shirt | H&amp;M GB</strong><p>H&amp;M</p><p class="saved-price">£37.99 · price when saved</p>';
@@ -37,15 +40,21 @@ if(state.startsWith('watchlist')) {
     document.getElementById('saveToTracer').dataset.status=state==='watchlist-duplicate'?'existing':'saved';
     document.getElementById('saveToTracer').disabled=true;
     set('watchFeedback','Find it in Your items → Saved. Buy it, then protect your purchase with Tracer.');
+    if(state==='watchlist-saved') {
+      const burst=document.getElementById('watchlistConfetti');
+      const pieces=[...document.getElementById('confetti').children].map(piece=>piece.cloneNode(true));
+      burst.replaceChildren(...pieces);
+      app.dataset.celebrate='true';
+      setTimeout(()=>{app.dataset.celebrate='false';},1800);
+    }
   }
 }
 if(state==='saved-items'||state==='saved-empty') {
   app.dataset.screen='items';
   document.getElementById('savedTab').setAttribute('aria-pressed','true');
   document.getElementById('protectedTab').setAttribute('aria-pressed','false');
-  document.getElementById('savedHint').hidden=false;
   set('itemsCount',state==='saved-items'?'1 item':'0 items');
-  document.getElementById('itemsList').innerHTML=state==='saved-empty'?'<div class="items-message"><strong>A place for your maybes.</strong><span>Open Tracer on a product page and choose Save to Tracer.</span></div>':'<article class="saved-row" data-has-image="true"><img src="/extension-states/assets/product-headphones.png" alt=""><div class="saved-copy"><strong>Sony WH-1000XM5</strong><p>johnlewis.com</p><p>£349.99 · price when saved</p></div><footer><a href="https://www.johnlewis.com" target="_blank" rel="noopener noreferrer">Open item ↗</a><button type="button">Remove</button></footer></article>';
+  document.getElementById('itemsList').innerHTML=state==='saved-empty'?'<div class="items-message"><strong>A place for your maybes.</strong><span>Open Tracer on a product page and choose Save to Tracer.</span></div>':'<article class="saved-row" data-has-image="true"><img src="/extension-states/assets/product-headphones.png" alt=""><div class="saved-copy"><strong>Sony WH-1000XM5</strong><p>johnlewis.com</p><p>£349.99 · price when saved</p></div><footer><a href="https://www.johnlewis.com" target="_blank" rel="noopener noreferrer" aria-label="Open item">Open item <span class="open-item-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M9 2h5v5M8 8l6-6M13 9v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></a><button type="button">Remove</button></footer></article>';
 }
 const label=document.createElement('div');label.className='preview-label';label.textContent='Design preview · '+state+' · sample data';document.body.prepend(label);
 </script>`;

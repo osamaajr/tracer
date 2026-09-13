@@ -4,9 +4,10 @@ import {
   ArrowDown,
   ArrowRight,
   Bell,
-  CalendarDays,
+  Bookmark,
   ChevronRight,
   CheckCircle2,
+  Globe2,
   MoreHorizontal,
   ShieldCheck,
   ShoppingBag,
@@ -125,9 +126,9 @@ function HeroSectionB() {
   return (
     <section className="hero landing-b-hero" id="install">
       <div className="hero-copy">
-        <h1>Bought it?<br />We'll keep<br />watching it.</h1>
+        <h1>Save it.<br />We’ll keep watching it.</h1>
         <p className="hero-text">
-          Tracer watches your purchases after checkout and alerts you when prices drop or there's something worth acting on.
+          Save products from any website, come back anytime, and let Tracer keep an eye on the price — even after you buy.
         </p>
         <a className="primary-button hero-cta" href="#install">
           <ChromeMark />
@@ -143,7 +144,7 @@ function HeroSectionB() {
 
 interface FloatingAlertCardProps {
   className: string;
-  copy: string;
+  copy: ReactNode;
   icon: ReactNode;
   time: string;
   title: string;
@@ -170,15 +171,15 @@ function HeroMonitoringVisual() {
           <MoreHorizontal aria-hidden="true" size={20} />
         </header>
         <div className="landing-b-watch-body">
-          <span className="landing-b-watch-icon"><ShoppingBag aria-hidden="true" size={25} /></span>
+          <span className="landing-b-watch-icon"><Bookmark aria-hidden="true" size={25} /></span>
           <div>
-            <h2>Watching your purchase</h2>
-            <p>We'll alert you if the price drops, there are updates, or a refund opportunity.</p>
+            <h2>Watching your item</h2>
+            <p>Saved or purchased, Tracer keeps checking the price for you.</p>
           </div>
         </div>
         <footer>
-          <span><CheckCircle2 aria-hidden="true" size={14} />Monitoring</span>
-          <span>You're covered</span>
+          <span><CheckCircle2 aria-hidden="true" size={14} />Saved</span>
+          <span>Protect after checkout</span>
         </footer>
       </article>
 
@@ -192,18 +193,18 @@ function HeroMonitoringVisual() {
       />
       <FloatingAlertCard
         className="landing-b-alert-up"
-        copy="No changes yet. We’ll keep an eye on it."
-        icon={<TrendingUp aria-hidden="true" size={24} />}
-        time="3d ago"
-        title="Still watching"
+        copy={<><span>Keep products from any</span><br />website in one place.</>}
+        icon={<Globe2 aria-hidden="true" size={24} />}
+        time="Just now"
+        title="Saved from anywhere"
         tone="blue"
       />
       <FloatingAlertCard
         className="landing-b-alert-return"
-        copy="Your protected purchase is on our watchlist."
-        icon={<CalendarDays aria-hidden="true" size={23} />}
-        time="5d ago"
-        title="Monitoring active"
+        copy="You bought a saved item. Tracer will keep watching for price drops."
+        icon={<ShoppingBag aria-hidden="true" size={23} />}
+        time="Just now"
+        title="Purchase detected"
         tone="amber"
       />
     </div>
@@ -213,9 +214,8 @@ function HeroMonitoringVisual() {
 function LandingBValueStatement() {
   return (
     <section className="landing-b-value">
-      <h2>After checkout,<br />Tracer keeps watching.</h2>
-      <p>We keep checking, so you don’t have to.</p>
-      <p className="landing-b-watchlist-note">Not ready to buy? Save products from shops across the web to Tracer, and come back when you’re ready. Protect them after checkout.</p>
+      <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
+      <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
     </section>
   );
 }
@@ -226,19 +226,57 @@ function LandingBFeatures() {
       <div className="landing-b-editorial-features">
         <article className="landing-b-editorial-feature">
           <div className="landing-b-editorial-copy">
-            <h3>Finds price drops after checkout.</h3>
-            <p>Tracer keeps checking protected purchases and lets you know when the price drops.</p>
+            <h3>Keep every find in one place.</h3>
+            <p>Save products from any shop and pick up where you left off.</p>
+          </div>
+          <div className="landing-b-feature-visual landing-b-save-visual" aria-label="Tracer saved items example">
+            <div className="landing-b-save-card landing-b-update-card">
+              <header>
+                <span><Globe2 aria-hidden="true" size={20} /></span>
+                <div><strong>Saved items</strong><p>Products you want, all together.</p></div>
+                <Bookmark aria-hidden="true" size={18} />
+              </header>
+              <div className="landing-b-save-detail"><Bookmark aria-hidden="true" size={18} /><span>Items ready when you are</span><strong>12</strong></div>
+            </div>
+          </div>
+        </article>
+
+        <article className="landing-b-editorial-feature landing-b-editorial-feature-reversed">
+          <div className="landing-b-editorial-copy">
+            <h3>We watch the price for you.</h3>
+            <p>Tracer keeps checking saved and purchased items, then lets you know when the price drops.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-drop-visual" aria-label="Tracer price-drop notification example">
             <div className="landing-b-feature-alert landing-b-feature-alert-combined">
               <span className="landing-b-feature-alert-icon"><ArrowDown aria-hidden="true" size={25} /></span>
-              <div><strong>Price drop detected</strong><p>Sony WH-1000XM5 is now £319.99.</p></div>
+              <div><strong>Price drop detected</strong><p>Your headphones are now £319.99.</p></div>
               <time>Just now</time>
               <div className="landing-b-feature-price-row">
                 <span><small>You paid</small><strong>£349.99</strong></span>
                 <ArrowRight aria-hidden="true" size={20} />
                 <span><small>Now</small><strong>£319.99</strong></span>
-                <em>£30 less</em>
+                <em>£30 back</em>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="landing-b-editorial-feature">
+          <div className="landing-b-editorial-copy">
+            <h3>Only hear about changes worth knowing.</h3>
+            <p>Get a heads-up when a price or policy change could save you money.</p>
+          </div>
+          <div className="landing-b-feature-visual landing-b-update-visual" aria-label="Tracer activity alert example">
+            <div className="landing-b-update-card">
+              <header>
+                <span><Bell aria-hidden="true" size={20} /></span>
+                <div><strong>Worth a look</strong><p>A meaningful change was found.</p></div>
+                <time>Now</time>
+              </header>
+              <div className="landing-b-update-detail">
+                <span><TrendingUp aria-hidden="true" size={21} /></span>
+                <div><strong>£30 saving found</strong><p>Review your options before you miss it.</p></div>
+                <ChevronRight aria-hidden="true" size={20} />
               </div>
             </div>
           </div>
@@ -246,8 +284,8 @@ function LandingBFeatures() {
 
         <article className="landing-b-editorial-feature landing-b-editorial-feature-reversed">
           <div className="landing-b-editorial-copy">
-            <h3>Keeps monitoring automatically.</h3>
-            <p>Protect a purchase once, and Tracer continues checking it in the background.</p>
+            <h3>Protect it once. We keep watch.</h3>
+            <p>After checkout, Tracer keeps checking for price drops and refund opportunities.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
             <div className="landing-b-monitor-card">
@@ -259,28 +297,7 @@ function LandingBFeatures() {
                 <div><dt>Paid</dt><dd>£349.99</dd></div>
                 <div><dt>Current price</dt><dd>£349.99</dd></div>
               </dl>
-              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching</span><small><CheckCircle2 aria-hidden="true" size={13} /> Checked just now</small></footer>
-            </div>
-          </div>
-        </article>
-
-        <article className="landing-b-editorial-feature">
-          <div className="landing-b-editorial-copy">
-            <h3>Alerts you when something changes.</h3>
-            <p>Tracer notifies you when there is a meaningful price change or update worth knowing about.</p>
-          </div>
-          <div className="landing-b-feature-visual landing-b-update-visual" aria-label="Tracer activity alert example">
-            <div className="landing-b-update-card">
-              <header>
-                <span><Bell aria-hidden="true" size={20} /></span>
-                <div><strong>Opportunity found</strong><p>There’s something worth acting on.</p></div>
-                <time>Now</time>
-              </header>
-              <div className="landing-b-update-detail">
-                <span><TrendingUp aria-hidden="true" size={21} /></span>
-                <div><strong>£30 potential saving found</strong><p>Review your price-protection options.</p></div>
-                <ChevronRight aria-hidden="true" size={20} />
-              </div>
+              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching for drops</span><small><CheckCircle2 aria-hidden="true" size={13} /> Checked just now</small></footer>
             </div>
           </div>
         </article>
@@ -291,29 +308,88 @@ function LandingBFeatures() {
 
 function LandingBDemo() {
   const [step, setStep] = useState(0);
-  const titles = ["A purchase worth watching.", "Go on with your day.", "A little heads-up. A lower price."];
-  const captions = ["Choose a purchase to protect. Tracer takes it from here.", "Your protected purchase stays on Tracer’s watchlist.", "When the price drops, you’ll know."];
+  const moments = [
+    {
+      label: "Save",
+      eyebrow: "FROM ANY SHOP",
+      title: "A home for every maybe.",
+      description: "Save something you like and find it again without keeping another tab open.",
+      state: "Saved item",
+      readoutLabel: "Saved price",
+      readout: "£349.99",
+      note: "Ready whenever you are",
+      action: "Saved to Tracer",
+    },
+    {
+      label: "Buy",
+      eyebrow: "AFTER CHECKOUT",
+      title: "Bought it? Tracer stays with it.",
+      description: "A saved item becomes a protected purchase, so the checking can continue after checkout.",
+      state: "Purchase detected",
+      readoutLabel: "You paid",
+      readout: "£349.99",
+      note: "Protection available",
+      action: "Purchase protected",
+    },
+    {
+      label: "Watch",
+      eyebrow: "IN THE BACKGROUND",
+      title: "Nothing for you to remember.",
+      description: "Tracer quietly checks the price and keeps an eye on useful policy windows.",
+      state: "Still watching",
+      readoutLabel: "Current price",
+      readout: "£349.99",
+      note: "Checked just now",
+      action: "Monitoring automatically",
+    },
+    {
+      label: "Save money",
+      eyebrow: "WHEN IT MATTERS",
+      title: "A £30 drop, right on time.",
+      description: "When something meaningful changes, Tracer gives you a clear reason to come back.",
+      state: "Price drop detected",
+      readoutLabel: "New price",
+      readout: "£319.99",
+      note: "£30 less than you paid",
+      action: "Saving found",
+    },
+  ];
+  const moment = moments[step];
+  const momentIcons = [Bookmark, ShoppingBag, ShieldCheck, ArrowDown];
 
   return (
     <section className="landing-b-demo" aria-labelledby="landing-b-demo-title">
       <header className="landing-b-demo-heading">
-        <div><span>TAKE A CLOSER LOOK</span><h2 id="landing-b-demo-title">A small click.<br />A watchful little companion.</h2></div>
-        <p>See what happens after checkout.<br />Try a purchase, from protected to price drop.</p>
+        <div><span>FOLLOW ONE ITEM</span><h2 id="landing-b-demo-title">From “maybe”<br />to money saved.</h2></div>
+        <p>See how one product moves through Tracer—from the moment you save it to the moment its price moves.</p>
       </header>
-      <div className="landing-b-demo-stage">
-        <div className="landing-b-demo-toolbar"><span><i /><i /><i /></span><small>Tracer in action · Interactive demo</small><span aria-hidden="true"><ShieldCheck size={17} /></span></div>
-        <div className="landing-b-demo-scene">
-          <div className="landing-b-demo-caption"><span>YOUR PURCHASE, AFTER CHECKOUT</span><h3>{titles[step]}</h3><p>{captions[step]}</p></div>
-          <div className="landing-b-demo-preview" key={step}>
-            <div className="landing-b-demo-card">
-              <header><img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" /><span>{step === 0 ? "Purchase detected" : "Protected"}</span></header>
-              <div className="landing-b-demo-product"><img src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" /><div><strong>Sony WH-1000XM5</strong><p>John Lewis</p><b>£349.99</b></div></div>
-              {step === 0 ? <button onClick={() => setStep(1)}>Protect purchase <ArrowRight size={17} /></button> : <div className="landing-b-demo-status"><CheckCircle2 size={18} /><span>{step === 1 ? "Monitoring your purchase" : "Price drop detected"}</span></div>}
+      <div className="landing-b-journey-shell">
+        <div className="landing-b-journey-nav" role="group" aria-label="Item journey">
+          {moments.map((item, index) => {
+            const MomentIcon = momentIcons[index];
+            return <button key={item.label} aria-pressed={step === index} onClick={() => setStep(index)}><span><MomentIcon aria-hidden="true" size={17} /></span><small>{String(index + 1).padStart(2, "0")}</small><strong>{item.label}</strong></button>;
+          })}
+        </div>
+        <div className="landing-b-journey-main">
+          <div className="landing-b-journey-copy" key={`copy-${step}`}>
+            <span>{moment.eyebrow}</span>
+            <h3>{moment.title}</h3>
+            <p>{moment.description}</p>
+            <button onClick={() => setStep((step + 1) % moments.length)}>{step === moments.length - 1 ? "Start again" : "See the next moment"}<ArrowRight aria-hidden="true" size={17} /></button>
+          </div>
+          <div className="landing-b-journey-preview" key={`preview-${step}`}>
+            <div className="landing-b-journey-card">
+              <header><img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" /><span>{moment.state}</span></header>
+              <div className="landing-b-journey-product"><img src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" /><div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div></div>
+              <div className="landing-b-journey-readout" data-saving={step === 3}>
+                <div><small>{moment.readoutLabel}</small><strong>{moment.readout}</strong></div>
+                <span>{moment.note}</span>
+              </div>
+              <div className="landing-b-journey-status"><CheckCircle2 aria-hidden="true" size={17} /><span>{moment.action}</span></div>
             </div>
-            {step === 2 && <div className="landing-b-demo-notification"><span><ArrowDown size={25} /></span><div><strong>Now £30 less.</strong><p>Your headphones are now £319.99.</p></div><Bell size={18} /></div>}
+            {step === 3 && <div className="landing-b-journey-alert"><span><ArrowDown aria-hidden="true" size={22} /></span><div><strong>Price drop detected</strong><p>This item is now £30 less.</p></div><Bell aria-hidden="true" size={18} /></div>}
           </div>
         </div>
-        <div className="landing-b-demo-controls"><div role="group" aria-label="Demo stages">{["Protect", "Monitor", "Get notified"].map((label, index) => <button key={label} aria-pressed={step === index} onClick={() => setStep(index)}><span>{index + 1}</span>{label}</button>)}</div><button className="landing-b-demo-next" onClick={() => setStep((step + 1) % 3)}>{step === 2 ? "Replay demo" : "Next moment"}<ArrowRight size={17} /></button></div>
       </div>
     </section>
   );
@@ -368,18 +444,20 @@ function ChromeMark() {
 function Footer() {
   return (
     <footer className="site-footer" id="faq">
+      <div className="footer-clouds" aria-hidden="true"><span /><span /></div>
       <div className="footer-row">
         <div className="brand" aria-label="Tracer">
           <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
           <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
         </div>
         <nav className="footer-links" aria-label="Footer navigation">
-          <a href="/contact">Contact</a>
+          <a href="mailto:osama.alnajar.26@gmail.com">Contact</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>
       </div>
       <p className="footer-copyright">© 2026 Tracer. All rights reserved.</p>
+      <div className="footer-giant-wordmark" aria-hidden="true"><span>T<em>r</em>acer</span></div>
     </footer>
   );
 }

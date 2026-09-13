@@ -41,6 +41,7 @@ interface PopupHarnessOptions {
     purchases: Array<Record<string, unknown>>;
     opportunities: Array<Record<string, unknown>>;
   };
+  pendingPurchases?: Array<Record<string, unknown>>;
   monitoringSettingsStatus?: number;
   deleteStatus?: number;
   scanResponse?: unknown;
@@ -75,6 +76,8 @@ describe("extension popup", () => {
     expect(text('watchHeading')).toBe('Saved.');
     expect(text('saveToTracer')).toBe('Saved');
     expect(element<HTMLButtonElement>('saveToTracer').dataset.status).toBe('saved');
+    expect(harness.app.dataset.celebrate).toBe('true');
+    expect(element('watchlistConfetti').children.length).toBeGreaterThan(0);
     expect(harness.protectMessages()).toHaveLength(0);
     element<HTMLButtonElement>('viewSaved').click();
     await flushPopup();
@@ -154,9 +157,8 @@ describe("extension popup", () => {
     expect(harness.app.dataset.screen).toBe("empty");
     expect(text("stateTitle")).toBe("Nothing to save here");
     expect(text("idleHeading")).toBe("Nothing to save here");
-    expect(text("idleFeatureCard")).toContain("Price drops");
-    expect(text("idleFeatureCard")).toContain("Policy windows");
-    expect(text("idleFeatureCard")).toContain("Alerts");
+    element<HTMLButtonElement>("emptyContinueBrowsing").click();
+    expect(window.close).toHaveBeenCalled();
 
     harness.protectedItemsCta.click();
     await flushPopup();
@@ -172,7 +174,33 @@ describe("extension popup", () => {
     });
   });
 
-  it("keeps manual opens save-focused without a cached purchase", async () => {
+  it("scans the page when an automatic purchase cache is unavailable", async () => {
+    const harness = await setupPopup({
+      cachedScanResponse: null,
+      scanResponse: {
+        ok: true,
+        draft: purchaseDraft,
+        summary: {
+          retailerName: purchaseDraft.retailerName,
+          productName: purchaseDraft.lineItems[0]?.productName,
+          itemCount: 1,
+          totalDisplay: "£349.99",
+          confidence: "high",
+        },
+      },
+      tabUrl: "https://shopify.com/83196445016/account/orders/example",
+    });
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("detected");
+    expect(harness.executeScript).toHaveBeenCalledWith({
+      target: { tabId: 1 },
+      files: ["genericCapture.js"],
+    });
+    expect(harness.scanMessages()).toHaveLength(1);
+  });
+
+  it("keeps manual opens save-focused when the page is not a purchase", async () => {
     const harness = await setupPopup({
       scanResponse: {
         ok: false,
@@ -386,6 +414,27 @@ describe("extension popup", () => {
     expect(harness.clearProtectedPurchases.disabled).toBe(false);
   });
 
+  it("clears offline protected purchases locally without sending synthetic ids to the API", async () => {
+    const harness = await setupPopup({
+      protected: true,
+      dashboardResponse: { purchases: [], opportunities: [] },
+      pendingPurchases: [{ id: "pending_123", draft: purchaseDraft, queuedAt: "2026-09-11T10:00:00.000Z" }],
+    });
+    await flushPopup();
+
+    harness.dashboardCta.click();
+    await flushPopup();
+    expect(text("itemsList")).toContain("Sony WH-1000XM5");
+    harness.menuSettings.click();
+    harness.clearProtectedPurchases.click();
+    harness.confirmClearPurchases.click();
+    await flushPopup();
+
+    expect(harness.deleteRequests()).toHaveLength(0);
+    expect(harness.localStorageSet).toHaveBeenCalledWith({ tracerPendingPurchases: [] });
+    expect(text("itemsCount")).toBe("0 items");
+  });
+
   it("confirms before clearing saved items and leaves protected purchases alone", async () => {
     const harness = await setupPopup({
       savedProduct: {name:'Desk lamp',retailer:'shop.example.com',retailerId:'shop',canonicalUrl:'https://shop.example.com/products/lamp'},
@@ -564,7 +613,10 @@ async function setupPopup(
   });
   const tabsCreate = vi.fn();
   const storageSet = vi.fn(async () => undefined);
-  const localStore: Record<string, unknown> = { tracerUserId: "dev-user" };
+  const localStore: Record<string, unknown> = {
+    tracerUserId: "dev-user",
+    ...(options.pendingPurchases ? { tracerPendingPurchases: options.pendingPurchases } : {}),
+  };
   const localStorageSet = vi.fn(async (values: Record<string, unknown>) => {
     Object.assign(localStore, values);
   });

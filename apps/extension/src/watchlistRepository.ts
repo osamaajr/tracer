@@ -28,7 +28,7 @@ export class WatchlistRepository {
       if (!product.name?.trim() || product.name.length > 300) throw new Error('A product name is required.');
       const existing = items.find(item => item.status === 'saved' && item.canonicalUrl === canonicalUrl);
       if (existing) return {item: existing, duplicate: true};
-      const item: SavedItem = {...product, canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt: new Date().toISOString(), status: 'saved'};
+      const item: SavedItem = {...product, canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt: new Date().toISOString(), status: 'saved', monitoringStatus: product.savedPrice ? 'watching' : 'unavailable'};
       await this.storage.set({[watchlistKey]: [...items, item]});
       return {item, duplicate: false};
     });
@@ -39,6 +39,17 @@ export class WatchlistRepository {
   clearSaved(): Promise<void> {
     return this.mutate(async items => {
       await this.storage.set({[watchlistKey]: items.filter(item => item.status !== 'saved')});
+    });
+  }
+  updateMonitoring(id: string, update: Pick<SavedItem, 'currentPrice' | 'priceDropAmount' | 'priceDropPercent' | 'monitoringStatus' | 'lastCheckedAt' | 'lastNotifiedPrice'>): Promise<SavedItem | null> {
+    return this.mutate(async items => {
+      const index = items.findIndex(item => item.id === id && item.status === 'saved');
+      if (index < 0) return null;
+      const next = {...items[index], ...update};
+      const all = [...items];
+      all[index] = next;
+      await this.storage.set({[watchlistKey]: all});
+      return next;
     });
   }
   connect(draft: Pick<PurchaseDraft, "retailerId" | "storeHost" | "lineItems">, protectionId: string): Promise<void> {

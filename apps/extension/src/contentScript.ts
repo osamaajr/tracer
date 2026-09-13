@@ -17,21 +17,27 @@ if (!window.__tracerPurchaseCandidateWatcher) {
   window.__tracerPurchaseCandidateWatcher = true;
 
   let scheduled: number | undefined;
+  let scheduledForceCheck = false;
   let documentRevision = 0;
   let lastSentRevision = -1;
+  let lastSentUrl = "";
+  let retryCount = 0;
   let detectionComplete = false;
+  const maxRetries = 6;
 
-  const checkPage = (): void => {
+  const checkPage = (force = false): void => {
     scheduled = undefined;
+    scheduledForceCheck = false;
     if (detectionComplete || !isLikelyPurchasePage(document, window.location.href)) {
       return;
     }
 
-    if (documentRevision === lastSentRevision) {
+    if (!force && documentRevision === lastSentRevision && window.location.href === lastSentUrl) {
       return;
     }
 
     lastSentRevision = documentRevision;
+    lastSentUrl = window.location.href;
     const message: PurchasePageCandidateMessage = {
       type: "TRACER_PURCHASE_PAGE_CANDIDATE",
       url: window.location.href,
@@ -44,32 +50,55 @@ if (!window.__tracerPurchaseCandidateWatcher) {
           window.clearTimeout(scheduled);
           scheduled = undefined;
         }
+        return;
       }
-    }).catch(() => undefined);
+
+      if (retryCount < maxRetries) {
+        retryCount += 1;
+        scheduleCheck(Math.min(2_000, 300 * 2 ** retryCount), true);
+      }
+    }).catch(() => {
+      if (retryCount < maxRetries) {
+        retryCount += 1;
+        scheduleCheck(Math.min(2_000, 300 * 2 ** retryCount), true);
+      }
+    });
   };
 
-  const scheduleCheck = (delay = 450): void => {
+  const scheduleCheck = (delay = 450, force = false): void => {
     if (scheduled !== undefined) {
+      if (force) {
+        scheduledForceCheck = true;
+      }
       window.clearTimeout(scheduled);
     }
-    scheduled = window.setTimeout(checkPage, delay);
+    scheduledForceCheck ||= force;
+    scheduled = window.setTimeout(() => checkPage(scheduledForceCheck), delay);
   };
 
   const observer = new MutationObserver(() => {
     documentRevision += 1;
     scheduleCheck(120);
   });
-  observer.observe(document.querySelector("main") ?? document.body ?? document.documentElement, {
+  observer.observe(document.documentElement, {
     childList: true,
+    characterData: true,
     subtree: true,
   });
 
   checkPage();
-  window.setTimeout(checkPage, 750);
-  window.setTimeout(checkPage, 2_000);
+  window.setTimeout(() => checkPage(true), 750);
+  window.setTimeout(() => checkPage(true), 2_000);
 
-  window.addEventListener("popstate", () => scheduleCheck(100));
-  window.addEventListener("hashchange", () => scheduleCheck(100));
+  window.addEventListener("popstate", () => scheduleCheck(100, true));
+  window.addEventListener("hashchange", () => scheduleCheck(100, true));
+  window.addEventListener("focus", () => scheduleCheck(100, true));
+  window.addEventListener("pageshow", () => scheduleCheck(100, true));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      scheduleCheck(100, true);
+    }
+  });
 }
 
 function isLikelyPurchasePage(page: Document, rawUrl: string): boolean {
@@ -80,8 +109,16 @@ function isLikelyPurchasePage(page: Document, rawUrl: string): boolean {
     return false;
   }
 
-  if (url.protocol !== "https:" || isKnownContentHost(url.hostname)) {
+  const isLocalDevelopmentPage =
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+    (url.protocol === "http:" || url.protocol === "https:");
+
+  if ((url.protocol !== "https:" && !isLocalDevelopmentPage) || isKnownContentHost(url.hostname)) {
     return false;
+  }
+
+  if (isLocalDevelopmentPage) {
+    return Boolean(page.querySelector("meta[name='tracer-demo-order'][content='true']"));
   }
 
   if (

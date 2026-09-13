@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" fill="none">
+  <defs>
+    <linearGradient id="glass" x1="83" y1="38" x2="149" y2="154" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#eeece8"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#7e766c" flood-opacity=".2"/></filter>
+  </defs>
+  <g opacity=".3" transform="rotate(-9 52 128)">
+    <rect x="20" y="91" width="62" height="72" rx="9" fill="#f2f0ed" stroke="#e1ded9"/>
+    <path d="M36 124h29l-3-12-7 6-7-9-12 15Z" fill="#bbb9b4"/>
+    <path d="M34 148h32" stroke="#c1beb8" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g opacity=".24" transform="rotate(8 190 90)">
+    <rect x="165" y="54" width="59" height="67" rx="9" fill="#f2f0ed" stroke="#e1ded9"/>
+    <path d="M179 91h31l-6-13-7 7-6-4-7 10Z" fill="#aaa8a4"/>
+  </g>
+  <g opacity=".2" transform="rotate(8 188 151)">
+    <rect x="169" y="127" width="55" height="60" rx="9" fill="#f2f0ed" stroke="#e1ded9"/>
+    <path d="M184 145c0-5 4-9 9-9s9 4 9 9v15h-5v-15c0-2-2-4-4-4s-4 2-4 4v15h-5v-15Z" fill="#aaa8a4"/>
+  </g>
+  <g stroke="#b5a58f" stroke-width="4" stroke-linecap="round"><path d="M120 10v17"/><path d="m72 25 11 12"/><path d="m168 25-11 12"/></g>
+  <g filter="url(#shadow)">
+    <circle cx="108" cy="104" r="54" fill="url(#glass)" stroke="#d9d5cf" stroke-width="4"/>
+    <circle cx="108" cy="104" r="46" stroke="#f8f7f5" stroke-width="3"/>
+    <path d="M145 143 179 178" stroke="#e8e5df" stroke-width="15" stroke-linecap="round"/>
+    <path d="M145 143 179 178" stroke="#d8d3ca" stroke-width="2" stroke-linecap="round"/>
+    <path d="M95 80h26a6 6 0 0 1 6 6v30l-19-12-19 12V86a6 6 0 0 1 6-6Z" stroke="#222321" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -45,6 +45,36 @@ describe("smart product image selection", () => {
     });
   });
 
+  it("prefers a product-only catalogue shot over the first lifestyle image", () => {
+    const { document } = parseHTML(`
+      <main>
+        <h1>Oversized Flannel Shirt</h1>
+        <div class="product-gallery">
+          <img src="/images/flannel-lifestyle.jpg" width="900" height="1200" alt="Oversized Flannel Shirt model image">
+          <img src="/images/flannel-product-front.jpg" width="900" height="1200" alt="Oversized Flannel Shirt product front">
+        </div>
+      </main>
+    `);
+
+    expect(findProductPageImage(document, baseUrl, { productName: "Oversized Flannel Shirt" })?.url)
+      .toBe("https://shop.example.com/images/flannel-product-front.jpg");
+  });
+
+  it("prefers the gallery image marked as selected", () => {
+    const { document } = parseHTML(`
+      <main>
+        <h1>Aurora Glass Lamp</h1>
+        <div class="product-gallery">
+          <img src="/images/alternate.jpg" width="700" height="700" alt="Aurora Glass Lamp">
+          <button aria-selected="true"><img src="/images/chosen.jpg" width="700" height="700" alt="Aurora Glass Lamp"></button>
+        </div>
+      </main>
+    `);
+
+    expect(findProductPageImage(document, baseUrl, { productName: "Aurora Glass Lamp" })?.url)
+      .toBe("https://shop.example.com/images/chosen.jpg");
+  });
+
   it("uses the largest srcset image instead of its thumbnail", () => {
     const { document } = parseHTML(`
       <main>

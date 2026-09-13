@@ -59,6 +59,9 @@ const GALLERY_SELECTORS = [
 ];
 const NEGATIVE_CONTEXT = /(?:recommend|related|similar|recently|review|rating|customer|user[-_ ]?(?:photo|upload)|ugc|carousel[-_ ]?(?:recommend|related)|also[-_ ]?(?:like|bought)|sponsored)/i;
 const BAD_ASSET = /(?:favicon|tracking[-_]?pixel|transparent\.gif|sprite|wordmark|placeholder|spacer|payment[-_]?icon|trust[-_]?badge|(?:^|[/_.-])logo(?:[/_.-]|$)|[/_-]icons?[/_.-])/i;
+const SELECTED_IMAGE = /(?:aria[-_ ]?(?:current|selected)[-_ ]?true|data[-_ ]?(?:active|selected)[-_ ]?true|(?:^|[\s_-])(?:active|selected|current)(?:[\s_-]|$)|primary[-_ ]?(?:image|media)|main[-_ ]?(?:image|media))/i;
+const PRODUCT_ONLY_IMAGE = /(?:pack[-_ ]?shot|product[-_ ]?(?:only|front|back|side|detail|image)|flat[-_ ]?lay|still[-_ ]?life|isolated|cut[-_ ]?out|ghost[-_ ]?mannequin)/i;
+const LIFESTYLE_IMAGE = /(?:life[-_ ]?style|lookbook|editorial|campaign|on[-_ ]?model|model[-_ ]?(?:shot|image|view)|worn[-_ ]?by)/i;
 
 /** Ranks a small candidate set. Weak images are omitted without failing capture. */
 export function selectProductImage(
@@ -285,6 +288,9 @@ function scoreCandidate(candidate: RankedImageCandidate, productName: string | u
   if (/(?:banner|promo|newsletter|hero[-_]?desktop|masthead)/i.test(urlText)) score -= 75;
   if (/(?:thumb|thumbnail|small|tiny)[-_/.]/i.test(urlText)) score -= 24;
   if (/(?:zoom|large|hi[-_]?res|original|product)/i.test(urlText)) score += 6;
+  if (SELECTED_IMAGE.test(candidate.context)) score += 32;
+  if (PRODUCT_ONLY_IMAGE.test(`${descriptive} ${candidate.context}`)) score += 30;
+  if (LIFESTYLE_IMAGE.test(`${descriptive} ${candidate.context}`)) score -= 24;
   if (candidate.nearTitle) score += 8;
   const matches = productTokens(productName).filter((token) => descriptive.includes(token)).length;
   score += Math.min(matches * 6, 24);
@@ -321,6 +327,10 @@ function elementContext(element: Element): string {
       typeof current.className === "string" ? current.className : "",
       current.getAttribute("data-testid") ?? "",
       current.getAttribute("aria-label") ?? "",
+      current.getAttribute("aria-current") === "true" ? "aria-current-true" : "",
+      current.getAttribute("aria-selected") === "true" ? "aria-selected-true" : "",
+      current.getAttribute("data-active") === "true" ? "data-active-true" : "",
+      current.getAttribute("data-selected") === "true" ? "data-selected-true" : "",
     );
   }
   return parts.join(" ");

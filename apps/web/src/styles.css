@@ -1884,6 +1884,11 @@ dd {
   width: 76px;
 }
 
+.footer-clouds,
+.footer-giant-wordmark {
+  display: none;
+}
+
 .footer-row {
   align-items: center;
   display: flex;

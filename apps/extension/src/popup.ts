@@ -130,6 +130,7 @@ const startWithDetectedPreview = import.meta.env.MODE === "preview";
 
 const app = getElement<HTMLElement>("app");
 const confetti = getElement<HTMLElement>("confetti");
+const watchlistConfetti = getElement<HTMLElement>("watchlistConfetti");
 const apiInput = getElement<HTMLInputElement>("apiBaseUrl");
 const saveButton = getElement<HTMLButtonElement>("save");
 const scanButton = getElement<HTMLButtonElement>("scan");
@@ -202,6 +203,7 @@ let dashboardBaseUrl = defaultDashboardBaseUrl;
 let protectedPurchaseId: string | null = null;
 let itemsReturnState: PopupState = "empty";
 let settingsReturnState: PopupState = "empty";
+let settingsReturnSegment: "protected" | "saved" = "protected";
 let selectedPurchaseId: string | null = null;
 let itemsLoadRunId = 0;
 let activeScanRunId = 0;
@@ -219,6 +221,7 @@ savedTab.addEventListener('click', () => { void showSavedItems(); });
 protectedTab.addEventListener('click', () => { void showProtectedItems(); });
 getElement('viewSaved').addEventListener('click', () => { itemsReturnState = 'watchlist'; void showSavedItems(); });
 getElement('continueBrowsing').addEventListener('click', () => window.close());
+getElement('emptyContinueBrowsing').addEventListener('click', () => window.close());
 saveToTracer.addEventListener('click', () => { void saveCurrentProduct(); });
 
 const previewPurchaseDraft: PurchaseDraft = {
@@ -456,7 +459,7 @@ async function scanActiveTab(): Promise<void> {
   const runId = ++activeScanRunId;
   capturedDraft = null;
   protectedPurchaseId = null;
-  renderState("detecting", "Looking for an item to save...", "This usually takes a moment.");
+  renderState("detecting", "Finding your item...", "This usually takes a moment.\nHang tight.");
   reviewPanel.dataset.visible = "false";
   scanButton.disabled = true;
   protectButton.disabled = true;
@@ -479,7 +482,8 @@ async function scanActiveTab(): Promise<void> {
     }
 
     const cachedResponse = await getCachedPageScan(tab.id, tab.url ?? "");
-    if (!cachedResponse) {
+    const response = cachedResponse ?? await scanPurchasePage(tab.id);
+    if (!response?.ok || !response.draft) {
       if (await offerSaveProduct(tab.id, runId)) return;
       if (runId !== activeScanRunId) return;
       renderState(
@@ -491,12 +495,6 @@ async function scanActiveTab(): Promise<void> {
     }
 
     if (runId !== activeScanRunId) return;
-    const response = cachedResponse;
-
-    if (!response.ok || !response.draft) {
-      renderState("empty", "Nothing to save here", "Open Tracer on a product page to save it for later.");
-      return;
-    }
 
     capturedDraft = response.draft;
     renderCapturedPurchase(response.draft, response.summary);
@@ -746,6 +744,29 @@ function getCachedPageScan(tabId: number, url: string): Promise<ScanResponse | n
       },
     );
   });
+}
+
+async function scanPurchasePage(tabId: number): Promise<ScanResponse | null> {
+  try {
+    await withTimeout(
+      chrome.scripting.executeScript({ target: { tabId }, files: ["genericCapture.js"] }),
+      scanTimeoutMs,
+      "Purchase scan timed out.",
+    );
+
+    return await withTimeout(
+      new Promise<ScanResponse | null>((resolve) => {
+        chrome.tabs.sendMessage(tabId, { type: "AFTERBUY_SCAN_PAGE" }, (response?: ScanResponse) => {
+          void chrome.runtime.lastError;
+          resolve(response ?? null);
+        });
+      }),
+      scanTimeoutMs,
+      "Purchase scan timed out.",
+    );
+  } catch {
+    return null;
+  }
 }
 
 async function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionStatusResponse | null> {
@@ -1002,6 +1023,9 @@ function openSettings(): void {
 
   if (currentState !== "settings") {
     settingsReturnState = currentState;
+    settingsReturnSegment = currentState === "items" && savedTab.getAttribute("aria-pressed") === "true"
+      ? "saved"
+      : "protected";
   }
 
   renderState("settings", "Settings", "");
@@ -1014,6 +1038,11 @@ function closeSettings(): void {
   hideClearConfirmation();
   const returnState = settingsReturnState;
   renderState(returnState, "", "");
+
+  if (returnState === "items" && settingsReturnSegment === "saved") {
+    void showSavedItems();
+    return;
+  }
 
   if (returnState === "items" && dashboardCache) {
     renderProtectedItems(dashboardCache, itemsLoadRunId);
@@ -1108,6 +1137,7 @@ async function clearAllProtectedPurchases(): Promise<void> {
   try {
     await preferencesReady;
     const userId = await getTracerUserId();
+    const pendingPurchases = await getPendingPurchases();
     let data = dashboardCache;
 
     if (!data) {
@@ -1128,7 +1158,10 @@ async function clearAllProtectedPurchases(): Promise<void> {
       };
     }
 
-    for (const purchase of data.purchases) {
+    // Pending offline protections live only in local storage. They are
+    // represented in the dashboard cache with a synthetic id and must not be
+    // sent to the API as DELETE requests.
+    for (const purchase of data.purchases.filter((item) => !item.pendingDraftId)) {
       const response = await withTimeout(
         fetch(`${apiBaseUrl}/api/purchases/${encodeURIComponent(purchase.id)}`, {
           method: "DELETE",
@@ -1140,6 +1173,10 @@ async function clearAllProtectedPurchases(): Promise<void> {
       if (!response.ok && response.status !== 404) {
         throw new Error(`Delete request returned ${response.status}`);
       }
+    }
+
+    if (pendingPurchases.length > 0) {
+      await chrome.storage.local.set({ [pendingPurchasesStorageKey]: [] });
     }
 
     dashboardCache = { purchases: [], opportunities: [] };
@@ -1656,6 +1693,11 @@ async function saveCurrentProduct(): Promise<void> {
     saveToTracer.textContent = 'Saved';
     saveToTracer.dataset.status = 'saved';
     watchFeedback.textContent = 'Find it in Your items → Saved. Buy it, then protect your purchase with Tracer.';
+    populateConfetti(watchlistConfetti);
+    app.dataset.celebrate = 'true';
+    window.setTimeout(() => {
+      app.dataset.celebrate = 'false';
+    }, 1_800);
   } catch (error) {
     watchFeedback.textContent = error instanceof Error ? error.message : 'Could not save this item.';
     saveToTracer.disabled = false;
@@ -1667,10 +1709,9 @@ async function saveCurrentProduct(): Promise<void> {
 function setItemsSegment(saved: boolean): void {
   savedTab.setAttribute('aria-pressed', String(saved));
   protectedTab.setAttribute('aria-pressed', String(!saved));
-  getElement('savedHint').hidden = !saved;
 }
 
-function renderSavedProduct(container: HTMLElement, item: SavedProduct): void {
+function renderSavedProduct(container: HTMLElement, item: SavedProduct | SavedItem): void {
   container.replaceChildren();
   container.dataset.hasImage = String(Boolean(item.imageUrl));
   if (item.imageUrl) {
@@ -1697,6 +1738,16 @@ function renderSavedProduct(container: HTMLElement, item: SavedProduct): void {
     price.textContent = `${formatMoney(item.savedPrice)} · price when saved`;
     copy.append(price);
   }
+  if ('monitoringStatus' in item) {
+    const status = document.createElement('p');
+    status.className = 'saved-monitoring-status';
+    const dropped = item.monitoringStatus === 'price_dropped' && item.priceDropAmount;
+    status.dataset.alert = String(Boolean(dropped));
+    status.textContent = dropped
+      ? `● Price dropped ${formatMoney(item.priceDropAmount!)}${item.priceDropPercent ? ` (${item.priceDropPercent}%)` : ''}`
+      : item.monitoringStatus === 'unavailable' ? '● Unable to check price' : '● Watching for price drops';
+    copy.append(status);
+  }
   container.append(copy);
 }
 
@@ -1720,7 +1771,8 @@ async function showSavedItems(): Promise<void> {
       renderSavedProduct(row, item);
       const footer = document.createElement('footer');
       const open = document.createElement('a');
-      open.textContent = 'Open item ↗';
+      open.innerHTML = 'Open item <span class="open-item-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M9 2h5v5M8 8l6-6M13 9v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+      open.setAttribute('aria-label', 'Open item');
       open.href = item.canonicalUrl;
       open.target = '_blank';
       open.rel = 'noopener noreferrer';
