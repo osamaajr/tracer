@@ -1,6 +1,15 @@
 import { normalizeSavedUrl, savedMatchesPurchase, type SavedItem, type SavedProduct, type PurchaseDraft, type PurchaseRecord, type ProductRecord } from '@afterbuy/core';
 
 export const watchlistKey = 'tracerWatchlistV1';
+type MonitoringUpdate = {
+  savedPrice?: NonNullable<SavedItem['savedPrice']>;
+  currentPrice?: NonNullable<SavedItem['currentPrice']>;
+  priceDropAmount?: SavedItem['priceDropAmount'] | undefined;
+  priceDropPercent?: SavedItem['priceDropPercent'] | undefined;
+  monitoringStatus?: NonNullable<SavedItem['monitoringStatus']>;
+  lastCheckedAt?: NonNullable<SavedItem['lastCheckedAt']>;
+  lastNotifiedPrice?: SavedItem['lastNotifiedPrice'] | undefined;
+};
 interface Storage {
   get(key: string): Promise<Record<string, unknown>>;
   set(value: Record<string, unknown>): Promise<void>;
@@ -27,8 +36,16 @@ export class WatchlistRepository {
       const canonicalUrl = normalizeSavedUrl(product.canonicalUrl);
       if (!product.name?.trim() || product.name.length > 300) throw new Error('A product name is required.');
       const existing = items.find(item => item.status === 'saved' && item.canonicalUrl === canonicalUrl);
-      if (existing) return {item: existing, duplicate: true};
-      const item: SavedItem = {...product, canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt: new Date().toISOString(), status: 'saved', monitoringStatus: product.savedPrice ? 'watching' : 'unavailable'};
+      if (existing) {
+        if (!existing.savedPrice && product.savedPrice) {
+          const updated: SavedItem = {...existing, savedPrice: product.savedPrice, currentPrice: product.savedPrice, monitoringStatus: 'watching', lastCheckedAt: new Date().toISOString()};
+          await this.storage.set({[watchlistKey]: items.map(item => item.id === existing.id ? updated : item)});
+          return {item: updated, duplicate: true};
+        }
+        return {item: existing, duplicate: true};
+      }
+      const savedAt = new Date().toISOString();
+      const item: SavedItem = {...product, canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt, status: 'saved', ...(product.savedPrice ? {currentPrice: product.savedPrice, lastCheckedAt: savedAt} : {}), monitoringStatus: product.savedPrice ? 'watching' : 'unavailable'};
       await this.storage.set({[watchlistKey]: [...items, item]});
       return {item, duplicate: false};
     });
@@ -41,11 +58,20 @@ export class WatchlistRepository {
       await this.storage.set({[watchlistKey]: items.filter(item => item.status !== 'saved')});
     });
   }
-  updateMonitoring(id: string, update: Pick<SavedItem, 'currentPrice' | 'priceDropAmount' | 'priceDropPercent' | 'monitoringStatus' | 'lastCheckedAt' | 'lastNotifiedPrice'>): Promise<SavedItem | null> {
+  updateMonitoring(id: string, update: MonitoringUpdate): Promise<SavedItem | null> {
     return this.mutate(async items => {
       const index = items.findIndex(item => item.id === id && item.status === 'saved');
       if (index < 0) return null;
-      const next = {...items[index], ...update};
+      const existing = items[index];
+      if (!existing) return null;
+      const {priceDropAmount, priceDropPercent, lastNotifiedPrice, ...definedUpdate} = update;
+      const next: SavedItem = {...existing, ...definedUpdate};
+      if (priceDropAmount === undefined) delete next.priceDropAmount;
+      else next.priceDropAmount = priceDropAmount;
+      if (priceDropPercent === undefined) delete next.priceDropPercent;
+      else next.priceDropPercent = priceDropPercent;
+      if (lastNotifiedPrice === undefined) delete next.lastNotifiedPrice;
+      else next.lastNotifiedPrice = lastNotifiedPrice;
       const all = [...items];
       all[index] = next;
       await this.storage.set({[watchlistKey]: all});

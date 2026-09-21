@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseHTML } from 'linkedom';
-import { extractSavedProduct, normalizeSavedUrl, savedMatchesPurchase, InMemoryAfterBuyRepository, protectPurchase, runPriceMonitoringCycle, type SavedProduct, type PurchaseDraft, type PurchaseRecord } from '@afterbuy/core';
+import { extractSavedProduct, extractZaraSavedProduct, normalizeSavedUrl, savedMatchesPurchase, InMemoryAfterBuyRepository, protectPurchase, runPriceMonitoringCycle, type SavedProduct, type PurchaseDraft, type PurchaseRecord } from '@afterbuy/core';
 import { WatchlistRepository, watchlistKey, connectAcceptedSavedItems } from '../src/watchlistRepository';
 
 const url = 'https://shop.example.com/products/headphones';
@@ -28,6 +28,118 @@ describe('watchlist extraction', () => {
     const {document} = parseHTML('<meta property="og:type" content="product"><meta property="og:title" content="A nice chair"><div class="price">£15</div>');
     expect(extractSavedProduct(document,url)).toMatchObject({name:'A nice chair'});
     expect(extractSavedProduct(document,url)?.savedPrice).toBeUndefined();
+  });
+  it('reads Shopify OpenGraph prices and European decimal formatting', () => {
+    const {document} = parseHTML(`
+      <meta property="og:type" content="product">
+      <meta property="og:title" content="Animal Blue Hoodie">
+      <meta property="og:price:amount" content="82,00">
+      <meta property="og:price:currency" content="EUR">
+    `);
+    expect(extractSavedProduct(document, 'https://scuffers.com/products/animal-navy-hoodie')).toMatchObject({
+      name: 'Animal Blue Hoodie',
+      savedPrice: {amountMinor:8200,currency:'EUR'},
+    });
+  });
+  it('recognizes a product nested beneath a collection route through its canonical URL', () => {
+    const {document} = parseHTML(`
+      <link rel="canonical" href="https://shop.example.com/products/baggy-denim">
+      <meta property="og:type" content="product">
+      <meta property="og:title" content="White Baggy Denim">
+      <meta property="og:price:amount" content="58.00">
+      <meta property="og:price:currency" content="GBP">
+      <main>
+        <h1>White Baggy Denim</h1>
+        <form action="/cart/add"><button>Add to cart</button></form>
+      </main>
+    `);
+    expect(extractSavedProduct(
+      document,
+      'https://shop.example.com/collections/frontpage/products/baggy-denim?variant=123',
+    )).toMatchObject({
+      name: 'White Baggy Denim',
+      canonicalUrl: 'https://shop.example.com/products/baggy-denim',
+      savedPrice: {amountMinor:5800,currency:'GBP'},
+    });
+  });
+  it('accepts multiple variant offers when every variant has the same price', () => {
+    expect(extractSavedProduct(productDoc({
+      sku:'XS',
+      offers:[
+        {sku:'XS',price:82,priceCurrency:'EUR'},
+        {sku:'S',price:82,priceCurrency:'EUR'},
+      ],
+    }),url)).toMatchObject({savedPrice:{amountMinor:8200,currency:'EUR'},sku:'XS'});
+  });
+  it('reads ProductGroup variant prices used by newer Shopify themes', () => {
+    const {document} = parseHTML(`<script type="application/ld+json">${JSON.stringify({
+      '@type':'ProductGroup',
+      name:'Cream selvedge denim jeans',
+      productGroupID:'10394364018820',
+      url,
+      hasVariant:[
+        {'@type':'Product',sku:'JEAN-28',image:'https://shop.example.com/jeans.jpg',offers:{'@type':'Offer',price:'188.00',priceCurrency:'AED'}},
+        {'@type':'Product',sku:'JEAN-30',offers:{'@type':'Offer',price:'188.00',priceCurrency:'AED'}},
+      ],
+    })}</script>`);
+    expect(extractSavedProduct(document,url)).toMatchObject({
+      name:'Cream selvedge denim jeans',
+      savedPrice:{amountMinor:18800,currency:'AED'},
+      externalProductId:'10394364018820',
+      imageUrl:'https://shop.example.com/jeans.jpg',
+    });
+  });
+  it('uses a product-scoped current-price element when structured price data is absent', () => {
+    const {document} = parseHTML(`
+      <meta property="og:type" content="product">
+      <meta property="og:title" content="Basic denim jacket">
+      <main><h1>Basic denim jacket</h1><span class="price-current__amount">£29.99</span></main>
+    `);
+    expect(extractSavedProduct(document,'https://www.zara.com/uk/en/basic-denim-jacket-p06987314.html')).toMatchObject({
+      savedPrice:{amountMinor:2999,currency:'GBP'},
+    });
+  });
+  it('recognizes /p/ product routes and selects the current value from sale pricing', () => {
+    const {document} = parseHTML(`
+      <meta property="og:title" content="Camo Skater Jacket">
+      <main>
+        <h1>Camo Skater Jacket</h1>
+        <div class="product-price">Was £85, now £34.99</div>
+        <button>Add To Bag</button>
+      </main>
+    `);
+    expect(extractSavedProduct(document,'https://www.hollisterco.com/shop/uk/p/camo-skater-jacket-61980822-1005')).toMatchObject({
+      name:'Camo Skater Jacket',
+      savedPrice:{amountMinor:3499,currency:'GBP'},
+    });
+  });
+  it('reads the narrowly scoped Zara product payload when its rendered markup has no price', () => {
+    expect(extractZaraSavedProduct({
+      product: {
+        id: 549615578,
+        name: 'BASIC DENIM JACKET',
+        detail: {
+          reference: '06987314-V2026',
+          colors: [
+            {pricing:{price:{value:4599,currency:{code:'GBP',exponent:-2}}}},
+            {pricing:{price:{value:4599,currency:{code:'GBP',exponent:-2}}}},
+          ],
+        },
+      },
+    }, 'https://www.zara.com/uk/en/basic-denim-jacket-p06987314.html')).toMatchObject({
+      name:'BASIC DENIM JACKET',
+      retailer:'Zara',
+      savedPrice:{amountMinor:4599,currency:'GBP'},
+      externalProductId:'06987314-V2026',
+    });
+  });
+  it('rejects ambiguous or unscoped Zara payload prices', () => {
+    const product = {product:{name:'Jacket',detail:{colors:[
+      {pricing:{price:{value:4599,currency:{code:'GBP'}}}},
+      {pricing:{price:{value:5599,currency:{code:'GBP'}}}},
+    ]}}};
+    expect(extractZaraSavedProduct(product,'https://www.zara.com/uk/en/jacket-p1.html')).toBeNull();
+    expect(extractZaraSavedProduct(product,'https://example.com/products/jacket')).toBeNull();
   });
   it('supports product-scoped microdata', () => {
     const {document} = parseHTML('<main itemscope itemtype="https://schema.org/Product"><h1 itemprop="name">Desk lamp</h1><meta itemprop="price" content="24.99"><meta itemprop="priceCurrency" content="GBP"></main>');
@@ -93,6 +205,21 @@ describe('watchlist persistence and isolation', () => {
     const results=await Promise.all([repository.save(saved),repository.save({...saved,canonicalUrl:`${url}?utm_source=test`}),repository.save({...saved,name:'Chair',canonicalUrl:'https://shop.example.com/products/chair'})]);
     expect(results[1]?.duplicate).toBe(true);
     expect(await repository.list()).toHaveLength(2);
+  });
+  it('backfills a missing baseline price without replacing an existing saved baseline', async () => {
+    const {repository}=storageHarness();
+    const first=await repository.save(saved);
+    const backfilled=await repository.save({...saved,savedPrice:{amountMinor:12999,currency:'GBP'}});
+    expect(backfilled.item.savedPrice).toEqual({amountMinor:12999,currency:'GBP'});
+    await repository.save({...saved,savedPrice:{amountMinor:9999,currency:'GBP'}});
+    expect((await repository.list())[0]?.savedPrice).toEqual({amountMinor:12999,currency:'GBP'});
+    expect(first.item.id).toBe(backfilled.item.id);
+  });
+  it('updates monitoring fields without touching unrelated saved metadata', async () => {
+    const {repository}=storageHarness();
+    const {item}=await repository.save({...saved,savedPrice:{amountMinor:12999,currency:'GBP'}});
+    const updated=await repository.updateMonitoring(item.id,{currentPrice:{amountMinor:9999,currency:'GBP'},priceDropAmount:{amountMinor:3000,currency:'GBP'},priceDropPercent:23.08,monitoringStatus:'price_dropped',lastCheckedAt:'2026-09-13T06:00:00.000Z'});
+    expect(updated).toMatchObject({id:item.id,name:saved.name,savedPrice:{amountMinor:12999,currency:'GBP'},currentPrice:{amountMinor:9999,currency:'GBP'},monitoringStatus:'price_dropped'});
   });
   it('removes only saved entries and preserves protection storage and notification history', async () => {
     const {repository,data}=storageHarness();

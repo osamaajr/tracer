@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Northstar Transit Backpack | Alder &amp; Row</title>
+    <meta property="og:title" content="Northstar Transit Backpack" />
+    <meta property="og:image" content="http://127.0.0.1:5173/tracer-price-drop-backpack.svg" />
+    <style>
+      :root { color:#171915; background:#f5f1e9; font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-height:100vh; display:grid; place-items:center; padding:48px; }
+      main { width:min(980px,100%); display:grid; grid-template-columns:1.05fr .95fr; gap:64px; align-items:center; }
+      .image { min-height:600px; display:grid; place-items:center; border:1px solid #ded8cd; border-radius:34px; background:#e7e1d7; overflow:hidden; }
+      .image img { width:76%; height:auto; filter:drop-shadow(0 28px 24px rgb(31 34 29 / .18)); }
+      .brand { margin:0 0 22px; color:#70756d; font-size:13px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+      h1 { margin:0; font-family:Georgia,serif; font-size:52px; line-height:1.04; letter-spacing:-.035em; }
+      .description { margin:24px 0 34px; color:#60655d; font-size:17px; line-height:1.65; }
+      .price-row { display:flex; align-items:baseline; gap:14px; margin-bottom:30px; }
+      .price { font-size:30px; font-weight:760; letter-spacing:-.03em; }
+      .price-note { color:#71766e; font-size:14px; }
+      .stock { display:flex; gap:9px; align-items:center; color:#456b4f; font-size:14px; font-weight:650; }
+      .stock::before { content:""; width:8px; height:8px; border-radius:50%; background:#43804f; }
+      .demo-note { margin-top:46px; padding-top:22px; border-top:1px solid #dcd6cb; color:#8a8d86; font-size:12px; }
+      @media (max-width:760px) { body{padding:24px} main{grid-template-columns:1fr;gap:34px}.image{min-height:390px}h1{font-size:42px} }
+    </style>
+  </head>
+  <body>
+    <main itemscope itemtype="https://schema.org/Product">
+      <figure class="image">
+        <img itemprop="image" src="/tracer-price-drop-backpack.svg" alt="Northstar Transit Backpack in deep blue" />
+      </figure>
+      <section>
+        <p class="brand">Alder &amp; Row</p>
+        <h1 itemprop="name">Northstar Transit Backpack</h1>
+        <p class="description" itemprop="description">A structured everyday backpack with a padded laptop sleeve, weather-resistant shell and quick-access side pocket.</p>
+        <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+          <meta itemprop="priceCurrency" content="GBP" />
+          <span class="price" itemprop="price" id="productPrice">£129.99</span>
+          <span class="price-note" id="priceNote">Original price</span>
+        </div>
+        <p class="stock">In stock — ready to dispatch</p>
+        <p class="demo-note">Tracer monitoring demonstration product</p>
+      </section>
+    </main>
+    <script>
+      const current = localStorage.getItem('tracer-demo-price') || '129.99';
+      const price = document.getElementById('productPrice');
+      const note = document.getElementById('priceNote');
+      price.textContent = new Intl.NumberFormat('en-GB', { style:'currency', currency:'GBP' }).format(Number(current));
+      price.setAttribute('content', current);
+      if (Number(current) < 129.99) note.textContent = 'Sale price';
+    </script>
+  </body>
+</html>

@@ -31,6 +31,7 @@ const purchaseDraft: PurchaseDraft = {
 
 interface PopupHarnessOptions {
   savedProduct?: SavedProduct | null;
+  imageCandidates?: string[];
   saveFailure?: boolean;
 
   cachedScanResponse?: unknown;
@@ -41,6 +42,7 @@ interface PopupHarnessOptions {
     purchases: Array<Record<string, unknown>>;
     opportunities: Array<Record<string, unknown>>;
   };
+  dashboardFailures?: number;
   pendingPurchases?: Array<Record<string, unknown>>;
   monitoringSettingsStatus?: number;
   deleteStatus?: number;
@@ -101,6 +103,67 @@ describe("extension popup", () => {
     expect(harness.deleteRequests()).toHaveLength(0);
   });
 
+  it("lets the user choose which detected product image is saved", async () => {
+    const firstImage = 'https://shop.example.com/lamp-front.jpg';
+    const secondImage = 'https://shop.example.com/lamp-side.jpg';
+    const thirdImage = 'https://shop.example.com/lamp-room.jpg';
+    const harness = await setupPopup({
+      savedProduct: {
+        name: 'Desk lamp',
+        retailer: 'Shop',
+        retailerId: 'store_shop-example-com',
+        canonicalUrl: 'https://shop.example.com/products/lamp',
+        imageUrl: firstImage,
+      },
+      imageCandidates: [firstImage, secondImage, thirdImage],
+      scanResponse: {ok:false,failureReason:'not_purchase_page'},
+      tabUrl: 'https://shop.example.com/products/lamp',
+    });
+    await flushPopup();
+
+    const productCard = element('watchProduct');
+    expect(productCard.querySelectorAll('.saved-image-arrow')).toHaveLength(2);
+    expect(productCard.querySelector('img')?.getAttribute('src')).toBe(firstImage);
+
+    productCard.querySelector<HTMLButtonElement>('.saved-image-arrow--next')?.click();
+    expect(productCard.querySelector('img')?.getAttribute('src')).toBe(secondImage);
+
+    element<HTMLButtonElement>('saveToTracer').click();
+    await flushPopup();
+    const saveMessage = harness.runtimeSendMessage.mock.calls
+      .map(([message]) => message as {type:string; product?:SavedProduct})
+      .find((message) => message.type === 'TRACER_WATCHLIST_SAVE');
+    expect(saveMessage?.product?.imageUrl).toBe(secondImage);
+    expect(productCard.querySelectorAll('.saved-image-arrow')).toHaveLength(0);
+  });
+
+  it("shows resized variants of the same product image only once", async () => {
+    const frontImage = 'https://cdn.shop.example.com/lamp-front.jpg?width=1200&quality=90';
+    const duplicateFrontImage = 'https://cdn.shop.example.com/lamp-front.jpg?quality=70&width=400';
+    const sideImage = 'https://cdn.shop.example.com/lamp-side.jpg?width=1200';
+    await setupPopup({
+      savedProduct: {
+        name: 'Desk lamp',
+        retailer: 'Shop',
+        retailerId: 'store_shop-example-com',
+        canonicalUrl: 'https://shop.example.com/products/lamp',
+        imageUrl: frontImage,
+      },
+      imageCandidates: [duplicateFrontImage, frontImage, sideImage],
+      scanResponse: {ok:false,failureReason:'not_purchase_page'},
+      tabUrl: 'https://shop.example.com/products/lamp',
+    });
+    await flushPopup();
+
+    const productCard = element('watchProduct');
+    const next = productCard.querySelector<HTMLButtonElement>('.saved-image-arrow--next')!;
+    expect(productCard.querySelector('img')?.getAttribute('src')).toBe(frontImage);
+    next.click();
+    expect(productCard.querySelector('img')?.getAttribute('src')).toBe(sideImage);
+    productCard.querySelector<HTMLButtonElement>('.saved-image-arrow--next')!.click();
+    expect(productCard.querySelector('img')?.getAttribute('src')).toBe(frontImage);
+  });
+
   it("keeps a failed save retryable without falsely claiming success", async () => {
     const harness = await setupPopup({savedProduct:{name:'Lamp',retailer:'shop.example.com',retailerId:'shop',canonicalUrl:'https://shop.example.com/products/lamp'},saveFailure:true,scanResponse:{ok:false,failureReason:'not_purchase_page'},tabUrl:'https://shop.example.com/products/lamp'});
     await flushPopup();
@@ -115,7 +178,7 @@ describe("extension popup", () => {
     const harness=await setupPopup();
     await flushPopup();
     expect(harness.app.dataset.screen).toBe('detected');
-    expect(harness.executeScript.mock.calls.some(([args])=>args.files.includes('watchlistCapture.js'))).toBe(false);
+    expect(harness.productMessages()).toHaveLength(0);
   });
 
   it("enters a loading state and prevents duplicate protect clicks", async () => {
@@ -195,7 +258,7 @@ describe("extension popup", () => {
     expect(harness.app.dataset.screen).toBe("detected");
     expect(harness.executeScript).toHaveBeenCalledWith({
       target: { tabId: 1 },
-      files: ["genericCapture.js"],
+      files: ["genericCapture.js", "watchlistCapture.js"],
     });
     expect(harness.scanMessages()).toHaveLength(1);
   });
@@ -315,6 +378,9 @@ describe("extension popup", () => {
 
     harness.dashboardCta.click();
     await flushPopup();
+    const protectedImage = harness.firstItem().querySelector("img");
+    expect(protectedImage?.getAttribute("src")).toBe("https://store.example.com/headphones.png");
+    expect(protectedImage?.getAttribute("loading")).toBe("lazy");
     harness.firstItem().click();
 
     expect(harness.app.dataset.screen).toBe("detail");
@@ -396,6 +462,24 @@ describe("extension popup", () => {
     expect(harness.firstItem().textContent).not.toContain("Price dropped");
   });
 
+  it("marks an unable-to-check purchase as an error", async () => {
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.monitoringStatus = "unable_to_check";
+    dashboard.purchases[0]!.currentPriceDisplay = "Unable to check";
+    dashboard.opportunities = [];
+    const harness = await setupPopup({
+      protected: true,
+      dashboardResponse: dashboard,
+    });
+    await flushPopup();
+
+    harness.dashboardCta.click();
+    await flushPopup();
+
+    expect(harness.firstItem().dataset.error).toBe("true");
+    expect(harness.firstItem().textContent).toContain("Unable to check");
+  });
+
   it("clears every protected purchase from settings", async () => {
     const harness = await setupPopup({
       protected: true,
@@ -433,6 +517,65 @@ describe("extension popup", () => {
     expect(harness.deleteRequests()).toHaveLength(0);
     expect(harness.localStorageSet).toHaveBeenCalledWith({ tracerPendingPurchases: [] });
     expect(text("itemsCount")).toBe("0 items");
+  });
+
+  it("lists every item from one protected multi-item order separately", async () => {
+    const multiItemDraft: PurchaseDraft = {
+      ...purchaseDraft,
+      orderReference: "MULTI-123",
+      lineItems: [
+        { productName: "Canvas jacket", quantity: 1, pricePaid: gbp(6_400), productUrl: "https://store.example.com/canvas-jacket" },
+        { productName: "Heavyweight tee", quantity: 2, pricePaid: gbp(2_500), productUrl: "https://store.example.com/heavyweight-tee" },
+        { productName: "Cotton cap", quantity: 1, pricePaid: gbp(1_850), productUrl: "https://store.example.com/cotton-cap" },
+      ],
+    };
+    const harness = await setupPopup({
+      protected: true,
+      dashboardResponse: { purchases: [], opportunities: [] },
+      pendingPurchases: [{ id: "pending_multi", draft: multiItemDraft, queuedAt: "2026-09-16T10:00:00.000Z" }],
+    });
+    await flushPopup();
+
+    harness.dashboardCta.click();
+    await flushPopup();
+
+    expect(text("itemsCount")).toBe("3 items");
+    expect(text("itemsList")).toContain("Canvas jacket");
+    expect(text("itemsList")).toContain("Heavyweight tee");
+    expect(text("itemsList")).toContain("Cotton cap");
+  });
+
+  it("clears local purchases even when the server is unreachable", async () => {
+    const harness = await setupPopup({
+      protected: true,
+      pendingPurchases: [{ id: "pending_offline", draft: purchaseDraft, queuedAt: "2026-09-11T10:00:00.000Z" }],
+    });
+    await flushPopup();
+    vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
+    harness.menuSettings.click();
+    harness.clearProtectedPurchases.click();
+    harness.confirmClearPurchases.click();
+    await flushPopup();
+    expect(harness.localStorageSet).toHaveBeenCalledWith({ tracerPendingPurchases: [] });
+    expect(document.body.textContent).toContain("Local purchases cleared. Reconnect to clear server purchases.");
+    expect(harness.confirmClearPurchases.disabled).toBe(false);
+  });
+
+  it("retries a failed purchase load when refresh is clicked", async () => {
+    const harness = await setupPopup({
+      dashboardResponse: droppedDashboard(),
+      dashboardFailures: 1,
+    });
+    await flushPopup();
+
+    harness.protectedItemsCta.click();
+    await flushPopup();
+    expect(text("itemsList")).toContain("No purchases saved offline");
+
+    element<HTMLButtonElement>("itemsList").querySelector<HTMLButtonElement>(".items-refresh")!.click();
+    await flushPopup();
+    expect(harness.dashboardRequests()).toHaveLength(2);
+    expect(text("itemsList")).toContain("Sony WH-1000XM5");
   });
 
   it("confirms before clearing saved items and leaves protected purchases alone", async () => {
@@ -623,7 +766,12 @@ async function setupPopup(
   const watchlist = new WatchlistRepository({get:async key => ({[key]:localStore[key]}),set:localStorageSet});
   const executeScript = vi.fn().mockResolvedValue([]);
   const tabSendMessage = vi.fn((_tabId: number, _message: unknown, callback: (response: unknown) => void) => {
-    if ((_message as {type:string}).type === 'TRACER_EXTRACT_SAVED_PRODUCT') return Promise.resolve({product:options.savedProduct ?? null});
+    if ((_message as {type:string}).type === 'TRACER_EXTRACT_SAVED_PRODUCT') {
+      return Promise.resolve({
+        product: options.savedProduct ?? null,
+        imageCandidates: options.imageCandidates ?? [],
+      });
+    }
     callback(
       options.scanResponse ?? defaultPurchaseScan,
     );
@@ -632,9 +780,14 @@ async function setupPopup(
     purchases: [],
     opportunities: [],
   });
+  let remainingDashboardFailures = options.dashboardFailures ?? 0;
   const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/api/dashboard")) {
+      if (remainingDashboardFailures > 0) {
+        remainingDashboardFailures -= 1;
+        throw new TypeError("Failed to fetch");
+      }
       return {
         ok: true,
         status: 200,
@@ -738,6 +891,9 @@ async function setupPopup(
     scanMessages: () => tabSendMessage.mock.calls.filter(([, message]) => {
       return (message as { type: string }).type === "AFTERBUY_SCAN_PAGE";
     }),
+    productMessages: () => tabSendMessage.mock.calls.filter(([, message]) => {
+      return (message as { type: string }).type === "TRACER_EXTRACT_SAVED_PRODUCT";
+    }),
     firstItem: () => element<HTMLElement>("itemsList").querySelector<HTMLButtonElement>(".item-row")!,
   };
 }
@@ -747,6 +903,7 @@ function droppedDashboard() {
     purchases: [{
       id: "pur_existing",
       productName: "Sony WH-1000XM5",
+      imageUrl: "https://store.example.com/headphones.png",
       pricePaid: gbp(34_900),
       currentPriceDisplay: "£319",
       monitoringStatus: "price_dropped",

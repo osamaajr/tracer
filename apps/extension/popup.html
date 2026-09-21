@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tracer</title>
+    <link rel="preload" href="assets/tracer-outline.webp" as="image" type="image/webp" />
+    <link rel="preload" href="assets/tracer-loading.webp" as="image" type="image/webp" />
+    <link rel="preload" href="assets/tracer-empty-box.webp" as="image" type="image/webp" />
     <style>
       :root {
         --ink: #191916;
@@ -769,270 +772,7 @@
         place-items: center;
       }
       main[data-screen="detecting"] .loading-dots { display: grid; }
-      .loading-dots svg {
-        display: none;
-      }
       .loading-dots img { display:none; }
-      .loading-skeleton {
-        width: min(100%, 270px);
-        height: 132px;
-        padding: 22px 20px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        border: 1px solid #ebe9e5;
-        border-radius: 15px;
-        background: #fffefd;
-        box-shadow: 0 1px 2px rgb(23 25 24 / 3%);
-      }
-      .skeleton-line {
-        display: block;
-        height: 14px;
-        flex: 0 0 14px;
-        border-radius: 999px;
-        background: linear-gradient(105deg, #e2e2e3 0%, #f4f4f3 45%, #e2e2e3 80%);
-        background-size: 220% 100%;
-        animation: skeleton-shimmer 1.8s ease-in-out infinite;
-      }
-      .skeleton-line-long { width: 100%; }
-      .skeleton-line-mid { width: 78%; animation-delay: 90ms; }
-      .skeleton-line-short { width: 58%; animation-delay: 180ms; }
-      @keyframes skeleton-shimmer {
-        0%, 100% { background-position: 100% 0; }
-        50% { background-position: 0 0; }
-      }
-      @keyframes halftone-breathe-0 {
-        0% { opacity: 0.970; fill: rgb(113 145 122); transform: scale(1.120); }
-        5% { opacity: 0.964; fill: rgb(112 144 121); transform: scale(1.117); }
-        10% { opacity: 0.891; fill: rgb(105 134 113); transform: scale(1.083); }
-        15% { opacity: 0.669; fill: rgb(81 103 88); transform: scale(0.978); }
-        20% { opacity: 0.407; fill: rgb(54 66 58); transform: scale(0.854); }
-        25% { opacity: 0.280; fill: rgb(40 48 43); transform: scale(0.794); }
-        30% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.781); }
-        35% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        40% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        45% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        50% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        55% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        60% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        65% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        70% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.781); }
-        75% { opacity: 0.280; fill: rgb(40 48 43); transform: scale(0.794); }
-        80% { opacity: 0.407; fill: rgb(54 66 58); transform: scale(0.854); }
-        85% { opacity: 0.669; fill: rgb(81 103 88); transform: scale(0.978); }
-        90% { opacity: 0.891; fill: rgb(105 134 113); transform: scale(1.083); }
-        95% { opacity: 0.964; fill: rgb(112 144 121); transform: scale(1.117); }
-        100% { opacity: 0.970; fill: rgb(113 145 122); transform: scale(1.120); }
-      }
-      @keyframes halftone-breathe-1 {
-        0% { opacity: 0.865; fill: rgb(102 130 110); transform: scale(1.070); }
-        5% { opacity: 0.904; fill: rgb(106 136 114); transform: scale(1.089); }
-        10% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        15% { opacity: 0.892; fill: rgb(105 134 113); transform: scale(1.083); }
-        20% { opacity: 0.608; fill: rgb(75 94 81); transform: scale(0.949); }
-        25% { opacity: 0.355; fill: rgb(48 59 52); transform: scale(0.829); }
-        30% { opacity: 0.266; fill: rgb(39 46 42); transform: scale(0.788); }
-        35% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        40% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        45% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        50% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        55% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        60% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        65% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        70% { opacity: 0.266; fill: rgb(39 46 42); transform: scale(0.788); }
-        75% { opacity: 0.355; fill: rgb(48 59 52); transform: scale(0.829); }
-        80% { opacity: 0.608; fill: rgb(75 94 81); transform: scale(0.949); }
-        85% { opacity: 0.892; fill: rgb(105 134 113); transform: scale(1.083); }
-        90% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        95% { opacity: 0.904; fill: rgb(106 136 114); transform: scale(1.089); }
-        100% { opacity: 0.865; fill: rgb(102 130 110); transform: scale(1.070); }
-      }
-      @keyframes halftone-breathe-2 {
-        0% { opacity: 0.633; fill: rgb(77 98 84); transform: scale(0.961); }
-        5% { opacity: 0.688; fill: rgb(83 105 90); transform: scale(0.986); }
-        10% { opacity: 0.836; fill: rgb(99 126 107); transform: scale(1.057); }
-        15% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        20% { opacity: 0.843; fill: rgb(100 127 108); transform: scale(1.060); }
-        25% { opacity: 0.519; fill: rgb(65 82 71); transform: scale(0.907); }
-        30% { opacity: 0.316; fill: rgb(44 53 48); transform: scale(0.811); }
-        35% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        40% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        45% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        50% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        55% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        60% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        65% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        70% { opacity: 0.316; fill: rgb(44 53 48); transform: scale(0.811); }
-        75% { opacity: 0.519; fill: rgb(65 82 71); transform: scale(0.907); }
-        80% { opacity: 0.843; fill: rgb(100 127 108); transform: scale(1.060); }
-        85% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        90% { opacity: 0.836; fill: rgb(99 126 107); transform: scale(1.057); }
-        95% { opacity: 0.688; fill: rgb(83 105 90); transform: scale(0.986); }
-        100% { opacity: 0.633; fill: rgb(77 98 84); transform: scale(0.961); }
-      }
-      @keyframes halftone-breathe-3 {
-        0% { opacity: 0.424; fill: rgb(55 68 60); transform: scale(0.862); }
-        5% { opacity: 0.464; fill: rgb(60 74 64); transform: scale(0.881); }
-        10% { opacity: 0.600; fill: rgb(74 93 80); transform: scale(0.945); }
-        15% { opacity: 0.835; fill: rgb(99 126 107); transform: scale(1.057); }
-        20% { opacity: 0.969; fill: rgb(113 145 122); transform: scale(1.119); }
-        25% { opacity: 0.755; fill: rgb(90 115 98); transform: scale(1.019); }
-        30% { opacity: 0.443; fill: rgb(57 71 62); transform: scale(0.871); }
-        35% { opacity: 0.298; fill: rgb(42 51 45); transform: scale(0.803); }
-        40% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        45% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.782); }
-        50% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        55% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.782); }
-        60% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        65% { opacity: 0.298; fill: rgb(42 51 45); transform: scale(0.803); }
-        70% { opacity: 0.443; fill: rgb(57 71 62); transform: scale(0.871); }
-        75% { opacity: 0.755; fill: rgb(90 115 98); transform: scale(1.019); }
-        80% { opacity: 0.969; fill: rgb(113 145 122); transform: scale(1.119); }
-        85% { opacity: 0.835; fill: rgb(99 126 107); transform: scale(1.057); }
-        90% { opacity: 0.600; fill: rgb(74 93 80); transform: scale(0.945); }
-        95% { opacity: 0.464; fill: rgb(60 74 64); transform: scale(0.881); }
-        100% { opacity: 0.424; fill: rgb(55 68 60); transform: scale(0.862); }
-      }
-      @keyframes halftone-breathe-4 {
-        0% { opacity: 0.308; fill: rgb(43 52 47); transform: scale(0.807); }
-        5% { opacity: 0.325; fill: rgb(45 55 49); transform: scale(0.816); }
-        10% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        15% { opacity: 0.598; fill: rgb(74 93 80); transform: scale(0.945); }
-        20% { opacity: 0.885; fill: rgb(104 133 112); transform: scale(1.080); }
-        25% { opacity: 0.942; fill: rgb(110 141 119); transform: scale(1.107); }
-        30% { opacity: 0.660; fill: rgb(80 102 87); transform: scale(0.974); }
-        35% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        40% { opacity: 0.299; fill: rgb(42 51 46); transform: scale(0.803); }
-        45% { opacity: 0.270; fill: rgb(39 47 42); transform: scale(0.789); }
-        50% { opacity: 0.264; fill: rgb(38 46 42); transform: scale(0.787); }
-        55% { opacity: 0.270; fill: rgb(39 47 42); transform: scale(0.789); }
-        60% { opacity: 0.299; fill: rgb(42 51 46); transform: scale(0.803); }
-        65% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        70% { opacity: 0.660; fill: rgb(80 102 87); transform: scale(0.974); }
-        75% { opacity: 0.942; fill: rgb(110 141 119); transform: scale(1.107); }
-        80% { opacity: 0.885; fill: rgb(104 133 112); transform: scale(1.080); }
-        85% { opacity: 0.598; fill: rgb(74 93 80); transform: scale(0.945); }
-        90% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        95% { opacity: 0.325; fill: rgb(45 55 49); transform: scale(0.816); }
-        100% { opacity: 0.308; fill: rgb(43 52 47); transform: scale(0.807); }
-      }
-      @keyframes halftone-breathe-5 {
-        0% { opacity: 0.264; fill: rgb(38 46 42); transform: scale(0.787); }
-        5% { opacity: 0.270; fill: rgb(39 47 42); transform: scale(0.789); }
-        10% { opacity: 0.299; fill: rgb(42 51 46); transform: scale(0.803); }
-        15% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        20% { opacity: 0.660; fill: rgb(80 102 87); transform: scale(0.974); }
-        25% { opacity: 0.942; fill: rgb(110 141 119); transform: scale(1.107); }
-        30% { opacity: 0.885; fill: rgb(104 133 112); transform: scale(1.080); }
-        35% { opacity: 0.598; fill: rgb(74 93 80); transform: scale(0.945); }
-        40% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        45% { opacity: 0.325; fill: rgb(45 55 49); transform: scale(0.816); }
-        50% { opacity: 0.308; fill: rgb(43 52 47); transform: scale(0.807); }
-        55% { opacity: 0.325; fill: rgb(45 55 49); transform: scale(0.816); }
-        60% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        65% { opacity: 0.598; fill: rgb(74 93 80); transform: scale(0.945); }
-        70% { opacity: 0.885; fill: rgb(104 133 112); transform: scale(1.080); }
-        75% { opacity: 0.942; fill: rgb(110 141 119); transform: scale(1.107); }
-        80% { opacity: 0.660; fill: rgb(80 102 87); transform: scale(0.974); }
-        85% { opacity: 0.402; fill: rgb(53 65 57); transform: scale(0.852); }
-        90% { opacity: 0.299; fill: rgb(42 51 46); transform: scale(0.803); }
-        95% { opacity: 0.270; fill: rgb(39 47 42); transform: scale(0.789); }
-        100% { opacity: 0.264; fill: rgb(38 46 42); transform: scale(0.787); }
-      }
-      @keyframes halftone-breathe-6 {
-        0% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        5% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.782); }
-        10% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        15% { opacity: 0.298; fill: rgb(42 51 45); transform: scale(0.803); }
-        20% { opacity: 0.443; fill: rgb(57 71 62); transform: scale(0.871); }
-        25% { opacity: 0.755; fill: rgb(90 115 98); transform: scale(1.019); }
-        30% { opacity: 0.969; fill: rgb(113 145 122); transform: scale(1.119); }
-        35% { opacity: 0.835; fill: rgb(99 126 107); transform: scale(1.057); }
-        40% { opacity: 0.600; fill: rgb(74 93 80); transform: scale(0.945); }
-        45% { opacity: 0.464; fill: rgb(60 74 64); transform: scale(0.881); }
-        50% { opacity: 0.424; fill: rgb(55 68 60); transform: scale(0.862); }
-        55% { opacity: 0.464; fill: rgb(60 74 64); transform: scale(0.881); }
-        60% { opacity: 0.600; fill: rgb(74 93 80); transform: scale(0.945); }
-        65% { opacity: 0.835; fill: rgb(99 126 107); transform: scale(1.057); }
-        70% { opacity: 0.969; fill: rgb(113 145 122); transform: scale(1.119); }
-        75% { opacity: 0.755; fill: rgb(90 115 98); transform: scale(1.019); }
-        80% { opacity: 0.443; fill: rgb(57 71 62); transform: scale(0.871); }
-        85% { opacity: 0.298; fill: rgb(42 51 45); transform: scale(0.803); }
-        90% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        95% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.782); }
-        100% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-      }
-      @keyframes halftone-breathe-7 {
-        0% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        5% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        10% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        15% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        20% { opacity: 0.316; fill: rgb(44 53 48); transform: scale(0.811); }
-        25% { opacity: 0.519; fill: rgb(65 82 71); transform: scale(0.907); }
-        30% { opacity: 0.843; fill: rgb(100 127 108); transform: scale(1.060); }
-        35% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        40% { opacity: 0.836; fill: rgb(99 126 107); transform: scale(1.057); }
-        45% { opacity: 0.688; fill: rgb(83 105 90); transform: scale(0.986); }
-        50% { opacity: 0.633; fill: rgb(77 98 84); transform: scale(0.961); }
-        55% { opacity: 0.688; fill: rgb(83 105 90); transform: scale(0.986); }
-        60% { opacity: 0.836; fill: rgb(99 126 107); transform: scale(1.057); }
-        65% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        70% { opacity: 0.843; fill: rgb(100 127 108); transform: scale(1.060); }
-        75% { opacity: 0.519; fill: rgb(65 82 71); transform: scale(0.907); }
-        80% { opacity: 0.316; fill: rgb(44 53 48); transform: scale(0.811); }
-        85% { opacity: 0.262; fill: rgb(38 46 41); transform: scale(0.785); }
-        90% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        95% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        100% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-      }
-      @keyframes halftone-breathe-8 {
-        0% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        5% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        10% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        15% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        20% { opacity: 0.266; fill: rgb(39 46 42); transform: scale(0.788); }
-        25% { opacity: 0.355; fill: rgb(48 59 52); transform: scale(0.829); }
-        30% { opacity: 0.608; fill: rgb(75 94 81); transform: scale(0.949); }
-        35% { opacity: 0.892; fill: rgb(105 134 113); transform: scale(1.083); }
-        40% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        45% { opacity: 0.904; fill: rgb(106 136 114); transform: scale(1.089); }
-        50% { opacity: 0.865; fill: rgb(102 130 110); transform: scale(1.070); }
-        55% { opacity: 0.904; fill: rgb(106 136 114); transform: scale(1.089); }
-        60% { opacity: 0.968; fill: rgb(113 145 122); transform: scale(1.119); }
-        65% { opacity: 0.892; fill: rgb(105 134 113); transform: scale(1.083); }
-        70% { opacity: 0.608; fill: rgb(75 94 81); transform: scale(0.949); }
-        75% { opacity: 0.355; fill: rgb(48 59 52); transform: scale(0.829); }
-        80% { opacity: 0.266; fill: rgb(39 46 42); transform: scale(0.788); }
-        85% { opacity: 0.252; fill: rgb(37 44 40); transform: scale(0.781); }
-        90% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        95% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        100% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-      }
-      @keyframes halftone-breathe-9 {
-        0% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        5% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        10% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        15% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        20% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.781); }
-        25% { opacity: 0.280; fill: rgb(40 48 43); transform: scale(0.794); }
-        30% { opacity: 0.407; fill: rgb(54 66 58); transform: scale(0.854); }
-        35% { opacity: 0.669; fill: rgb(81 103 88); transform: scale(0.978); }
-        40% { opacity: 0.891; fill: rgb(105 134 113); transform: scale(1.083); }
-        45% { opacity: 0.964; fill: rgb(112 144 121); transform: scale(1.117); }
-        50% { opacity: 0.970; fill: rgb(113 145 122); transform: scale(1.120); }
-        55% { opacity: 0.964; fill: rgb(112 144 121); transform: scale(1.117); }
-        60% { opacity: 0.891; fill: rgb(105 134 113); transform: scale(1.083); }
-        65% { opacity: 0.669; fill: rgb(81 103 88); transform: scale(0.978); }
-        70% { opacity: 0.407; fill: rgb(54 66 58); transform: scale(0.854); }
-        75% { opacity: 0.280; fill: rgb(40 48 43); transform: scale(0.794); }
-        80% { opacity: 0.253; fill: rgb(37 44 40); transform: scale(0.781); }
-        85% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        90% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        95% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-        100% { opacity: 0.250; fill: rgb(37 44 40); transform: scale(0.780); }
-      }
 
       .skeleton.long {
         width: 86%;
@@ -1348,22 +1088,34 @@
       .item-detail-screen h1 { color: #171a18; font: 650 20px/1.2 Arial,sans-serif; letter-spacing: -.45px; overflow-wrap: anywhere; }
       .items-heading span { border-radius: 999px; background: #f4f4f2; padding: 8px 14px; color: #60676b; font-size: 14px; line-height: 1; white-space: nowrap; }
       .items-list { display: grid; gap: 10px; max-height: 280px; overflow-y: auto; padding: 1px; }
-      .items-message { display: grid; justify-items: center; gap: 7px; padding: 52px 18px 44px; color: #71777b; text-align: center; }
+      .items-message { display: grid; justify-items: center; gap: 5px; padding: 36px 18px 30px; color: #71777b; text-align: center; }
       .items-message strong { color: #252722; font-size: 14px; }
-      .items-message span { font-size: 12px; line-height: 1.45; }
-      .items-message button { margin-top: 7px; border: 1px solid #e2e0da; border-radius: 8px; background: #fffefd; padding: 8px 13px; color: #252722; font-size: 12px; font-weight: 600; }
-      .item-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 9px; width: 100%; border: 1px solid #e6e6e1; border-radius: 11px; background: rgba(255,255,255,.62); padding: 15px 13px; text-align: left; }
-      .item-row strong { display: block; max-width: 220px; color: #171a18; font-size: 14px; line-height: 1.3; font-weight: 650; }
-      .item-row span { display: block; margin-top: 7px; color: #2f7068; font-size: 12px; }
-      .item-row[data-alert="true"] span { color: #32813a; }
+      .items-message span { max-width: 220px; font-size: 12px; line-height: 1.4; }
+      .items-message .items-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; margin-top: 10px; border: 1px solid #dedbd3; border-radius: 999px; background: #fffdfa; padding: 0 14px; color: #353833; font: 650 12px/1 Arial,sans-serif; transition: background-color .15s ease, transform .15s ease; }
+      .items-message .items-refresh svg { width: 16px; height: 16px; }
+      .items-message .items-refresh span { color: inherit; font: inherit; line-height: 1; }
+      .items-message .items-refresh:hover { background: #f3f1ec; }
+      .items-message .items-refresh:active { background: #ebe8e1; }
+      .items-message .items-refresh:focus-visible { outline: 2px solid #2f332f; outline-offset: 2px; }
+      .items-loading { display: grid; justify-items: center; gap: 9px; padding: 43px 18px 35px; color: #71777b; font-size: 12px; }
+      .items-loading-spinner { width: 22px; height: 22px; border: 2px solid #e2ded5; border-top-color: #353833; border-radius: 50%; animation: items-spin .7s linear infinite; }
+      @keyframes items-spin { to { transform: rotate(360deg); } }
+      .item-row { display: grid; grid-template-columns: 56px minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-height: 82px; border: 1px solid #e6e6e1; border-radius: 14px; background: rgba(255,255,255,.62); padding: 9px 12px; text-align: left; }
+      .item-row[data-has-image="false"] { grid-template-columns: minmax(0,1fr) auto auto; min-height: 0; padding: 15px 13px; }
+      .item-row > img { display: block; width: 56px; height: 64px; border-radius: 10px; background: #f1eee8; object-fit: cover; }
+      .item-row-copy { display: block; min-width: 0; margin: 0; }
+      .item-row strong { display: -webkit-box; max-width: 100%; overflow: hidden; color: #171a18; font-size: 14px; line-height: 1.3; font-weight: 650; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      .item-row .item-row-status { display: block; margin-top: 7px; color: #2f7068; font-size: 12px; }
+      .item-row[data-alert="true"] .item-row-status { color: #32813a; }
+      .item-row[data-error="true"] .item-row-status { color: #9b3a32; }
       .item-row[data-paused="true"] { background: #f1f1ee; border-color: #e2e2de; box-shadow: none; }
       .item-row[data-paused="true"] strong { color: #7b7e7d; }
-      .item-row[data-paused="true"] span,
+      .item-row[data-paused="true"] .item-row-status,
       .item-row[data-paused="true"] em,
       .item-row[data-paused="true"] i { color: #9a9d9c; }
       .item-row[data-paused="true"] { background: #f1f1ee; border-color: #e2e2de; box-shadow: none; }
       .item-row[data-paused="true"] strong { color: #7b7e7d; }
-      .item-row[data-paused="true"] span,
+      .item-row[data-paused="true"] .item-row-status,
       .item-row[data-paused="true"] em,
       .item-row[data-paused="true"] i { color: #9a9d9c; }
       .item-row em { align-self: center; color: #32813a; font-size: 13px; font-style: normal; font-weight: 700; }
@@ -1405,13 +1157,13 @@
       .idle-copy h1 { font: 600 21px/1.2 Arial,sans-serif; letter-spacing: -.35px; color: #111827; }
       .idle-copy p { font: 400 14px/1.45 Arial,sans-serif; width: auto; max-width: 245px; color: #5f6872; margin-top: 5px; }
       .idle-copy p + p, .idle-screen .feature-card, .idle-actions, .idle-divider, .idle-screen .privacy-note { display: none; }
-      main[data-screen="detecting"] .state-screen { align-content: start; padding: 0 20px; }
+      main[data-screen="detecting"] .state-screen { align-content: center; min-height:460px; padding: 0 10px 24px; }
       main[data-screen="detecting"] .state-panel { background: transparent; border: 0; box-shadow: none; gap: 0; min-height: 0; padding: 0; text-align: center; }
-      main[data-screen="detecting"] .state-panel strong { display:block; color:#111827; font-family:'Tracer Serif',Georgia,serif; font-size:31px; font-weight:400; line-height:1.12; letter-spacing:-.8px; margin:0; }
-      main[data-screen="detecting"] .state-panel p { color:#7a8082; font-family:inherit; font-size:18px; font-weight:400; line-height:1.4; margin:18px auto 0; max-width:320px; white-space:pre-line; }
-      main[data-screen="detecting"] .loading-dots { display:grid; grid-row:auto; width:100%; height:270px; margin:44px auto 18px; place-items:center; }
-      main[data-screen="detecting"] .loading-dots img { display:block; width:280px; height:212px; object-fit:contain; animation:loading-breathe 2.2s ease-in-out infinite; }
-      main[data-screen="detecting"] .loading-skeleton { display:none; }
+      main[data-screen="detecting"] .state-panel strong { display:block; grid-row:2; color:#353630; background:linear-gradient(100deg,#353630 30%,#b6b3a9 48%,#353630 66%); background-size:250% 100%; background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:loading-text-shimmer 2.6s ease-in-out infinite; font-family:Georgia,serif; font-size:31px; font-weight:400; line-height:1.12; letter-spacing:-.8px; margin:0; }
+      main[data-screen="detecting"] .state-panel p { grid-row:3; color:#a3a39d; font-family:inherit; font-size:15px; font-weight:350; line-height:1.5; margin:14px auto 0; max-width:300px; white-space:pre-line; }
+      main[data-screen="detecting"] .loading-dots { display:grid; grid-row:1; width:100%; height:252px; margin:0 auto 28px; place-items:center; }
+      main[data-screen="detecting"] .loading-dots img { display:block; width:310px; max-width:100%; height:244px; object-fit:contain; animation:loading-breathe 2.2s ease-in-out infinite; }
+      @keyframes loading-text-shimmer { from { background-position:150% 0; } to { background-position:-100% 0; } }
       @keyframes loading-breathe { 0%,100% { opacity:.9; transform:translateY(0); } 50% { opacity:1; transform:translateY(-3px); } }
       main[data-screen="detecting"] .skeleton, main[data-screen="detecting"] #stateClose { display: none; }
       .settings[data-visible="true"] { display: grid; margin-top: 12px; }
@@ -1466,7 +1218,7 @@
 
       .settings-card {
         align-items: center;
-        background: rgb(255 255 255 / 48%);
+        background: #fff;
         border: 1px solid #e7e2da;
         border-radius: 12px;
         box-shadow: 0 1px 2px rgb(39 35 29 / 2%);
@@ -1542,7 +1294,7 @@
         cursor: wait;
       }
 
-      .settings-clear-pill { position: relative; overflow: hidden; border: 1px solid #dce3e9; border-radius: 12px; background: rgb(255 255 255 / 48%); }
+      .settings-clear-pill { position: relative; overflow: hidden; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
       .settings-clear-pill .settings-clear { border: 0; background: transparent; box-shadow: none; transition: transform 360ms cubic-bezier(.22,1,.36,1), opacity 240ms ease; }
       .settings-clear-pill[data-confirming="true"] .settings-clear { transform: translateX(-35%); opacity: 0; pointer-events: none; }
       .clear-confirmation { position: absolute; inset: 0; display: flex; align-items: center; gap: 12px; padding: 12px; transform: translateX(100%); opacity: 0; visibility: hidden; transition: transform 360ms cubic-bezier(.22,1,.36,1), opacity 240ms ease, visibility 360ms; }
@@ -1572,17 +1324,16 @@
         }
       }
       /* Landing B: shared brand, editorial headings, pearl surfaces and sky accents. */
-      @font-face { font-family: 'Tracer Serif'; src: url('/assets/TracerSerif.woff2') format('woff2'); font-weight: 300 800; font-display: swap; }
       :root { --ink:#22231f; --muted:#626a72; --panel:#fffdfa; --line:#dce3e9; --radius:18px; }
       body { width:380px; height:590px; max-height:590px; overflow:hidden; background:#faf8f3; }
       main { width:380px; height:590px; background:#faf8f3; border:0; border-radius:0; padding:20px; }
       .brand .fan-mark { display:none; }
       .brand .wordmark-image { width:84px; height:28px; object-fit:contain; transform:translateX(6px); }
       .topbar, main[data-screen] .topbar { height:40px; padding:0 2px; margin-bottom:22px; }
-      .menu-toggle,.popup-back,.settings-toggle { border-radius:50%; border-color:#d8e0e7; background:#fffdfa; box-shadow:0 3px 12px #273e5310; }
-      h1,.items-heading h1,.item-detail-screen h1,.settings-heading h1,.state-panel > strong { font-family:'Tracer Serif',Georgia,serif; font-weight:400; font-size:29px; line-height:1.1; letter-spacing:-.02em; white-space:normal; }
+      .menu-toggle,.popup-back,.settings-toggle { border-radius:50%; border-color:#d8e0e7; background:#fff; box-shadow:0 3px 12px #273e5310; }
+      h1,.items-heading h1,.item-detail-screen h1,.settings-heading h1,.state-panel > strong { font-family:Georgia,serif; font-weight:400; font-size:29px; line-height:1.1; letter-spacing:-.02em; white-space:normal; }
       .product-title h2 { font-family:inherit; font-size:16px; line-height:1.3; }
-      .product-card,.success-summary,.item-row,.settings-card,.popup-menu,.item-facts { background:#fffdfa; border-color:#dce3e9; border-radius:18px; box-shadow:0 8px 24px #273e5308; }
+      .product-card,.success-summary,.item-row,.settings-card,.popup-menu,.item-facts { background:#fff; border-color:#dce3e9; border-radius:18px; box-shadow:0 8px 24px #273e5308; }
       .settings-cards { gap:12px; }
       .settings-card { padding:18px; }
       .settings-card-copy p { color:#626a72; line-height:1.5; }
@@ -1611,7 +1362,7 @@
       .watchlist-screen h1 {
         align-items:center;
         display:flex;
-        font-family:'Tracer Serif',Georgia,serif;
+        font-family:Georgia,serif;
         font-size:39px;
         height:72px;
         justify-content:center;
@@ -1629,7 +1380,8 @@
       .items-segments { display:flex; gap:4px; padding:4px; background:#eeece5; border-radius:999px; margin:14px 0; }
       .items-segments button { flex:1; border:0; background:transparent; border-radius:999px; padding:10px; color:#666b64; font:600 13px Arial,sans-serif; }
       .items-segments button[aria-pressed="true"] { background:#fffdfa; color:#22231f; box-shadow:0 2px 5px #22231f0a; }
-      .saved-product,.saved-row { padding:16px; border:1px solid #e6e3db; border-radius:18px; background:#fffdfa; }
+      .saved-product,.saved-row { padding:16px; border:1px solid #e6e3db; border-radius:18px; background:#fff; }
+      .saved-row[data-alert="true"] { border-color:#b9d9c1; box-shadow:0 10px 24px rgb(63 118 80 / 10%); }
       .watchlist-screen .saved-product {
         align-content:start;
         box-shadow:0 16px 32px #29292312;
@@ -1648,7 +1400,10 @@
       .saved-product strong,.saved-row strong { display:block; font:600 14px/1.4 Arial,sans-serif; overflow-wrap:anywhere; }
       .saved-product p,.saved-row p { color:#737870; font:400 12px/1.5 Arial,sans-serif; margin:5px 0; }
       .saved-row .saved-monitoring-status { color:#737870; font-weight:600; }
-      .saved-row .saved-monitoring-status[data-alert="true"] { color:#3f7650; }
+      .saved-row .saved-monitoring-status[data-state="watching"],
+      .saved-row .saved-monitoring-status[data-state="alert"] { color:#3f7650; }
+      .saved-row .saved-monitoring-status[data-state="off"] { color:#92968f; }
+      .saved-row .saved-monitoring-status[data-state="unavailable"] { color:#9b3a32; }
       .saved-product img,.saved-row img { width:48px; height:48px; object-fit:contain; border-radius:10px; float:left; margin:0 12px 8px 0; }
       .watchlist-screen .saved-product img {
         background:#f1eee8;
@@ -1663,6 +1418,36 @@
         object-position:center;
         width:auto;
       }
+      .watchlist-screen .saved-image-picker {
+        align-items:center;
+        display:grid;
+        gap:4px;
+        grid-template-columns:28px minmax(0,1fr) 28px;
+        height:100%;
+        min-height:0;
+        width:100%;
+      }
+      .watchlist-screen .saved-image-picker img {
+        grid-column:2;
+        max-width:100%;
+      }
+      .watchlist-screen .saved-image-arrow {
+        align-items:center;
+        align-self:center;
+        background:#fffdfa;
+        border:1px solid #dedbd4;
+        border-radius:50%;
+        color:#343833;
+        display:inline-flex;
+        height:28px;
+        justify-content:center;
+        padding:0;
+        width:28px;
+      }
+      .watchlist-screen .saved-image-arrow:hover { background:#f2efe9; }
+      .watchlist-screen .saved-image-arrow svg { height:16px; width:16px; }
+      .watchlist-screen .saved-image-arrow--previous { grid-column:1; }
+      .watchlist-screen .saved-image-arrow--next { grid-column:3; }
       .watchlist-screen .saved-copy { min-width:0; width:100%; }
       .watchlist-screen .saved-product[data-has-image="false"] {
         align-content:center;
@@ -1765,7 +1550,7 @@
         mix-blend-mode:normal;
       }
       main[data-screen="empty"] .idle-copy { gap:12px; }
-      main[data-screen="empty"] .idle-copy h1 { color:#22231f; font:400 34px/1.02 'Tracer Serif',Georgia,serif; letter-spacing:-.025em; max-width:320px; margin:0; }
+      main[data-screen="empty"] .idle-copy h1 { color:#22231f; font:400 34px/1.02 Georgia,serif; letter-spacing:-.025em; max-width:320px; margin:0; }
       main[data-screen="empty"] .idle-copy p {
         color:#777d86;
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
@@ -1778,7 +1563,7 @@
         text-align:center;
         width:calc(100% + 24px);
       }
-      .idle-tip { display:grid; grid-template-columns:34px 1fr; align-items:center; gap:10px; padding:14px; border:1px solid #e7e2da; border-radius:18px; background:#fffdfa; }
+      .idle-tip { display:grid; grid-template-columns:34px 1fr; align-items:center; gap:10px; padding:14px; border:1px solid #e7e2da; border-radius:18px; background:#fff; }
       .idle-tip > svg { width:34px; height:34px; color:#242622; }
       .idle-tip > div { padding-left:10px; border-left:1px solid #eae6df; }
       .idle-tip strong { font:600 13px/1.3 Arial,sans-serif; }
@@ -1814,6 +1599,202 @@
       .saved-row footer a .open-item-icon svg { height:100%; width:100%; }
       .saved-row footer button { margin-left:auto; }
       [hidden] { display:none !important; }
+      /* Purchase confirmation screens share the landing page's pearl cards and editorial type. */
+      main:is([data-screen="detected"], [data-screen="review"], [data-screen="protected"], [data-screen="duplicate"]) {
+        overflow-y: auto;
+        background: #faf8f3;
+      }
+      .detected-screen, .success-screen { padding: 4px 0 16px; align-content: start; gap: 18px; }
+      .detected-copy h1, .success-copy h1 { font: 400 34px/1.06 Georgia, serif; letter-spacing: -.025em; margin: 0; }
+      .detected-screen .check-icon, .success-screen .check-icon { width: 52px; height: 52px; margin: 0 auto 18px; background: #e3effb; color: #3266a0; box-shadow: none; }
+      .success-screen .check-icon { background: #e4f2e8; color: #34754d; }
+      .detected-screen .check-icon svg, .success-screen .check-icon svg { width: 25px; height: 25px; }
+      .detected-screen .purchase-card, .success-screen .success-summary { background: #fff; border: 1px solid #e6e3dc; border-radius: 20px; padding: 20px; box-shadow: 0 12px 30px #272c3009; }
+      .detected-screen .product-head, .success-screen .product-head { text-align: left; display: block; }
+      .detected-screen .product-title h2, .success-screen .product-title h2 { font: 600 15px/1.4 inherit; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.4; margin: 0; max-width: none; text-align: left; }
+      .detected-screen .details, .success-screen .summary-details { display: grid; margin: 14px 0 0; padding-top: 10px; border-top: 1px solid #ece9e2; gap: 8px; }
+      .detected-screen .details .detail-row { display: none; }
+      .detected-screen .details .detail-row:first-child, .detected-screen .details .detail-row:nth-child(2) { display: flex; justify-content: space-between; gap: 16px; }
+      .detected-screen .details dd, .success-screen .summary-details dd { overflow-wrap: anywhere; min-width: 0; }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.item-subtitle, .match, .divider, .details, .summary-details, .summary-status) { display: none; }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.purchase-card, .success-summary) { padding-block: 18px; }
+      .detected-screen .ready-copy, .success-screen .ready-copy { border: 0; padding: 0; margin: 0; color: #73736d; font: 400 13px/1.55 system-ui, sans-serif; }
+      .detected-screen .protect, .success-screen .dashboard-cta { border-radius: 999px; min-height: 46px; font-family: inherit; box-shadow: none; }
+
+      /* Receipt-led confirmation layout, scaled to the popup width. */
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) { background: #fffefd; }
+      .detected-screen, .success-screen { align-content: start; gap: 18px; min-height: 0; padding: 6px 22px 22px; }
+      .detected-copy, .success-copy { text-align: center; }
+      .detected-copy h1, .success-copy h1 { font-family: Georgia, serif; font-size: clamp(30px, 8.8vw, 38px); letter-spacing: -.035em; line-height: 1.02; margin: 0; }
+      .purchase-intro { color: #676761; font: 400 13px/1.45 Arial, sans-serif; margin: 10px auto 0; max-width: 290px; }
+      .detected-copy .purchase-intro { color: #8b8b84; font-size: 11px; line-height: 1.4; margin-top: 7px; }
+      .detected-screen .purchase-card, .success-screen .success-summary { background: #fff; border: 1px solid #e5e2dc; border-radius: 18px; box-shadow: 0 10px 28px rgb(39 44 48 / 7%); padding: 18px 20px; width: 100%; }
+      .detected-screen .product-head, .success-screen .product-head { text-align: left; }
+      .detected-screen .product-title h2, .success-screen .product-title h2 { font-size: 15px; line-height: 1.3; text-align: left; }
+      .detected-screen .item-subtitle, .success-screen .item-subtitle { display: block; color: #73736d; font-size: 12px; margin-top: 4px; }
+      .detected-screen .match { display: inline-flex; margin-top: 7px; }
+      .detected-screen .divider, .detected-screen .details, .detected-screen .window-card, .detected-screen .review-panel, .detected-screen #reviewDetails, .detected-screen #maybeLater, .success-summary .summary-details, .success-summary .summary-status { display: block; }
+      .detected-screen .details, .success-screen .summary-details { margin: 16px 0 0; padding-top: 12px; }
+      .detected-screen .details .detail-row, .success-screen .summary-details .detail-row { display: flex; justify-content: space-between; }
+      .detected-screen .details .detail-row:nth-child(n+3) { display: none; }
+      .detected-screen .window-card, .detected-screen .review-panel, .detected-screen #reviewDetails { display: none; }
+      .detected-screen .details .detail-row:nth-child(3) { display: none; }
+      .detected-screen .details .detail-row#productUrlRow { display: none; }
+      .detected-screen > .ready-copy { display: none; }
+      .detected-screen .ready-copy, .success-screen .ready-copy { color: #676761; font: 400 13px/1.45 Arial, sans-serif; }
+      .detected-copy .purchase-intro { color: #777871; font-size: 15px; line-height: 1.5; margin-top: 10px; }
+      .detected-screen { min-height: 500px; justify-content: center; }
+      .detected-screen .purchase-card { min-height: 126px; }
+      .detected-screen .details .detail-row:nth-child(1), .detected-screen .details .detail-row:nth-child(2) { display: flex !important; }
+      .detected-screen .details .detail-row:nth-child(1) dd { color: #20221f; font-size: 18px; font-weight: 700; }
+      .detected-screen .details .detail-row:nth-child(2) dd { color: #676761; font-size: 13px; }
+      .detected-screen .actions, .success-screen .summary-actions { width: 100%; }
+      .detected-screen .protect, .success-screen .dashboard-cta { border-radius: 999px; width: 100%; }
+      @media (min-width: 480px) {
+        body { width: 460px; }
+        main { min-height: 620px; padding: 24px 28px 30px; }
+        .detected-screen, .success-screen { padding: 8px 28px 28px; }
+        .purchase-receipt { height: 250px; width: 270px; margin-bottom: 16px; }
+        .purchase-receipt > img { height: 350px; left: -40px; top: -48px; width: 350px; }
+        .receipt-tick { height: 31px; left: 165px; top: 104px; width: 31px; }
+        .receipt-tick svg { height: 31px; width: 31px; }
+        .detected-copy h1, .success-copy h1 { font-size: 42px; }
+        .purchase-intro { font-size: 16px; }
+      }
+
+      .detected-copy h1, .success-copy h1 { font-family: Georgia, serif; font-size: clamp(27px, 8vw, 32px); line-height: 1.1; text-wrap: balance; }
+      .purchase-receipt { display: block; position: relative; width: 160px; height: 146px; margin: 0 auto 12px; overflow: hidden; }
+      .purchase-receipt > img { position: absolute; width: 210px; max-width: none; height: 210px; left: -25px; top: -29px; mix-blend-mode: darken; }
+      .receipt-tick { position: absolute; left: 98px; top: 60px; width: 19px; height: 19px; border-radius: 50%; background: #9da891; display: grid; place-items: center; }
+      .receipt-tick svg { width: 19px; height: 19px; overflow: visible; }
+      .receipt-tick path { fill: none; stroke: white; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+      main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: receipt-tick-reveal .5s .2s ease forwards; }
+      @keyframes receipt-tick-reveal { to { stroke-dashoffset: 0; } }
+      @media (prefers-reduced-motion: reduce) { main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: none; stroke-dashoffset: 0; } }
+
+      /* Purchase-detected layout: compact receipt hero and useful order summary. */
+      main[data-screen="detected"] { overflow:hidden; }
+      main[data-screen="detected"] .detected-screen {
+        align-content:start;
+        gap:14px;
+        justify-content:stretch;
+        min-height:0;
+        padding:0 2px 10px;
+      }
+      main[data-screen="detected"] .detected-copy { gap:0; }
+      main[data-screen="detected"] .purchase-receipt {
+        height:146px;
+        margin:0 auto 8px;
+        overflow:visible;
+        width:176px;
+      }
+      main[data-screen="detected"] .purchase-receipt > img {
+        height:224px;
+        left:-24px;
+        mix-blend-mode:normal;
+        top:-35px;
+        width:224px;
+      }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) :is(.detected-screen,.success-screen) { padding-top:0; }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) .purchase-receipt {
+        height:146px;
+        margin:0 auto 8px;
+        overflow:visible;
+        width:176px;
+      }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) .purchase-receipt > img {
+        height:224px;
+        left:-24px;
+        mix-blend-mode:normal;
+        top:-35px;
+        width:224px;
+      }
+      main[data-screen="detected"] .receipt-tick { opacity:0; transform:scale(.58); }
+      main[data-screen="detected"] .receipt-tick path { animation:none; stroke-dashoffset:1; }
+      main:is([data-screen="protected"],[data-screen="duplicate"]) .receipt-tick { display:grid; }
+      main[data-screen="protected"] .receipt-tick {
+        animation:receipt-tick-pop .56s cubic-bezier(.2,.9,.25,1.25) forwards;
+        opacity:0;
+        transform:scale(.58);
+      }
+      main[data-screen="protected"] .receipt-tick path { animation:receipt-tick-reveal .44s .16s ease forwards; }
+      main[data-screen="duplicate"] .receipt-tick { opacity:1; transform:scale(1); }
+      main[data-screen="duplicate"] .receipt-tick path { animation:none; stroke-dashoffset:0; }
+      @keyframes receipt-tick-pop {
+        0% { opacity:0; transform:scale(.58); }
+        68% { opacity:1; transform:scale(1.14); }
+        100% { opacity:1; transform:scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        main[data-screen="protected"] .receipt-tick { animation:none; opacity:1; transform:scale(1); }
+        main[data-screen="protected"] .receipt-tick path { animation:none; stroke-dashoffset:0; }
+      }
+      main[data-screen="detected"] .detected-copy h1 {
+        font-family:Georgia,serif;
+        font-size:34px;
+        letter-spacing:-.025em;
+        line-height:1;
+      }
+      main[data-screen="detected"] .detected-copy .purchase-intro {
+        color:#85857f;
+        font:350 14px/1.45 Arial,sans-serif;
+        margin:12px auto 0;
+      }
+      main[data-screen="detected"] .purchase-card {
+        align-items:center;
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        min-height:96px;
+        padding:17px 18px;
+      }
+      main[data-screen="detected"] .product-head { grid-column:1; min-width:0; padding:0; transform:translateY(4px); }
+      main[data-screen="detected"] .product-title h2 {
+        color:#22231f;
+        font:650 14px/1.3 Arial,sans-serif;
+        margin:0;
+      }
+      main[data-screen="detected"] .purchase-date-line {
+        color:#999994;
+        display:block;
+        font:350 12px/1.35 Arial,sans-serif;
+        margin:7px 0 0;
+      }
+      main[data-screen="detected"] :is(.item-subtitle,.match,.divider) { display:none; }
+      main[data-screen="detected"] .details {
+        border:0;
+        display:block;
+        grid-column:2;
+        margin:0 0 0 16px;
+        padding:0 0 0 18px;
+        position:relative;
+      }
+      main[data-screen="detected"] .details::before {
+        background:#e5e2dc;
+        content:'';
+        inset:0 auto 0 0;
+        position:absolute;
+        width:1px;
+      }
+      main[data-screen="detected"] .details .detail-row { display:none !important; }
+      main[data-screen="detected"] .details .detail-row:first-child { display:block !important; }
+      main[data-screen="detected"] .details .detail-row:nth-child(2) { display:none !important; }
+      main[data-screen="detected"] .details .detail-row:first-child dt { display:none; }
+      main[data-screen="detected"] .details .detail-row:first-child dd {
+        color:#22231f;
+        font:650 18px/1.2 Arial,sans-serif;
+        white-space:nowrap;
+      }
+      main[data-screen="detected"] .actions { display:grid; gap:8px; margin:2px 0 0; }
+      main[data-screen="detected"] .protect { min-height:48px; position:relative; }
+      main[data-screen="detected"] .protect::after { content:'→'; font-size:19px; margin-left:18px; }
+      main[data-screen="detected"] #maybeLater {
+        color:#999994;
+        display:block;
+        font:400 12px/1.2 Arial,sans-serif;
+        min-height:28px;
+        text-decoration:underline;
+        text-underline-offset:3px;
+      }
     </style>
   </head>
   <body>
@@ -1822,11 +1803,11 @@
         <button class="popup-back" id="popupBack" type="button" aria-label="Back">←</button>
         <div class="brand" aria-label="Tracer">
           <div class="fan-mark" aria-hidden="true">
-            <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" />
-            <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" />
-            <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" />
+            <img class="fan-panel fan-left" src="/assets/logo-panels/tracer-panel-left.png" alt="" decoding="async" />
+            <img class="fan-panel fan-center" src="/assets/logo-panels/tracer-panel-center.png" alt="" decoding="async" />
+            <img class="fan-panel fan-right" src="/assets/logo-panels/tracer-panel-right.png" alt="" decoding="async" />
           </div>
-          <img class="wordmark-image" src="/assets/tracer-outline.png" alt="Tracer" />
+          <img class="wordmark-image" src="/assets/tracer-outline.webp" alt="Tracer" width="336" height="111" decoding="async" fetchpriority="high" />
         </div>
         <div class="top-actions">
           <span class="active-pill">Active</span>
@@ -1855,7 +1836,7 @@
       </section>
       <section class="screen items-screen" aria-label="Your items">
         <div class="items-heading"><h1>Your items</h1><span id="itemsCount">0 items</span></div>
-        <div class="items-segments" aria-label="Item type"><button id="savedTab" type="button" aria-pressed="false">Saved</button><button id="protectedTab" type="button" aria-pressed="true">Protected</button></div>
+        <div class="items-segments" aria-label="Item type"><button id="savedTab" type="button" aria-pressed="false">Saved</button><button id="protectedTab" type="button" aria-pressed="true">Purchased</button></div>
         <div class="items-list" id="itemsList"></div>
       </section>
 
@@ -1883,24 +1864,7 @@
           <strong id="stateTitle">Finding your item...</strong>
           <p id="stateCopy">This usually takes a moment.<br>Hang tight.</p>
           <div class="loading-dots" aria-hidden="true">
-            <img src="assets/tracer-loading.png" alt="">
-            <div class="loading-skeleton">
-              <span class="skeleton-line skeleton-line-long"></span>
-              <span class="skeleton-line skeleton-line-mid"></span>
-              <span class="skeleton-line skeleton-line-short"></span>
-            </div>
-            <svg viewBox="0 0 120 120" focusable="false">
-              <g style="--breath:halftone-breathe-0" opacity="1"><circle cx="55.5" cy="51" r="1.45"/><circle cx="60" cy="51" r="1.45"/><circle cx="64.5" cy="51" r="1.45"/><circle cx="51" cy="55.5" r="1.45"/><circle cx="69" cy="55.5" r="1.45"/><circle cx="51" cy="60" r="1.45"/><circle cx="69" cy="60" r="1.45"/><circle cx="51" cy="64.5" r="1.45"/><circle cx="69" cy="64.5" r="1.45"/><circle cx="55.5" cy="69" r="1.45"/><circle cx="60" cy="69" r="1.45"/><circle cx="64.5" cy="69" r="1.45"/><circle cx="51" cy="46.5" r="1.70"/><circle cx="55.5" cy="46.5" r="1.34"/><circle cx="60" cy="46.5" r="1.21"/><circle cx="64.5" cy="46.5" r="1.34"/><circle cx="69" cy="46.5" r="1.70"/><circle cx="46.5" cy="51" r="1.70"/><circle cx="51" cy="51" r="1.08"/><circle cx="69" cy="51" r="1.08"/><circle cx="73.5" cy="51" r="1.70"/><circle cx="46.5" cy="55.5" r="1.34"/><circle cx="73.5" cy="55.5" r="1.34"/><circle cx="46.5" cy="60" r="1.21"/><circle cx="73.5" cy="60" r="1.21"/><circle cx="46.5" cy="64.5" r="1.34"/><circle cx="73.5" cy="64.5" r="1.34"/><circle cx="46.5" cy="69" r="1.70"/><circle cx="51" cy="69" r="1.08"/><circle cx="69" cy="69" r="1.08"/><circle cx="73.5" cy="69" r="1.70"/><circle cx="51" cy="73.5" r="1.70"/><circle cx="55.5" cy="73.5" r="1.34"/><circle cx="60" cy="73.5" r="1.21"/><circle cx="64.5" cy="73.5" r="1.34"/><circle cx="69" cy="73.5" r="1.70"/></g>
-              <g style="--breath:halftone-breathe-1" opacity="1"><circle cx="51" cy="42" r="1.98"/><circle cx="55.5" cy="42" r="1.98"/><circle cx="60" cy="42" r="1.98"/><circle cx="64.5" cy="42" r="1.98"/><circle cx="69" cy="42" r="1.98"/><circle cx="46.5" cy="46.5" r="1.98"/><circle cx="73.5" cy="46.5" r="1.98"/><circle cx="42" cy="51" r="1.98"/><circle cx="78" cy="51" r="1.98"/><circle cx="42" cy="55.5" r="1.98"/><circle cx="78" cy="55.5" r="1.98"/><circle cx="42" cy="60" r="1.98"/><circle cx="78" cy="60" r="1.98"/><circle cx="42" cy="64.5" r="1.98"/><circle cx="78" cy="64.5" r="1.98"/><circle cx="42" cy="69" r="1.98"/><circle cx="78" cy="69" r="1.98"/><circle cx="46.5" cy="73.5" r="1.98"/><circle cx="73.5" cy="73.5" r="1.98"/><circle cx="51" cy="78" r="1.98"/><circle cx="55.5" cy="78" r="1.98"/><circle cx="60" cy="78" r="1.98"/><circle cx="64.5" cy="78" r="1.98"/><circle cx="69" cy="78" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-2" opacity="1"><circle cx="51" cy="37.5" r="1.98"/><circle cx="55.5" cy="37.5" r="1.98"/><circle cx="60" cy="37.5" r="1.98"/><circle cx="64.5" cy="37.5" r="1.98"/><circle cx="69" cy="37.5" r="1.98"/><circle cx="46.5" cy="42" r="1.98"/><circle cx="73.5" cy="42" r="1.98"/><circle cx="42" cy="46.5" r="1.98"/><circle cx="78" cy="46.5" r="1.98"/><circle cx="37.5" cy="51" r="1.98"/><circle cx="82.5" cy="51" r="1.98"/><circle cx="37.5" cy="55.5" r="1.98"/><circle cx="82.5" cy="55.5" r="1.98"/><circle cx="37.5" cy="60" r="1.98"/><circle cx="82.5" cy="60" r="1.98"/><circle cx="37.5" cy="64.5" r="1.98"/><circle cx="82.5" cy="64.5" r="1.98"/><circle cx="37.5" cy="69" r="1.98"/><circle cx="82.5" cy="69" r="1.98"/><circle cx="42" cy="73.5" r="1.98"/><circle cx="78" cy="73.5" r="1.98"/><circle cx="46.5" cy="78" r="1.98"/><circle cx="73.5" cy="78" r="1.98"/><circle cx="51" cy="82.5" r="1.98"/><circle cx="55.5" cy="82.5" r="1.98"/><circle cx="60" cy="82.5" r="1.98"/><circle cx="64.5" cy="82.5" r="1.98"/><circle cx="69" cy="82.5" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-3" opacity="1"><circle cx="51" cy="33" r="1.98"/><circle cx="55.5" cy="33" r="1.98"/><circle cx="60" cy="33" r="1.98"/><circle cx="64.5" cy="33" r="1.98"/><circle cx="69" cy="33" r="1.98"/><circle cx="42" cy="37.5" r="1.98"/><circle cx="46.5" cy="37.5" r="1.98"/><circle cx="73.5" cy="37.5" r="1.98"/><circle cx="78" cy="37.5" r="1.98"/><circle cx="37.5" cy="42" r="1.98"/><circle cx="42" cy="42" r="1.98"/><circle cx="78" cy="42" r="1.98"/><circle cx="82.5" cy="42" r="1.98"/><circle cx="37.5" cy="46.5" r="1.98"/><circle cx="82.5" cy="46.5" r="1.98"/><circle cx="33" cy="51" r="1.98"/><circle cx="87" cy="51" r="1.98"/><circle cx="33" cy="55.5" r="1.98"/><circle cx="87" cy="55.5" r="1.98"/><circle cx="33" cy="60" r="1.98"/><circle cx="87" cy="60" r="1.98"/><circle cx="33" cy="64.5" r="1.98"/><circle cx="87" cy="64.5" r="1.98"/><circle cx="33" cy="69" r="1.98"/><circle cx="87" cy="69" r="1.98"/><circle cx="37.5" cy="73.5" r="1.98"/><circle cx="82.5" cy="73.5" r="1.98"/><circle cx="37.5" cy="78" r="1.98"/><circle cx="42" cy="78" r="1.98"/><circle cx="78" cy="78" r="1.98"/><circle cx="82.5" cy="78" r="1.98"/><circle cx="42" cy="82.5" r="1.98"/><circle cx="46.5" cy="82.5" r="1.98"/><circle cx="73.5" cy="82.5" r="1.98"/><circle cx="78" cy="82.5" r="1.98"/><circle cx="51" cy="87" r="1.98"/><circle cx="55.5" cy="87" r="1.98"/><circle cx="60" cy="87" r="1.98"/><circle cx="64.5" cy="87" r="1.98"/><circle cx="69" cy="87" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-4" opacity="1"><circle cx="51" cy="28.5" r="1.98"/><circle cx="55.5" cy="28.5" r="1.98"/><circle cx="60" cy="28.5" r="1.98"/><circle cx="64.5" cy="28.5" r="1.98"/><circle cx="69" cy="28.5" r="1.98"/><circle cx="42" cy="33" r="1.98"/><circle cx="46.5" cy="33" r="1.98"/><circle cx="73.5" cy="33" r="1.98"/><circle cx="78" cy="33" r="1.98"/><circle cx="37.5" cy="37.5" r="1.98"/><circle cx="82.5" cy="37.5" r="1.98"/><circle cx="33" cy="42" r="1.98"/><circle cx="87" cy="42" r="1.98"/><circle cx="33" cy="46.5" r="1.98"/><circle cx="87" cy="46.5" r="1.98"/><circle cx="28.5" cy="51" r="1.98"/><circle cx="91.5" cy="51" r="1.98"/><circle cx="28.5" cy="55.5" r="1.98"/><circle cx="91.5" cy="55.5" r="1.98"/><circle cx="28.5" cy="60" r="1.98"/><circle cx="91.5" cy="60" r="1.98"/><circle cx="28.5" cy="64.5" r="1.98"/><circle cx="91.5" cy="64.5" r="1.98"/><circle cx="28.5" cy="69" r="1.98"/><circle cx="91.5" cy="69" r="1.98"/><circle cx="33" cy="73.5" r="1.98"/><circle cx="87" cy="73.5" r="1.98"/><circle cx="33" cy="78" r="1.98"/><circle cx="87" cy="78" r="1.98"/><circle cx="37.5" cy="82.5" r="1.98"/><circle cx="82.5" cy="82.5" r="1.98"/><circle cx="42" cy="87" r="1.98"/><circle cx="46.5" cy="87" r="1.98"/><circle cx="73.5" cy="87" r="1.98"/><circle cx="78" cy="87" r="1.98"/><circle cx="51" cy="91.5" r="1.98"/><circle cx="55.5" cy="91.5" r="1.98"/><circle cx="60" cy="91.5" r="1.98"/><circle cx="64.5" cy="91.5" r="1.98"/><circle cx="69" cy="91.5" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-5" opacity="1"><circle cx="51" cy="24" r="1.98"/><circle cx="55.5" cy="24" r="1.98"/><circle cx="60" cy="24" r="1.98"/><circle cx="64.5" cy="24" r="1.98"/><circle cx="69" cy="24" r="1.98"/><circle cx="42" cy="28.5" r="1.98"/><circle cx="46.5" cy="28.5" r="1.98"/><circle cx="73.5" cy="28.5" r="1.98"/><circle cx="78" cy="28.5" r="1.98"/><circle cx="37.5" cy="33" r="1.98"/><circle cx="82.5" cy="33" r="1.98"/><circle cx="33" cy="37.5" r="1.98"/><circle cx="87" cy="37.5" r="1.98"/><circle cx="28.5" cy="42" r="1.98"/><circle cx="91.5" cy="42" r="1.98"/><circle cx="28.5" cy="46.5" r="1.98"/><circle cx="91.5" cy="46.5" r="1.98"/><circle cx="24" cy="51" r="1.98"/><circle cx="96" cy="51" r="1.98"/><circle cx="24" cy="55.5" r="1.98"/><circle cx="96" cy="55.5" r="1.98"/><circle cx="24" cy="60" r="1.98"/><circle cx="96" cy="60" r="1.98"/><circle cx="24" cy="64.5" r="1.98"/><circle cx="96" cy="64.5" r="1.98"/><circle cx="24" cy="69" r="1.98"/><circle cx="96" cy="69" r="1.98"/><circle cx="28.5" cy="73.5" r="1.98"/><circle cx="91.5" cy="73.5" r="1.98"/><circle cx="28.5" cy="78" r="1.98"/><circle cx="91.5" cy="78" r="1.98"/><circle cx="33" cy="82.5" r="1.98"/><circle cx="87" cy="82.5" r="1.98"/><circle cx="37.5" cy="87" r="1.98"/><circle cx="82.5" cy="87" r="1.98"/><circle cx="42" cy="91.5" r="1.98"/><circle cx="46.5" cy="91.5" r="1.98"/><circle cx="73.5" cy="91.5" r="1.98"/><circle cx="78" cy="91.5" r="1.98"/><circle cx="51" cy="96" r="1.98"/><circle cx="55.5" cy="96" r="1.98"/><circle cx="60" cy="96" r="1.98"/><circle cx="64.5" cy="96" r="1.98"/><circle cx="69" cy="96" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-6" opacity="1"><circle cx="51" cy="19.5" r="1.98"/><circle cx="55.5" cy="19.5" r="1.98"/><circle cx="60" cy="19.5" r="1.98"/><circle cx="64.5" cy="19.5" r="1.98"/><circle cx="69" cy="19.5" r="1.98"/><circle cx="42" cy="24" r="1.98"/><circle cx="46.5" cy="24" r="1.98"/><circle cx="73.5" cy="24" r="1.98"/><circle cx="78" cy="24" r="1.98"/><circle cx="33" cy="28.5" r="1.98"/><circle cx="37.5" cy="28.5" r="1.98"/><circle cx="82.5" cy="28.5" r="1.98"/><circle cx="87" cy="28.5" r="1.98"/><circle cx="28.5" cy="33" r="1.98"/><circle cx="33" cy="33" r="1.98"/><circle cx="87" cy="33" r="1.98"/><circle cx="91.5" cy="33" r="1.98"/><circle cx="28.5" cy="37.5" r="1.98"/><circle cx="91.5" cy="37.5" r="1.98"/><circle cx="24" cy="42" r="1.98"/><circle cx="96" cy="42" r="1.98"/><circle cx="24" cy="46.5" r="1.98"/><circle cx="96" cy="46.5" r="1.98"/><circle cx="19.5" cy="51" r="1.98"/><circle cx="100.5" cy="51" r="1.98"/><circle cx="19.5" cy="55.5" r="1.98"/><circle cx="100.5" cy="55.5" r="1.98"/><circle cx="19.5" cy="60" r="1.98"/><circle cx="100.5" cy="60" r="1.98"/><circle cx="19.5" cy="64.5" r="1.98"/><circle cx="100.5" cy="64.5" r="1.98"/><circle cx="19.5" cy="69" r="1.98"/><circle cx="100.5" cy="69" r="1.98"/><circle cx="24" cy="73.5" r="1.98"/><circle cx="96" cy="73.5" r="1.98"/><circle cx="24" cy="78" r="1.98"/><circle cx="96" cy="78" r="1.98"/><circle cx="28.5" cy="82.5" r="1.98"/><circle cx="91.5" cy="82.5" r="1.98"/><circle cx="28.5" cy="87" r="1.98"/><circle cx="33" cy="87" r="1.98"/><circle cx="87" cy="87" r="1.98"/><circle cx="91.5" cy="87" r="1.98"/><circle cx="33" cy="91.5" r="1.98"/><circle cx="37.5" cy="91.5" r="1.98"/><circle cx="82.5" cy="91.5" r="1.98"/><circle cx="87" cy="91.5" r="1.98"/><circle cx="42" cy="96" r="1.98"/><circle cx="46.5" cy="96" r="1.98"/><circle cx="73.5" cy="96" r="1.98"/><circle cx="78" cy="96" r="1.98"/><circle cx="51" cy="100.5" r="1.98"/><circle cx="55.5" cy="100.5" r="1.98"/><circle cx="60" cy="100.5" r="1.98"/><circle cx="64.5" cy="100.5" r="1.98"/><circle cx="69" cy="100.5" r="1.98"/></g>
-              <g style="--breath:halftone-breathe-7" opacity="0.82"><circle cx="51" cy="15" r="1.70"/><circle cx="55.5" cy="15" r="1.73"/><circle cx="60" cy="15" r="1.76"/><circle cx="64.5" cy="15" r="1.73"/><circle cx="69" cy="15" r="1.70"/><circle cx="37.5" cy="19.5" r="1.64"/><circle cx="42" cy="19.5" r="1.79"/><circle cx="46.5" cy="19.5" r="1.93"/><circle cx="73.5" cy="19.5" r="1.93"/><circle cx="78" cy="19.5" r="1.79"/><circle cx="82.5" cy="19.5" r="1.64"/><circle cx="33" cy="24" r="1.76"/><circle cx="37.5" cy="24" r="1.96"/><circle cx="82.5" cy="24" r="1.96"/><circle cx="87" cy="24" r="1.76"/><circle cx="28.5" cy="28.5" r="1.78"/><circle cx="91.5" cy="28.5" r="1.78"/><circle cx="24" cy="33" r="1.76"/><circle cx="96" cy="33" r="1.76"/><circle cx="19.5" cy="37.5" r="1.64"/><circle cx="24" cy="37.5" r="1.96"/><circle cx="96" cy="37.5" r="1.96"/><circle cx="100.5" cy="37.5" r="1.64"/><circle cx="19.5" cy="42" r="1.79"/><circle cx="100.5" cy="42" r="1.79"/><circle cx="19.5" cy="46.5" r="1.93"/><circle cx="100.5" cy="46.5" r="1.93"/><circle cx="15" cy="51" r="1.70"/><circle cx="105" cy="51" r="1.70"/><circle cx="15" cy="55.5" r="1.73"/><circle cx="105" cy="55.5" r="1.73"/><circle cx="15" cy="60" r="1.76"/><circle cx="105" cy="60" r="1.76"/><circle cx="15" cy="64.5" r="1.73"/><circle cx="105" cy="64.5" r="1.73"/><circle cx="15" cy="69" r="1.70"/><circle cx="105" cy="69" r="1.70"/><circle cx="19.5" cy="73.5" r="1.93"/><circle cx="100.5" cy="73.5" r="1.93"/><circle cx="19.5" cy="78" r="1.79"/><circle cx="100.5" cy="78" r="1.79"/><circle cx="19.5" cy="82.5" r="1.64"/><circle cx="24" cy="82.5" r="1.96"/><circle cx="96" cy="82.5" r="1.96"/><circle cx="100.5" cy="82.5" r="1.64"/><circle cx="24" cy="87" r="1.76"/><circle cx="96" cy="87" r="1.76"/><circle cx="28.5" cy="91.5" r="1.78"/><circle cx="91.5" cy="91.5" r="1.78"/><circle cx="33" cy="96" r="1.76"/><circle cx="37.5" cy="96" r="1.96"/><circle cx="82.5" cy="96" r="1.96"/><circle cx="87" cy="96" r="1.76"/><circle cx="37.5" cy="100.5" r="1.64"/><circle cx="42" cy="100.5" r="1.79"/><circle cx="46.5" cy="100.5" r="1.93"/><circle cx="73.5" cy="100.5" r="1.93"/><circle cx="78" cy="100.5" r="1.79"/><circle cx="82.5" cy="100.5" r="1.64"/><circle cx="51" cy="105" r="1.70"/><circle cx="55.5" cy="105" r="1.73"/><circle cx="60" cy="105" r="1.76"/><circle cx="64.5" cy="105" r="1.73"/><circle cx="69" cy="105" r="1.70"/></g>
-              <g style="--breath:halftone-breathe-8" opacity="0.55"><circle cx="51" cy="10.5" r="1.33"/><circle cx="55.5" cy="10.5" r="1.36"/><circle cx="60" cy="10.5" r="1.40"/><circle cx="64.5" cy="10.5" r="1.36"/><circle cx="69" cy="10.5" r="1.33"/><circle cx="37.5" cy="15" r="1.33"/><circle cx="42" cy="15" r="1.47"/><circle cx="46.5" cy="15" r="1.59"/><circle cx="73.5" cy="15" r="1.59"/><circle cx="78" cy="15" r="1.47"/><circle cx="82.5" cy="15" r="1.33"/><circle cx="33" cy="19.5" r="1.46"/><circle cx="87" cy="19.5" r="1.46"/><circle cx="28.5" cy="24" r="1.53"/><circle cx="91.5" cy="24" r="1.53"/><circle cx="24" cy="28.5" r="1.53"/><circle cx="96" cy="28.5" r="1.53"/><circle cx="19.5" cy="33" r="1.46"/><circle cx="100.5" cy="33" r="1.46"/><circle cx="15" cy="37.5" r="1.33"/><circle cx="105" cy="37.5" r="1.33"/><circle cx="15" cy="42" r="1.47"/><circle cx="105" cy="42" r="1.47"/><circle cx="15" cy="46.5" r="1.59"/><circle cx="105" cy="46.5" r="1.59"/><circle cx="10.5" cy="51" r="1.33"/><circle cx="109.5" cy="51" r="1.33"/><circle cx="10.5" cy="55.5" r="1.36"/><circle cx="109.5" cy="55.5" r="1.36"/><circle cx="10.5" cy="60" r="1.40"/><circle cx="109.5" cy="60" r="1.40"/><circle cx="10.5" cy="64.5" r="1.36"/><circle cx="109.5" cy="64.5" r="1.36"/><circle cx="10.5" cy="69" r="1.33"/><circle cx="109.5" cy="69" r="1.33"/><circle cx="15" cy="73.5" r="1.59"/><circle cx="105" cy="73.5" r="1.59"/><circle cx="15" cy="78" r="1.47"/><circle cx="105" cy="78" r="1.47"/><circle cx="15" cy="82.5" r="1.33"/><circle cx="105" cy="82.5" r="1.33"/><circle cx="19.5" cy="87" r="1.46"/><circle cx="100.5" cy="87" r="1.46"/><circle cx="24" cy="91.5" r="1.53"/><circle cx="96" cy="91.5" r="1.53"/><circle cx="28.5" cy="96" r="1.53"/><circle cx="91.5" cy="96" r="1.53"/><circle cx="33" cy="100.5" r="1.46"/><circle cx="87" cy="100.5" r="1.46"/><circle cx="37.5" cy="105" r="1.33"/><circle cx="42" cy="105" r="1.47"/><circle cx="46.5" cy="105" r="1.59"/><circle cx="73.5" cy="105" r="1.59"/><circle cx="78" cy="105" r="1.47"/><circle cx="82.5" cy="105" r="1.33"/><circle cx="51" cy="109.5" r="1.33"/><circle cx="55.5" cy="109.5" r="1.36"/><circle cx="60" cy="109.5" r="1.40"/><circle cx="64.5" cy="109.5" r="1.36"/><circle cx="69" cy="109.5" r="1.33"/></g>
-              <g style="--breath:halftone-breathe-9" opacity="0.28"><circle cx="51" cy="6" r="0.96"/><circle cx="55.5" cy="6" r="1.02"/><circle cx="60" cy="6" r="1.03"/><circle cx="64.5" cy="6" r="1.02"/><circle cx="69" cy="6" r="0.96"/><circle cx="37.5" cy="10.5" r="1.01"/><circle cx="42" cy="10.5" r="1.14"/><circle cx="46.5" cy="10.5" r="1.25"/><circle cx="73.5" cy="10.5" r="1.25"/><circle cx="78" cy="10.5" r="1.14"/><circle cx="82.5" cy="10.5" r="1.01"/><circle cx="28.5" cy="15" r="0.95"/><circle cx="33" cy="15" r="1.16"/><circle cx="87" cy="15" r="1.16"/><circle cx="91.5" cy="15" r="0.95"/><circle cx="24" cy="19.5" r="1.02"/><circle cx="28.5" cy="19.5" r="1.25"/><circle cx="91.5" cy="19.5" r="1.25"/><circle cx="96" cy="19.5" r="1.02"/><circle cx="19.5" cy="24" r="1.02"/><circle cx="24" cy="24" r="1.27"/><circle cx="96" cy="24" r="1.27"/><circle cx="100.5" cy="24" r="1.02"/><circle cx="15" cy="28.5" r="0.95"/><circle cx="19.5" cy="28.5" r="1.25"/><circle cx="100.5" cy="28.5" r="1.25"/><circle cx="105" cy="28.5" r="0.95"/><circle cx="15" cy="33" r="1.16"/><circle cx="105" cy="33" r="1.16"/><circle cx="10.5" cy="37.5" r="1.01"/><circle cx="109.5" cy="37.5" r="1.01"/><circle cx="10.5" cy="42" r="1.14"/><circle cx="109.5" cy="42" r="1.14"/><circle cx="10.5" cy="46.5" r="1.25"/><circle cx="109.5" cy="46.5" r="1.25"/><circle cx="6" cy="51" r="0.96"/><circle cx="114" cy="51" r="0.96"/><circle cx="6" cy="55.5" r="1.02"/><circle cx="114" cy="55.5" r="1.02"/><circle cx="6" cy="60" r="1.03"/><circle cx="114" cy="60" r="1.03"/><circle cx="6" cy="64.5" r="1.02"/><circle cx="114" cy="64.5" r="1.02"/><circle cx="6" cy="69" r="0.96"/><circle cx="114" cy="69" r="0.96"/><circle cx="10.5" cy="73.5" r="1.25"/><circle cx="109.5" cy="73.5" r="1.25"/><circle cx="10.5" cy="78" r="1.14"/><circle cx="109.5" cy="78" r="1.14"/><circle cx="10.5" cy="82.5" r="1.01"/><circle cx="109.5" cy="82.5" r="1.01"/><circle cx="15" cy="87" r="1.16"/><circle cx="105" cy="87" r="1.16"/><circle cx="15" cy="91.5" r="0.95"/><circle cx="19.5" cy="91.5" r="1.25"/><circle cx="100.5" cy="91.5" r="1.25"/><circle cx="105" cy="91.5" r="0.95"/><circle cx="19.5" cy="96" r="1.02"/><circle cx="24" cy="96" r="1.27"/><circle cx="96" cy="96" r="1.27"/><circle cx="100.5" cy="96" r="1.02"/><circle cx="24" cy="100.5" r="1.02"/><circle cx="28.5" cy="100.5" r="1.25"/><circle cx="91.5" cy="100.5" r="1.25"/><circle cx="96" cy="100.5" r="1.02"/><circle cx="28.5" cy="105" r="0.95"/><circle cx="33" cy="105" r="1.16"/><circle cx="87" cy="105" r="1.16"/><circle cx="91.5" cy="105" r="0.95"/><circle cx="37.5" cy="109.5" r="1.01"/><circle cx="42" cy="109.5" r="1.14"/><circle cx="46.5" cy="109.5" r="1.25"/><circle cx="73.5" cy="109.5" r="1.25"/><circle cx="78" cy="109.5" r="1.14"/><circle cx="82.5" cy="109.5" r="1.01"/><circle cx="51" cy="114" r="0.96"/><circle cx="55.5" cy="114" r="1.02"/><circle cx="60" cy="114" r="1.03"/><circle cx="64.5" cy="114" r="1.02"/><circle cx="69" cy="114" r="0.96"/></g>
-            </svg>
+            <img src="assets/tracer-loading.webp" alt="" width="655" height="495" decoding="async" fetchpriority="high">
           </div>
         </section>
         <button class="maybe-later" id="stateClose" type="button">Maybe later</button>
@@ -1908,7 +1872,7 @@
 
       <section class="screen idle-screen" aria-label="Nothing to save here">
         <div class="idle-illustration" aria-hidden="true">
-          <img src="assets/tracer-empty-box.png" alt="">
+          <img src="assets/tracer-empty-box.webp" alt="" width="768" height="768" loading="eager" decoding="sync" fetchpriority="high">
         </div>
         <section class="idle-copy">
           <h1 id="idleHeading">Nothing to save here</h1>
@@ -1926,8 +1890,9 @@
       </section>
 
       <section class="screen detected-screen" aria-label="Detected purchase">
-        <section class="detected-copy"><span class="check-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.4 4 4L18.4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-          <h1>Purchase found</h1>
+        <section class="detected-copy"><span class="purchase-receipt" aria-hidden="true"><img src="assets/purchase-receipt-detected.png" alt="" loading="eager" decoding="sync" fetchpriority="high"><span class="receipt-tick"><svg viewBox="0 0 24 24"><path pathLength="1" d="m6 12 4 4 8-8" /></svg></span></span>
+          <h1>Purchase detected.</h1>
+          <p class="purchase-intro">Tracer found a recent purchase.<br>We can keep watching it for you.</p>
 
         </section>
 
@@ -1935,6 +1900,7 @@
           <div class="product-head">
             <div class="product-title">
               <h2 id="productName">Detected purchase</h2>
+              <p class="purchase-date-line">Ordered <span id="purchaseDate">Unknown</span></p>
               <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
               <span class="match" id="matchStatus">Needs review</span>
             </div>
@@ -1948,10 +1914,6 @@
             <div class="detail-row">
               <dt>Retailer</dt>
               <dd id="retailer">Store</dd>
-            </div>
-            <div class="detail-row">
-              <dt>Purchase date</dt>
-              <dd id="purchaseDate">Unknown</dd>
             </div>
             <div class="detail-row" id="productUrlRow">
               <dt>Product URL</dt>
@@ -2000,7 +1962,6 @@
           <button class="save-review" id="saveReview" type="button">Save details</button>
         </section>
 
-        <p class="ready-copy">Ready to protect this purchase<br />and start monitoring.</p>
         <section class="actions">
           <button class="protect" id="protect" type="button" disabled>Protect this purchase</button>
           <button class="text-action" id="reviewDetails" type="button" disabled>Review details</button>
@@ -2024,13 +1985,10 @@
             <i style="--x: 50%; --y: 51px; --tx: -15px; --ty: -31px; --r: 164deg; --tone: #7e956f"></i>
             <i style="--x: 50%; --y: 51px; --tx: 15px; --ty: -35px; --r: 185deg; --tone: #c9c0b1"></i>
           </div>
-          <span class="check-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="24" height="24">
-              <path d="m6 12.4 4 4L18.4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
+          <span class="purchase-receipt" aria-hidden="true"><img src="assets/purchase-receipt-detected.png" alt="" loading="eager" decoding="sync" fetchpriority="high"><span class="receipt-tick"><svg viewBox="0 0 24 24"><path pathLength="1" d="m6 12 4 4 8-8" /></svg></span></span>
           <section class="success-copy">
             <h1 id="successTitle">Purchase protected</h1>
+            <p class="purchase-intro">Tracer is now watching this purchase for price drops.</p>
 
           </section>
         </section>
@@ -2073,7 +2031,7 @@
           <article class="settings-card">
             <div class="settings-card-copy">
               <strong>Price drop alerts</strong>
-              <p>Get notified when a protected item drops in price.</p>
+              <p>Get notified when a saved or protected item drops in price.</p>
             </div>
             <button class="settings-switch" id="priceDropAlertsToggle" type="button" role="switch" aria-checked="true" aria-label="Price drop alerts"></button>
           </article>
@@ -2081,7 +2039,7 @@
           <article class="settings-card">
             <div class="settings-card-copy">
               <strong>Monitoring</strong>
-              <p>Tracer monitors your protected purchases automatically.</p>
+              <p>Tracer monitors your saved items and protected purchases automatically.</p>
             </div>
             <button class="settings-switch" id="monitoringToggle" type="button" role="switch" aria-checked="true" aria-label="Monitoring"></button>
           </article>

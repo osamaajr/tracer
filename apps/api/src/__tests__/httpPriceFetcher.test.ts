@@ -56,4 +56,30 @@ describe("HTTP price fetching", () => {
 
     await expect(fetcher.fetchCurrentPrice(product)).rejects.toThrow("public");
   });
+
+  it("detects a current sale price from scoped product markup without JSON-LD", async () => {
+    const html = `
+      <!doctype html><html><head>
+        <meta property="og:type" content="product" />
+        <meta property="og:title" content="Trail Pack 24L, Moss Green" />
+        <meta property="og:site_name" content="Shop" />
+        <meta property="product:price:currency" content="GBP" />
+        <link rel="canonical" href="https://shop.example.com/products/trail-pack-24l-moss-green" />
+      </head><body><main>
+        <h1>Trail Pack 24L, Moss Green</h1>
+        <div class="current-price">Was £84.50, now £69.50</div>
+      </main></body></html>
+    `;
+    const fetcher = new HttpPriceFetcher({
+      maxAttempts: 1,
+      fetchImpl: (async () => new Response(html, { status: 200 })) as typeof fetch,
+      resolveHost: async () => [{ address: "93.184.216.34" }],
+    });
+
+    await expect(fetcher.fetchCurrentPrice(product)).resolves.toMatchObject({
+      productName: "Trail Pack 24L, Moss Green",
+      price: { amountMinor: 6_950, currency: "GBP" },
+      availability: "unknown",
+    });
+  });
 });

@@ -80,7 +80,22 @@ export async function protectPurchase(
       const duplicate = await repository.findPurchaseByFingerprint(fingerprint);
 
       if (duplicate) {
-        accepted.push({ product, purchase: duplicate, status: "duplicate" });
+        const correctedPurchase = purchaseDetailsMatch(duplicate, lineItem)
+          ? duplicate
+          : await repository.updatePurchaseDetailsForUser(duplicate.id, command.userId, {
+              pricePaid: lineItem.pricePaid,
+              quantity: lineItem.quantity,
+              productName: lineItem.productName,
+              productUrl: product.canonicalUrl,
+              captureMethod: command.draft.captureMethod,
+              captureConfidence: command.draft.captureConfidence,
+            });
+
+        accepted.push({
+          product,
+          purchase: correctedPurchase ?? duplicate,
+          status: "duplicate",
+        });
         continue;
       }
 
@@ -135,6 +150,18 @@ export async function protectPurchase(
   }
 
   return { accepted, rejected };
+}
+
+function purchaseDetailsMatch(
+  purchase: PurchaseRecord,
+  lineItem: PurchaseLineItemDraft,
+): boolean {
+  return (
+    purchase.productName === lineItem.productName &&
+    purchase.pricePaid.currency === lineItem.pricePaid.currency &&
+    purchase.pricePaid.amountMinor === lineItem.pricePaid.amountMinor &&
+    purchase.quantity === lineItem.quantity
+  );
 }
 
 export function validatePurchaseDraft(draft: PurchaseDraft): string[] {

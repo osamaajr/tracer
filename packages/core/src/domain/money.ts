@@ -47,26 +47,48 @@ export function parsePrice(
     return null;
   }
 
-  const symbolOrCodeMatch = normalised.match(
-    /(?:£|\$|€|GBP|USD|EUR)\s*([0-9]+(?:,[0-9]{3})*|[0-9]+)(?:\.([0-9]{1,2}))?/i,
+  const decoratedMatch = normalised.match(
+    /(?:£|\$|€|GBP|USD|EUR)\s*([0-9][0-9.,\s]*)|([0-9][0-9.,\s]*)\s*(?:£|\$|€|GBP|USD|EUR)/i,
   );
-  const bareMatch = normalised.match(
-    /^([0-9]+(?:,[0-9]{3})*|[0-9]+)(?:\.([0-9]{1,2}))?$/,
-  );
-  const match = symbolOrCodeMatch ?? bareMatch;
+  const bareMatch = normalised.match(/^([0-9][0-9.,\s]*)$/);
+  const rawNumber = (decoratedMatch?.[1] ?? decoratedMatch?.[2] ?? bareMatch?.[1])?.trim();
 
-  if (!match?.[1]) {
+  if (!rawNumber) {
     return null;
   }
-
-  const pounds = Number.parseInt(match[1].replace(/,/g, ""), 10);
-  const pence = Number.parseInt((match[2] ?? "0").padEnd(2, "0"), 10);
-
-  if (!Number.isFinite(pounds) || !Number.isFinite(pence)) {
+  const amount = parseLocalizedAmount(rawNumber);
+  if (amount === null) {
     return null;
   }
+  return money(Math.round(amount * 100), inferCurrency(normalised, fallbackCurrency));
+}
 
-  return money(pounds * 100 + pence, inferCurrency(normalised, fallbackCurrency));
+function parseLocalizedAmount(raw: string): number | null {
+  const compact = raw.replace(/\s/g, "");
+  if (!/^\d[\d.,]*$/.test(compact)) return null;
+
+  const lastComma = compact.lastIndexOf(",");
+  const lastDot = compact.lastIndexOf(".");
+  let decimalSeparator = "";
+  if (lastComma >= 0 && lastDot >= 0) {
+    decimalSeparator = lastComma > lastDot ? "," : ".";
+  } else {
+    const separator = lastComma >= 0 ? "," : lastDot >= 0 ? "." : "";
+    if (separator) {
+      const digitsAfter = compact.length - compact.lastIndexOf(separator) - 1;
+      if (digitsAfter === 1 || digitsAfter === 2) decimalSeparator = separator;
+    }
+  }
+
+  let normalized = compact;
+  if (decimalSeparator) {
+    const decimalIndex = compact.lastIndexOf(decimalSeparator);
+    normalized = `${compact.slice(0, decimalIndex).replace(/[.,]/g, "")}.${compact.slice(decimalIndex + 1)}`;
+  } else {
+    normalized = compact.replace(/[.,]/g, "");
+  }
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
 }
 
 export function subtractMoney(left: Money, right: Money): Money {

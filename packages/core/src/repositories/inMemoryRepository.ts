@@ -14,6 +14,7 @@ import type {
   ProductRecord,
   ProductUpsertInput,
   PurchaseCreateInput,
+  PurchaseDetailsUpdateInput,
   PurchaseFingerprint,
   PurchaseRecord,
   UserMonitoringPreference,
@@ -288,6 +289,28 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
 
   async listPurchasesForUser(userId: string): Promise<PurchaseRecord[]> {
     return this.purchases.filter((purchase) => purchase.userId === userId);
+  }
+
+  async updatePurchaseDetailsForUser(
+    purchaseId: string,
+    userId: string,
+    input: PurchaseDetailsUpdateInput,
+  ): Promise<PurchaseRecord | null> {
+    const purchase = this.purchases.find(
+      (candidate) => candidate.id === purchaseId && candidate.userId === userId,
+    );
+
+    if (!purchase) {
+      return null;
+    }
+
+    purchase.pricePaid = input.pricePaid;
+    purchase.quantity = input.quantity;
+    purchase.productName = input.productName;
+    purchase.productUrl = input.productUrl;
+    purchase.captureMethod = input.captureMethod;
+    purchase.captureConfidence = input.captureConfidence;
+    return purchase;
   }
 
   async deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean> {

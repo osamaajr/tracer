@@ -16,6 +16,7 @@ import {
   type ProductRecord,
   type ProductUpsertInput,
   type PurchaseCreateInput,
+  type PurchaseDetailsUpdateInput,
   type PurchaseFingerprint,
   type PurchaseRecord,
   type UserMonitoringPreference,
@@ -347,6 +348,31 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
   async listPurchasesForUser(userId: string): Promise<PurchaseRecord[]> {
     const state = await this.read();
     return clone(state.purchases.filter((purchase) => purchase.userId === userId));
+  }
+
+  async updatePurchaseDetailsForUser(
+    purchaseId: string,
+    userId: string,
+    input: PurchaseDetailsUpdateInput,
+  ): Promise<PurchaseRecord | null> {
+    return this.mutate((state) => {
+      const purchase =
+        state.purchases.find(
+          (candidate) => candidate.id === purchaseId && candidate.userId === userId,
+        ) ?? null;
+
+      if (!purchase) {
+        return null;
+      }
+
+      purchase.pricePaid = input.pricePaid;
+      purchase.quantity = input.quantity;
+      purchase.productName = input.productName;
+      purchase.productUrl = input.productUrl;
+      purchase.captureMethod = input.captureMethod;
+      purchase.captureConfidence = input.captureConfidence;
+      return clone(purchase);
+    });
   }
 
   async deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean> {

@@ -50,7 +50,14 @@ const GALLERY_SELECTORS = [
   "[data-gallery] img",
   "[data-testid*='gallery' i] img",
   "[data-test*='gallery' i] img",
+  "[data-testid*='product-media' i] img",
+  "[data-testid*='product-image' i] img",
+  "[data-test*='product-media' i] img",
+  "[data-test*='product-image' i] img",
+  "[data-product-image] img",
+  "img[data-product-image]",
   "[class*='product-gallery' i] img",
+  "[class*='product-images' i] img",
   "[class*='product__media' i] img",
   "[class*='product-media' i] img",
   "main [itemprop='image']",
@@ -69,6 +76,14 @@ export function selectProductImage(
   baseUrl?: string,
   productName?: string,
 ): ProductImageCandidate | null {
+  return selectProductImages(candidates, baseUrl, productName)[0] ?? null;
+}
+
+export function selectProductImages(
+  candidates: ProductImageCandidateInput[],
+  baseUrl?: string,
+  productName?: string,
+): ProductImageCandidate[] {
   const expanded: RankedImageCandidate[] = [];
   for (const input of candidates) {
     expandCandidate(input, baseUrl, expanded);
@@ -82,19 +97,23 @@ export function selectProductImage(
     grouped.set(candidate.url, group);
   }
 
-  let best: { candidate: RankedImageCandidate; score: number } | null = null;
+  const ranked: Array<{ candidate: RankedImageCandidate; score: number }> = [];
   for (const group of grouped.values()) {
     const sourceCount = new Set(group.map((candidate) => candidate.source)).size;
+    let groupBest: { candidate: RankedImageCandidate; score: number } | null = null;
     for (const candidate of group) {
       const score = scoreCandidate(candidate, productName, sourceCount);
       if (score === null) continue;
-      if (!best || score > best.score || (score === best.score && candidate.ordinal < best.candidate.ordinal)) {
-        best = { candidate, score };
+      if (!groupBest || score > groupBest.score || (score === groupBest.score && candidate.ordinal < groupBest.candidate.ordinal)) {
+        groupBest = { candidate, score };
       }
     }
+    if (groupBest) ranked.push(groupBest);
   }
 
-  return best ? { url: best.candidate.url, source: best.candidate.source } : null;
+  return ranked
+    .sort((left, right) => right.score - left.score || left.candidate.ordinal - right.candidate.ordinal)
+    .map(({ candidate }) => ({ url: candidate.url, source: candidate.source }));
 }
 
 /** Collects product-scoped DOM images; it never scans every image on the page. */
@@ -103,6 +122,14 @@ export function findProductPageImage(
   baseUrl: string,
   options: ProductPageImageOptions = {},
 ): ProductImageCandidate | null {
+  return findProductPageImages(document, baseUrl, options)[0] ?? null;
+}
+
+export function findProductPageImages(
+  document: Document,
+  baseUrl: string,
+  options: ProductPageImageOptions = {},
+): ProductImageCandidate[] {
   const candidates: ProductImageCandidateInput[] = [];
   if (options.retailerSelectors?.length) {
     collectElementCandidates(document, options.retailerSelectors, "retailer_adapter", candidates);
@@ -131,7 +158,7 @@ export function findProductPageImage(
     alt: document.querySelector<HTMLMetaElement>('meta[property="og:image:alt"]')?.content,
   });
 
-  return selectProductImage(candidates, baseUrl, options.productName);
+  return selectProductImages(candidates, baseUrl, options.productName).slice(0, 8);
 }
 
 export function firstUsableProductImage(value: unknown, baseUrl?: string): string | null {
@@ -210,18 +237,18 @@ function imageCandidates(image: HTMLImageElement, source: ProductImageSource): P
     context: elementContext(image),
     nearTitle: isNearMainTitle(image),
   };
-  const values = [
+  const value = [
     bestFromSrcset(image.getAttribute("srcset")),
     bestFromSrcset(image.getAttribute("data-srcset")),
-    image.currentSrc,
     image.getAttribute("data-zoom-image"),
     image.getAttribute("data-large-image"),
     image.getAttribute("data-original"),
+    image.currentSrc,
     image.getAttribute("data-lazy-src"),
     image.getAttribute("data-src"),
     image.getAttribute("src"),
-  ];
-  return values.filter((value): value is string => Boolean(value?.trim())).map((value) => ({ ...shared, value }));
+  ].find((candidate): candidate is string => Boolean(candidate?.trim()));
+  return value ? [{ ...shared, value }] : [];
 }
 
 function expandCandidate(

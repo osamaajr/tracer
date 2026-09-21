@@ -224,6 +224,15 @@ export interface PurchaseCreateInput {
   externalProductId?: string;
 }
 
+export interface PurchaseDetailsUpdateInput {
+  pricePaid: Money;
+  quantity: number;
+  productName: string;
+  productUrl: string;
+  captureMethod: CaptureMethod;
+  captureConfidence: CaptureConfidence;
+}
+
 export interface PriceObservationCreateInput {
   productId: string;
   retailerId: RetailerId;
@@ -317,6 +326,11 @@ export interface AfterBuyRepository {
     statusUpdatedAt: string,
   ): Promise<OpportunityRecord | null>;
   listPurchasesForUser(userId: string): Promise<PurchaseRecord[]>;
+  updatePurchaseDetailsForUser(
+    purchaseId: string,
+    userId: string,
+    input: PurchaseDetailsUpdateInput,
+  ): Promise<PurchaseRecord | null>;
   deletePurchaseForUser(purchaseId: string, userId: string): Promise<boolean>;
   listOpportunitiesForUser(userId: string): Promise<OpportunityRecord[]>;
   listLatestObservationsByProductIds(

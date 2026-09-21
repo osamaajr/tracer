@@ -4,6 +4,7 @@ import { parseHTML } from "linkedom";
 import {
   extractGenericProductFromDocument,
   extractJohnLewisProductFromDocument,
+  extractSavedProduct,
   isKnownRetailerId,
   normalizePublicStoreUrl,
   normalizeRetailerUrl,
@@ -63,9 +64,31 @@ export class HttpPriceFetcher implements PriceFetcher {
         const html = await readLimitedHtml(response, maxHtmlBytes);
         const document = parseHTML(html).document;
         const observedAt = new Date().toISOString();
-        const snapshot = product.retailerId === "john-lewis"
+        const extractedSnapshot = product.retailerId === "john-lewis"
           ? extractJohnLewisProductFromDocument(document, product.canonicalUrl, observedAt)
           : extractGenericProductFromDocument(document, product.canonicalUrl, observedAt);
+        const savedProduct = !extractedSnapshot && product.retailerId !== "john-lewis"
+          ? extractSavedProduct(document, product.canonicalUrl)
+          : null;
+        const snapshot: ProductPriceSnapshot | null = extractedSnapshot ?? (
+          savedProduct?.savedPrice
+            ? {
+                retailerId: savedProduct.retailerId,
+                retailerName: savedProduct.retailer,
+                storeHost: product.storeHost,
+                productUrl: savedProduct.canonicalUrl,
+                productName: savedProduct.name,
+                price: savedProduct.savedPrice,
+                observedAt,
+                availability: "unknown",
+                ...(savedProduct.externalProductId
+                  ? { externalProductId: savedProduct.externalProductId }
+                  : {}),
+                ...(savedProduct.sku ? { sku: savedProduct.sku } : {}),
+                ...(savedProduct.imageUrl ? { imageUrl: savedProduct.imageUrl } : {}),
+              }
+            : null
+        );
 
         if (!snapshot) {
           throw new Error("No product price could be extracted");

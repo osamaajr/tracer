@@ -6,6 +6,7 @@ import type {
   PurchaseLineItemDraft,
 } from "@afterbuy/core";
 import {
+  extractPurchaseFromDocument,
   extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
@@ -15,7 +16,11 @@ import {
 
 declare global {
   interface Window {
-    __afterbuyGenericCaptureReady?: boolean;
+    __afterbuyGenericCaptureListener?: (
+      message: ScanRequest,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response: ScanResponse) => void,
+    ) => boolean;
   }
 }
 
@@ -43,66 +48,72 @@ interface Storefront {
   host: string;
 }
 
-if (!window.__afterbuyGenericCaptureReady) {
-  window.__afterbuyGenericCaptureReady = true;
-
-  chrome.runtime.onMessage.addListener(
-    (message: ScanRequest, _sender, sendResponse: (response: ScanResponse) => void) => {
-      if (message.type !== "AFTERBUY_SCAN_PAGE") {
-        return false;
-      }
-
-      let draft: PurchaseDraft | null;
-
-      try {
-        draft = extractPurchaseFromPage(document, window.location.href);
-      } catch {
-        sendResponse({
-          ok: false,
-          failureReason: "scan_error",
-          error: "Tracer could not safely scan this page.",
-        });
-        return false;
-      }
-
-      if (!draft) {
-        const failureReason = looksLikeOrderConfirmation(document, window.location.href)
-          ? "incomplete"
-          : "not_purchase_page";
-        sendResponse({
-          ok: false,
-          failureReason,
-          error:
-            failureReason === "incomplete"
-              ? "This looks like an order page, but Tracer could not read enough reliable details."
-              : "No order confirmation data found on this page.",
-        });
-        return false;
-      }
-
-      const firstItem = draft.lineItems[0];
-      const total = draft.lineItems.reduce(
-        (sum, item) => sum + item.pricePaid.amountMinor * item.quantity,
-        0,
-      );
-      const currency = firstItem?.pricePaid.currency;
-
-      sendResponse({
-        ok: true,
-        draft,
-        summary: {
-          retailerName: draft.retailerName,
-          productName: firstItem?.productName ?? "Detected purchase",
-          itemCount: draft.lineItems.length,
-          totalDisplay: currency ? formatMoney({ amountMinor: total, currency }) : "Captured",
-          confidence: draft.captureConfidence,
-        },
-      });
-
-      return false;
-    },
-  );
+const previousCaptureListener = window.__afterbuyGenericCaptureListener;
+if (previousCaptureListener) {
+  chrome.runtime.onMessage.removeListener(previousCaptureListener);
 }
+
+const genericCaptureListener = (
+  message: ScanRequest,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response: ScanResponse) => void,
+): boolean => {
+  if (message.type !== "AFTERBUY_SCAN_PAGE") {
+    return false;
+  }
+
+  let draft: PurchaseDraft | null;
+
+  try {
+    draft = extractPurchaseFromPage(document, window.location.href);
+  } catch {
+    sendResponse({
+      ok: false,
+      failureReason: "scan_error",
+      error: "Tracer could not safely scan this page.",
+    });
+    return false;
+  }
+
+  if (!draft) {
+    const failureReason = looksLikeOrderConfirmation(document, window.location.href)
+      ? "incomplete"
+      : "not_purchase_page";
+    sendResponse({
+      ok: false,
+      failureReason,
+      error:
+        failureReason === "incomplete"
+          ? "This looks like an order page, but Tracer could not read enough reliable details."
+          : "No order confirmation data found on this page.",
+    });
+    return false;
+  }
+
+  const firstItem = draft.lineItems[0];
+  const total = draft.lineItems.reduce(
+    (sum, item) => sum + item.pricePaid.amountMinor * item.quantity,
+    0,
+  );
+  const currency = firstItem?.pricePaid.currency;
+
+  sendResponse({
+    ok: true,
+    draft,
+    summary: {
+      retailerName: draft.retailerName,
+      productName: firstItem?.productName ?? "Detected purchase",
+      itemCount: draft.lineItems.length,
+      totalDisplay: currency ? formatMoney({ amountMinor: total, currency }) : "Captured",
+      confidence: draft.captureConfidence,
+    },
+  });
+
+  return false;
+};
+
+window.__afterbuyGenericCaptureListener = genericCaptureListener;
+chrome.runtime.onMessage.addListener(genericCaptureListener);
 
 export function extractPurchaseFromPage(page: Document, sourceUrl: string): PurchaseDraft | null {
   const demoDraft = extractLocalDemoDraft(page, sourceUrl);
@@ -112,6 +123,14 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
 
   if (isKnownNonRetailContentUrl(sourceUrl)) {
     return null;
+  }
+
+  // Keep purchase extraction in one shared implementation. The earlier copy in
+  // this content script drifted from Core and missed receipt-table layouts such
+  // as Skechers' Each / QTY / Total confirmation page.
+  const sharedDraft = extractPurchaseFromDocument(page, sourceUrl);
+  if (sharedDraft) {
+    return sharedDraft;
   }
 
   const shopifyDraft = extractShopifyAccountPurchaseFromDocument(page, sourceUrl);
@@ -210,15 +229,20 @@ function schemaItemFromEntry(
   }
 
   const item = asRecord(record.itemOffered ?? record.orderedItem ?? record.item ?? entry);
-  const offer = asRecord(record.acceptedOffer ?? record.offers ?? record);
-  const productName = firstString(record.name) ?? firstString(item?.name);
+  const offer = asRecord(
+    record.acceptedOffer ?? record.offers ?? item?.offers ?? item?.offer ?? record,
+  );
+  const productName = firstString(item?.name) ?? firstString(record.name);
   const productUrl = normalizeSameHostUrl(
     firstString(record.url) ?? firstString(item?.url),
     sourceUrl,
     expectedHost,
   );
   const price = parsePrice(
-    firstString(record.price) ?? firstString(offer?.price),
+    firstString(record.orderItemPrice) ??
+      firstString(record.price) ??
+      firstString(offer?.price) ??
+      firstString(item?.price),
     firstString(record.priceCurrency) ?? firstString(offer?.priceCurrency) ?? "GBP",
   );
 
@@ -258,7 +282,7 @@ function extractDomItems(
   sourceUrl: string,
   expectedHost: string,
 ): PurchaseLineItemDraft[] {
-  const nodes = Array.from(
+  const nodes = deepestLineItemNodes(Array.from(
     page.querySelectorAll(
       [
         "[data-afterbuy-line-item]",
@@ -267,7 +291,7 @@ function extractDomItems(
         "[class*='line'][class*='item']",
       ].join(","),
     ),
-  );
+  ));
 
   return nodes.flatMap((node) => {
     const productName =
@@ -278,11 +302,11 @@ function extractDomItems(
         "h2",
         "h3",
       ]) ?? "";
-    const priceText = firstText(node, [
-      "[data-afterbuy-price-paid]",
-      "[data-price]",
-      "[class*='price']",
-    ]);
+    const quantity = numberFromUnknown(firstText(node, [
+      "[data-afterbuy-quantity]",
+      "[data-quantity]",
+      "[class*='quantity']",
+    ])) ?? 1;
     const productUrl = normalizeSameHostUrl(
       firstHref(node, [
         "[data-afterbuy-product-url]",
@@ -293,7 +317,7 @@ function extractDomItems(
       sourceUrl,
       expectedHost,
     );
-    const price = parsePrice(priceText, "GBP");
+    const price = extractLineItemPrice(node, quantity, "GBP");
 
     if (!productName || !price || !productUrl) {
       return [];
@@ -319,7 +343,7 @@ function extractDomItems(
     ], sourceUrl, productName)?.url;
     const item: PurchaseLineItemDraft = {
       productName,
-      quantity: numberFromUnknown(firstText(node, ["[data-afterbuy-quantity]", "[data-quantity]"])) ?? 1,
+      quantity,
       pricePaid: price,
       productUrl,
       productUrlConfidence: "medium",
@@ -331,6 +355,65 @@ function extractDomItems(
 
     return [item];
   });
+}
+
+function deepestLineItemNodes(nodes: Element[]): Element[] {
+  return nodes.filter((node) => !nodes.some((candidate) =>
+    candidate !== node &&
+    node.contains(candidate) &&
+    Boolean(
+      candidate.querySelector("a[href*='/products/'], a[href*='/product/'], [data-afterbuy-product-url]") &&
+      currencyAmounts(candidate.textContent ?? "").length,
+    ),
+  ));
+}
+
+function extractLineItemPrice(root: Element, quantity: number, fallbackCurrency: string): Money | null {
+  const elements = Array.from(root.querySelectorAll([
+    "[data-afterbuy-price-paid]",
+    "[data-line-item-price]",
+    "[data-line-price]",
+    "[data-line-total]",
+    "[data-test*='price' i]",
+    "[data-testid*='price' i]",
+    "[class*='price' i]",
+    "th",
+    "td",
+    "[role='cell']",
+  ].join(",")));
+  const sources = [...new Set(elements)]
+    .map((element) => ({
+      element,
+      text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }))
+    .filter(({ text }) => Boolean(
+      text && currencyAmounts(text).length && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
+    ));
+  const selected = sources.at(-1);
+  const source = selected?.text ?? root.textContent ?? "";
+  const amount = currencyAmounts(source).at(-1);
+  const price = parsePrice(amount ?? source, fallbackCurrency);
+  if (!price || quantity <= 1 || !selected || !isLineTotal(selected.element, source)) return price;
+  return {
+    amountMinor: Math.max(1, Math.round(price.amountMinor / quantity)),
+    currency: price.currency,
+  };
+}
+
+function isLineTotal(element: Element, text: string): boolean {
+  if (/(?:each|per\s+(?:item|unit)|unit\s+price|\/\s*(?:item|unit)|\bea\.?\b)/i.test(text)) {
+    return false;
+  }
+  return (
+    element.matches("[data-line-total], [data-order-line-total], [data-testid*='total' i], [data-test*='total' i], [class*='total' i]") ||
+    /(?:line|item)\s+total|subtotal/i.test(text)
+  );
+}
+
+function currencyAmounts(value: string): string[] {
+  return value.match(
+    /(?:(?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*-?\s*\d[\d.,]*|\d[\d.,]*\s*\b(?:GBP|USD|EUR)\b)/gi,
+  ) ?? [];
 }
 
 function buildDraft(input: {

@@ -11,6 +11,7 @@ import {
   extractGenericPurchaseFromDocument,
   extractPurchaseFromDocument,
   extractShopifyAccountPurchaseFromDocument,
+  findProtectedPurchaseForDraft,
   gbp,
   isShopifyAccountOrderUrl,
   normalizeRetailerUrl,
@@ -37,6 +38,8 @@ describe("GBP price parsing", () => {
     expect(parsePrice("$19.99")).toEqual(money(1_999, "USD"));
     expect(parsePrice("EUR 50")).toEqual(money(5_000, "EUR"));
     expect(parseGbpPrice("not a price")).toBeNull();
+    expect(parsePrice("82,00 EUR", "EUR")).toEqual({ amountMinor: 8200, currency: "EUR" });
+    expect(parsePrice("€1.234,56", "EUR")).toEqual({ amountMinor: 123456, currency: "EUR" });
     expect(parseGbpPrice("-£20")).toBeNull();
     expect(parseGbpPrice(null)).toBeNull();
   });
@@ -195,6 +198,157 @@ describe("generic store extraction", () => {
         },
       ],
     });
+  });
+
+  it("ignores broad order wrappers and extracts each nested DOM item with its own price", () => {
+    const document = parseHTML(`
+      <html><body>
+        <h1>Thank you for your order</h1><p>Order number DOM-12345</p>
+        <section class="order-items">
+          <article class="order-item">
+            <h2>Canvas jacket</h2>
+            <a href="https://shop.example.com/products/canvas-jacket">View product</a>
+            <span class="old-price">£80.00</span><span class="price">£64.00</span>
+          </article>
+          <article class="order-item">
+            <h2>Heavyweight tee</h2>
+            <a href="https://shop.example.com/products/heavyweight-tee">View product</a>
+            <span class="quantity">Quantity 2</span><span data-line-total>£50.00</span>
+          </article>
+          <article class="order-item">
+            <h2>Cotton cap</h2>
+            <a href="https://shop.example.com/products/cotton-cap">View product</a>
+            <span class="price">£18.50</span>
+          </article>
+        </section>
+        <section class="order-total">Order total £136.49</section>
+      </body></html>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/orders/DOM-12345",
+    );
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Canvas jacket", quantity: 1, pricePaid: gbp(6_400) },
+      { productName: "Heavyweight tee", quantity: 2, pricePaid: gbp(2_500) },
+      { productName: "Cotton cap", quantity: 1, pricePaid: gbp(1_850) },
+    ]);
+  });
+
+  it("does not divide an explicitly per-item price by the quantity again", () => {
+    const document = parseHTML(`
+      <html><body>
+        <h1>Thank you for your order</h1><p>Order number UNIT-12345</p>
+        <article class="order-item">
+          <h2>Miniature Mushroom Desk Lamp</h2>
+          <a href="https://shop.example.com/products/mushroom-desk-lamp">View product</a>
+          <span class="quantity">Quantity 2</span>
+          <span class="price">£19.50 each</span>
+        </article>
+      </body></html>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/orders/UNIT-12345",
+    );
+
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Miniature Mushroom Desk Lamp", quantity: 2, pricePaid: gbp(1_950) },
+    ]);
+  });
+
+  it("extracts a Skechers-style receipt row without semantic order-item classes", () => {
+    const document = genericFixtureDocument("skechers-order-confirmation.html");
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://www.skechers.co.uk/order-confirm/?ID=SKEC-UK102642108&token=test-token",
+      new Date("2026-09-21T12:00:00.000Z"),
+    );
+
+    expect(draft).toMatchObject({
+      retailerId: "store_skechers-co-uk",
+      retailerName: "Skechers",
+      storeHost: "www.skechers.co.uk",
+      orderReference: "SKEC-UK102642108",
+      purchasedAt: "2026-09-16T12:00:00.000Z",
+      captureMethod: "generic_dom",
+      captureConfidence: "medium",
+      lineItems: [{
+        productName: "Skechers Slip-ins: Arch Fit Summits - Luxe Leopard",
+        quantity: 1,
+        pricePaid: gbp(6_800),
+        sku: "199025198875",
+        productUrl: "https://www.skechers.co.uk/women/shoes/skechers-slip-ins-arch-fit-summits-luxe-leopard/150750_BRN.html",
+        imageUrl: "https://www.skechers.co.uk/dw/image/v2/product-150750-brn.jpg",
+      }],
+    });
+  });
+
+  it("keeps a reliable receipt purchase detectable while its product link needs review", () => {
+    const document = parseHTML(`
+      <html><body><main>
+        <h1>Thank you for your order.</h1>
+        <p>Order Number: SAFE-12345</p>
+        <div class="receipt-entry">
+          <img src="https://shop.example.com/images/ceramic-lamp.jpg" width="220" height="220" alt="Ceramic Moon Lamp" />
+          <strong>Ceramic Moon Lamp</strong>
+          <p>SKU: MOON-8841</p><p>Quantity: 2</p>
+          <span data-label="Each">£24.50</span><span data-label="Total">£49.00</span>
+        </div>
+        <aside>Subtotal £49.00 Shipping £4.00 Order Total £53.00</aside>
+      </main></body></html>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/order-confirm/SAFE-12345",
+    );
+
+    expect(draft).toMatchObject({
+      captureConfidence: "low",
+      lineItems: [{
+        productName: "Ceramic Moon Lamp",
+        quantity: 2,
+        pricePaid: gbp(2_450),
+        sku: "MOON-8841",
+      }],
+    });
+    expect(draft?.lineItems[0]?.productUrl).toBeUndefined();
+  });
+
+  it("extracts separate rows from a multi-item receipt and preserves an ISO order date", () => {
+    const document = parseHTML(`
+      <html><body><main>
+        <h1>Order confirmed</h1><p>Order Number: MULTI-77551</p>
+        <time datetime="2026-09-18">18 September 2026</time>
+        <section class="receipt-products">
+          <div class="receipt-entry">
+            <a href="https://shop.example.com/products/travel-mug"><img src="https://shop.example.com/images/mug.jpg" alt="Stoneware Travel Mug" /></a>
+            <strong>Stoneware Travel Mug</strong><span>SKU: MUG-901</span>
+            <span data-label="Each">£18.00</span><span data-label="QTY">2</span><span data-label="Total">£36.00</span>
+          </div>
+          <div class="receipt-entry">
+            <a href="https://shop.example.com/products/linen-napkins"><img src="https://shop.example.com/images/napkins.jpg" alt="Linen Napkin Set" /></a>
+            <strong>Linen Napkin Set</strong><span>SKU: LIN-442</span>
+            <span data-label="Each">£12.50</span><span data-label="QTY">3</span><span data-label="Total">£37.50</span>
+          </div>
+        </section>
+        <aside>Subtotal £73.50 Delivery £4.00 Tax £12.92 Order Total £90.42</aside>
+      </main></body></html>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/order-confirm/MULTI-77551",
+    );
+
+    expect(draft?.purchasedAt).toBe("2026-09-18T00:00:00.000Z");
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Stoneware Travel Mug", quantity: 2, pricePaid: gbp(1_800), sku: "MUG-901" },
+      { productName: "Linen Napkin Set", quantity: 3, pricePaid: gbp(1_250), sku: "LIN-442" },
+    ]);
   });
 
   it("fails closed when a generic order points to a different store host", () => {
@@ -387,6 +541,95 @@ describe("product protection and monitoring", () => {
     expect(first.accepted[0]?.product.id).toBe(second.accepted[0]?.product.id);
     expect(second.accepted[0]?.status).toBe("duplicate");
     expect(await repository.listPurchasesForUser("user_1")).toHaveLength(1);
+  });
+
+  it("requires every line item before treating a multi-item order as protected", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const baseDraft = mustExtractPurchase();
+    const fullDraft = {
+      ...baseDraft,
+      orderReference: "MULTI-ORDER-123",
+      lineItems: [
+        {
+          productName: "Canvas jacket",
+          productUrl: "https://www.johnlewis.com/canvas-jacket/p1001",
+          quantity: 1,
+          pricePaid: gbp(6_400),
+        },
+        {
+          productName: "Heavyweight tee",
+          productUrl: "https://www.johnlewis.com/heavyweight-tee/p1002",
+          quantity: 2,
+          pricePaid: gbp(2_500),
+        },
+        {
+          productName: "Cotton cap",
+          productUrl: "https://www.johnlewis.com/cotton-cap/p1003",
+          quantity: 1,
+          pricePaid: gbp(1_850),
+        },
+      ],
+    };
+
+    await protectPurchase(repository, {
+      userId: "user_1",
+      draft: { ...fullDraft, lineItems: [fullDraft.lineItems[0]!] },
+      now: "2026-09-16T10:00:00.000Z",
+    });
+
+    expect(await findProtectedPurchaseForDraft(repository, {
+      userId: "user_1",
+      draft: fullDraft,
+    })).toMatchObject({ protected: false, purchase: null });
+
+    await protectPurchase(repository, {
+      userId: "user_1",
+      draft: fullDraft,
+      now: "2026-09-16T10:01:00.000Z",
+    });
+
+    expect(await repository.listPurchasesForUser("user_1")).toHaveLength(3);
+    expect(await findProtectedPurchaseForDraft(repository, {
+      userId: "user_1",
+      draft: fullDraft,
+    })).toMatchObject({ protected: true });
+  });
+
+  it("corrects a stale protected price when the order is scanned again", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const correctDraft = mustExtractPurchase();
+    const wrongDraft = {
+      ...correctDraft,
+      lineItems: correctDraft.lineItems.map((item) => ({
+        ...item,
+        pricePaid: gbp(3_499),
+      })),
+    };
+
+    await protectPurchase(repository, {
+      userId: "user_1",
+      draft: wrongDraft,
+      now: "2026-09-16T10:00:00.000Z",
+    });
+
+    expect(await findProtectedPurchaseForDraft(repository, {
+      userId: "user_1",
+      draft: correctDraft,
+    })).toMatchObject({ protected: false, purchase: null });
+
+    const corrected = await protectPurchase(repository, {
+      userId: "user_1",
+      draft: correctDraft,
+      now: "2026-09-16T10:01:00.000Z",
+    });
+
+    expect(corrected.accepted[0]).toMatchObject({
+      status: "duplicate",
+      purchase: { pricePaid: gbp(34_999) },
+    });
+    expect(await repository.listPurchasesForUser("user_1")).toMatchObject([
+      { pricePaid: gbp(34_999) },
+    ]);
   });
 
   it("uses SKU before canonical URL when distinguishing product variants", async () => {
@@ -598,6 +841,58 @@ describe("product protection and monitoring", () => {
     expect(events.filter((event) => event.type === "product_available_again")).toHaveLength(1);
   });
 
+  it("monitors matching non-GBP prices and rejects a currency change", async () => {
+    const repository = new InMemoryAfterBuyRepository();
+    const source = mustExtractGenericPurchase();
+    const draft = {
+      ...source,
+      lineItems: source.lineItems.map((item) => ({
+        ...item,
+        pricePaid: money(item.pricePaid.amountMinor, "EUR"),
+      })),
+    };
+    const result = await protectPurchase(repository, {
+      userId: "user_eur",
+      draft,
+      now: "2026-08-30T13:00:00.000Z",
+    });
+    const purchase = result.accepted[0]?.purchase;
+    if (!purchase) throw new Error("Expected protected purchase");
+
+    const base = mustExtractGenericProduct(
+      "product-pack-dropped.html",
+      "2026-09-01T08:00:00.000Z",
+    );
+    const euroSnapshot = {
+      ...base,
+      price: money(6_950, "EUR"),
+    };
+    const euroSummary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([euroSnapshot]),
+      now: euroSnapshot.observedAt,
+    });
+    expect(euroSummary.failures).toEqual([]);
+    expect(await repository.findLatestObservationForProduct(purchase.productId)).toMatchObject({
+      price: money(6_950, "EUR"),
+    });
+
+    const changedCurrency = {
+      ...euroSnapshot,
+      observedAt: "2026-09-01T20:00:00.000Z",
+      price: money(6_500, "GBP"),
+    };
+    const changedSummary = await runPriceMonitoringCycle({
+      repository,
+      priceFetcher: new FixturePriceFetcher([changedCurrency]),
+      now: changedCurrency.observedAt,
+    });
+    expect(changedSummary.failures).toHaveLength(1);
+    expect(await repository.findLatestObservationForProduct(purchase.productId)).toMatchObject({
+      price: money(6_950, "EUR"),
+    });
+  });
+
   it("rejects an implausible price without overwriting the last valid observation", async () => {
     const repository = new InMemoryAfterBuyRepository();
     const result = await protectPurchase(repository, {
@@ -679,6 +974,48 @@ describe("Shopify account order extraction", () => {
       }],
     });
     expect(draft && validatePurchaseDraft(draft)).toEqual([]);
+  });
+
+  it("extracts every Shopify order row with its final per-item price", async () => {
+    const document = parseHTML(`
+      <html>
+        <head><title>Order #9001 - Example Shop - Account</title></head>
+        <body>
+          <p>Confirmed 15 Sep 2026</p>
+          <table aria-label="Order items">
+            <tr>
+              <td><a aria-label="Canvas jacket" href="https://example-shop.com/products/canvas-jacket?variant=101"></a></td>
+              <td><span class="old-price">£80.00</span><span class="sale-price">£64.00</span></td>
+            </tr>
+            <tr>
+              <td><a aria-label="Heavyweight tee" href="https://example-shop.com/products/heavyweight-tee?variant=202"></a></td>
+              <td><span aria-label="Quantity 2">2</span></td>
+              <td data-line-total>£50.00</td>
+            </tr>
+            <tr>
+              <td><a aria-label="Cotton cap" href="https://example-shop.com/products/cotton-cap?variant=303"></a></td>
+              <td>£18.50</td>
+            </tr>
+          </table>
+          <section aria-label="Order totals"><p>Subtotal £132.50</p><p>Total £136.49</p></section>
+        </body>
+      </html>
+    `).document;
+
+    const draft = extractShopifyAccountPurchaseFromDocument(document, shopifyOrderUrl);
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Canvas jacket", quantity: 1, pricePaid: gbp(6_400) },
+      { productName: "Heavyweight tee", quantity: 2, pricePaid: gbp(2_500) },
+      { productName: "Cotton cap", quantity: 1, pricePaid: gbp(1_850) },
+    ]);
+
+    const result = await protectPurchase(new InMemoryAfterBuyRepository(), {
+      userId: "user-multi-order",
+      draft: draft!,
+      now: "2026-09-16T12:00:00.000Z",
+    });
+    expect(result.accepted).toHaveLength(3);
+    expect(result.accepted.map(({ purchase }) => purchase.pricePaid.amountMinor)).toEqual([6_400, 2_500, 1_850]);
   });
 
   it("only treats Shopify's strict account order route as a hosted order source", () => {

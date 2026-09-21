@@ -26,25 +26,28 @@ export async function findProtectedPurchaseForDraft(
       purchase.retailerId === command.draft.retailerId,
   );
 
-  const purchase =
-    activePurchases.find((candidate) => matchesOrderReference(candidate, command.draft)) ??
-    activePurchases.find((candidate) =>
-      command.draft.lineItems.some((item) => matchesLineItem(candidate, command.draft, item)),
-    ) ??
-    null;
+  const unmatchedPurchases = [...activePurchases];
+  const matchedPurchases: PurchaseRecord[] = [];
+
+  for (const lineItem of command.draft.lineItems) {
+    const matchIndex = unmatchedPurchases.findIndex((candidate) =>
+      matchesLineItem(candidate, command.draft, lineItem),
+    );
+
+    if (matchIndex === -1) {
+      return { protected: false, purchase: null };
+    }
+
+    const [purchase] = unmatchedPurchases.splice(matchIndex, 1);
+    if (purchase) matchedPurchases.push(purchase);
+  }
+
+  const purchase = matchedPurchases[0] ?? null;
 
   return {
-    protected: Boolean(purchase),
+    protected: command.draft.lineItems.length > 0 && matchedPurchases.length === command.draft.lineItems.length,
     purchase,
   };
-}
-
-function matchesOrderReference(purchase: PurchaseRecord, draft: PurchaseDraft): boolean {
-  return Boolean(
-    draft.orderReference &&
-      purchase.orderReference === draft.orderReference &&
-      purchase.purchasedAt === draft.purchasedAt,
-  );
 }
 
 function matchesLineItem(
@@ -56,14 +59,24 @@ function matchesLineItem(
     return false;
   }
 
+  if (draft.orderReference && purchase.orderReference !== draft.orderReference) {
+    return false;
+  }
+
+  if (
+    purchase.pricePaid.currency !== lineItem.pricePaid.currency ||
+    purchase.pricePaid.amountMinor !== lineItem.pricePaid.amountMinor ||
+    purchase.quantity !== lineItem.quantity
+  ) {
+    return false;
+  }
+
   if (lineItem.productUrl && sameUrl(purchase.productUrl, lineItem.productUrl)) {
     return true;
   }
 
   return (
-    normaliseText(purchase.productName) === normaliseText(lineItem.productName) &&
-    purchase.pricePaid.currency === lineItem.pricePaid.currency &&
-    purchase.pricePaid.amountMinor === lineItem.pricePaid.amountMinor
+    normaliseText(purchase.productName) === normaliseText(lineItem.productName)
   );
 }
 

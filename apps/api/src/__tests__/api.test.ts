@@ -355,6 +355,42 @@ describe("AfterBuy API", () => {
     await app.close();
   });
 
+  it("returns an available protected-item image on the dashboard", async () => {
+    const genericLineItem = genericPurchaseDraft.lineItems[0];
+    if (!genericLineItem) throw new Error("Expected generic fixture line item");
+    const app = await createAfterBuyServer({
+      config: {
+        port: 0,
+        dataFile: ":memory:",
+        devUserId: "user_1",
+        enableDevAuth: true,
+        enableDevEndpoints: true,
+      },
+      repository: new InMemoryAfterBuyRepository(),
+    });
+    const imageUrl = "https://cdn.example.com/products/trail-pack-moss.jpg";
+
+    await app.inject({
+      method: "POST",
+      url: "/api/purchases/protect",
+      headers: { "x-afterbuy-user-id": "user_1" },
+      payload: {
+        purchaseDraft: {
+          ...genericPurchaseDraft,
+          lineItems: [{ ...genericLineItem, imageUrl }],
+        },
+      },
+    });
+    const dashboard = (await app.inject({
+      method: "GET",
+      url: "/api/dashboard",
+      headers: { "x-afterbuy-user-id": "user_1" },
+    })).json();
+
+    expect(dashboard.purchases[0]?.imageUrl).toBe(imageUrl);
+    await app.close();
+  });
+
   it("reports when a scanned purchase is already protected", async () => {
     const app = await createAfterBuyServer({
       config: {

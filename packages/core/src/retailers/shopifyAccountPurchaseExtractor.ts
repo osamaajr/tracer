@@ -102,10 +102,8 @@ function extractLineItem(root: Element, sourceUrl: string): PurchaseLineItemDraf
   }
 
   const productName = extractProductName(root, anchor);
-  const priceText = Array.from(root.querySelectorAll("th, td, [role='cell']"))
-    .map((cell) => cleanText(cell.textContent))
-    .find((text) => text && hasCurrencyAmount(text)) ?? cleanText(root.textContent);
-  const pricePaid = parsePrice(priceText ?? "");
+  const quantity = extractQuantity(root);
+  const pricePaid = extractLineItemPrice(root, quantity);
 
   if (!productName || !pricePaid || pricePaid.amountMinor <= 0) {
     return [];
@@ -113,7 +111,7 @@ function extractLineItem(root: Element, sourceUrl: string): PurchaseLineItemDraf
 
   const item: PurchaseLineItemDraft = {
     productName,
-    quantity: extractQuantity(root),
+    quantity,
     pricePaid,
     productUrl: normalized.url,
     productUrlConfidence: "high",
@@ -143,6 +141,51 @@ function extractLineItem(root: Element, sourceUrl: string): PurchaseLineItemDraf
   }
 
   return [item];
+}
+
+function extractLineItemPrice(root: Element, quantity: number): ReturnType<typeof parsePrice> {
+  const elements = Array.from(root.querySelectorAll([
+    "[data-afterbuy-price-paid]",
+    "[data-line-item-price]",
+    "[data-line-price]",
+    "[data-line-total]",
+    "[data-test*='price' i]",
+    "[data-testid*='price' i]",
+    "[class*='price' i]",
+    "th",
+    "td",
+    "[role='cell']",
+  ].join(",")));
+  const candidates = [...new Set(elements)]
+    .map((element) => cleanText(element.textContent))
+    .filter((text): text is string => Boolean(
+      text && hasCurrencyAmount(text) && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
+    ));
+  const source = candidates.at(-1) ?? cleanText(root.textContent);
+  const price = parseLastPrice(source);
+  if (!price || quantity <= 1 || isUnitPrice(source)) return price;
+  return {
+    amountMinor: Math.max(1, Math.round(price.amountMinor / quantity)),
+    currency: price.currency,
+  };
+}
+
+function isUnitPrice(value: string | undefined): boolean {
+  return Boolean(
+    value && /(?:each|per\s+(?:item|unit)|unit\s+price|\/\s*(?:item|unit)|\bea\.?\b)/i.test(value),
+  );
+}
+
+function parseLastPrice(value: string | undefined): ReturnType<typeof parsePrice> {
+  if (!value) return null;
+  const matches = value.match(
+    /(?:(?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*-?\s*\d[\d.,]*|\d[\d.,]*\s*\b(?:GBP|USD|EUR)\b)/gi,
+  );
+  for (const match of matches?.reverse() ?? []) {
+    const parsed = parsePrice(match);
+    if (parsed && parsed.amountMinor > 0) return parsed;
+  }
+  return parsePrice(value);
 }
 
 function extractProductName(root: Element, anchor: Element): string | undefined {

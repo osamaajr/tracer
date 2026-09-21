@@ -66,13 +66,11 @@ export function extractGenericPurchaseFromDocument(
   return buildDraft({
     sourceUrl,
     storefront,
-    purchasedAt:
-      attrFromSelectors(document, ["time[datetime]", "[data-afterbuy-purchased-at]"], "datetime") ??
-      fallbackNow.toISOString(),
+    purchasedAt: extractPurchaseDate(document, fallbackNow),
     orderReference: extractOrderReference(document.body?.textContent ?? ""),
     lineItems: domLineItems,
     captureMethod: "generic_dom",
-    captureConfidence: "medium",
+    captureConfidence: domLineItems.every((item) => Boolean(item.productUrl)) ? "medium" : "low",
   });
 }
 
@@ -201,7 +199,15 @@ function extractLineItemFromJsonLdEntry(
   const name = firstString(product?.name) ?? firstString(entry.name);
   const rawUrl = firstString(product?.url) ?? firstString(entry.url);
   const currency = firstString(entry.priceCurrency) ?? fallbackCurrency;
-  const price = parsePrice(firstString(entry.price) ?? String(entry.price ?? ""), currency);
+  const offer = asRecord(entry.acceptedOffer) ?? asRecord(entry.offers) ?? getOffer(product);
+  const price = parsePrice(
+    firstString(entry.orderItemPrice) ??
+      firstString(entry.price) ??
+      firstString(offer?.price) ??
+      firstString(product?.price) ??
+      String(entry.price ?? ""),
+    firstString(entry.priceCurrency) ?? firstString(offer?.priceCurrency) ?? currency,
+  );
 
   if (!name || !rawUrl || !price) {
     return null;
@@ -253,16 +259,23 @@ function extractLineItemsFromDom(
   sourceUrl: string,
   expectedHost: string,
 ): PurchaseLineItemDraft[] {
-  const candidates = Array.from(
+  const explicitCandidates = Array.from(
     document.querySelectorAll<HTMLElement>(
       [
         "[data-afterbuy-line-item]",
         "[data-test*='order'][data-test*='item']",
+        "[data-testid*='order'][data-testid*='item']",
         "[class*='order'][class*='item']",
         "[class*='line'][class*='item']",
+        "[class*='order'][class*='product']",
+        "[class*='product'][class*='item']",
+        "[class*='item'][class*='detail']",
       ].join(","),
     ),
-  ).slice(0, 10);
+  );
+  const candidates = deepestLineItemElements([
+    ...new Set([...explicitCandidates, ...discoverReceiptLineItemElements(document)]),
+  ]).slice(0, 20);
 
   return candidates
     .map((element) => extractLineItemFromDomElement(element, sourceUrl, expectedHost))
@@ -278,34 +291,35 @@ function extractLineItemFromDomElement(
     element.dataset.afterbuyProductName ??
     textFromSelectors(element, [
       "[data-afterbuy-product-name]",
+      "[data-product-name]",
       "[data-test*='name']",
+      "[data-testid*='name']",
+      "[itemprop='name']",
+      "[class*='product'][class*='title']",
+      "[class*='product'][class*='name']",
+      "[class*='item'][class*='title']",
+      "[class*='item'][class*='name']",
       "h1",
       "h2",
       "h3",
-      "a",
-    ]);
+      "h4",
+    ]) ??
+    inferProductName(element);
+  const quantity = extractLineItemQuantity(element);
+  const sku = extractLineItemSku(element);
   const rawUrl =
     element.dataset.afterbuyProductUrl ??
     element.querySelector<HTMLAnchorElement>("a[href]")?.href;
-  const priceText =
-    element.dataset.afterbuyPricePaid ??
-    textFromSelectors(element, [
-      "[data-afterbuy-price-paid]",
-      "[data-test*='price']",
-      "[class*='price']",
-    ]);
 
-  if (!name || !rawUrl || !priceText) {
+  if (!name) {
     return null;
   }
 
-  const normalized = normalizeItemUrl(rawUrl, sourceUrl, expectedHost);
+  const normalized = rawUrl
+    ? normalizeProductCandidateUrl(rawUrl, sourceUrl, expectedHost)
+    : findMatchingProductUrl(element.ownerDocument, name, sku, sourceUrl, expectedHost);
 
-  if (!normalized) {
-    return null;
-  }
-
-  const pricePaid = parsePrice(priceText);
+  const pricePaid = extractLineItemPrice(element, quantity);
 
   if (!pricePaid) {
     return null;
@@ -313,21 +327,14 @@ function extractLineItemFromDomElement(
 
   const item: PurchaseLineItemDraft = {
     productName: name,
-    quantity: parseQuantity(
-      element.dataset.afterbuyQuantity ??
-        textFromSelectors(element, [
-          "[data-afterbuy-quantity]",
-          "[data-test*='quantity']",
-          "[class*='quantity']",
-        ]),
-    ),
+    quantity,
     pricePaid,
-    productUrl: normalized.url,
-    productUrlConfidence: "medium",
   };
-  const sku =
-    element.dataset.afterbuySku ??
-    textFromSelectors(element, ["[data-afterbuy-sku]", "[data-test*='sku']"]);
+
+  if (normalized) {
+    item.productUrl = normalized.url;
+    item.productUrlConfidence = rawUrl ? "medium" : "low";
+  }
 
   if (sku) {
     item.sku = sku;
@@ -360,6 +367,294 @@ function extractLineItemFromDomElement(
   }
 
   return item;
+}
+
+/**
+ * Finds receipt-style rows used by retailers that do not expose semantic
+ * order-item class names. Candidates must carry several independent product
+ * signals, which keeps totals, delivery and address cards out of the result.
+ */
+function discoverReceiptLineItemElements(document: Document): HTMLElement[] {
+  const root = document.querySelector<HTMLElement>("main, [role='main']") ?? document.body;
+  if (!root) return [];
+  const highSignalSeeds = Array.from(root.querySelectorAll<HTMLElement>([
+    "img",
+    "[class*='sku' i]",
+    "[data-testid*='product' i]",
+    "[data-test*='product' i]",
+    "[data-sku]",
+  ].join(","))).slice(0, 100);
+  const broadSeeds = Array.from(root.querySelectorAll<HTMLElement>(
+    "[class*='product' i], [class*='item' i]",
+  )).slice(0, 100);
+  const seeds = [...new Set([...highSignalSeeds, ...broadSeeds])];
+  const discovered: HTMLElement[] = [];
+
+  for (const seed of seeds) {
+    let candidate: HTMLElement | null = seed;
+    for (let depth = 0; candidate && depth < 10; depth += 1, candidate = candidate.parentElement) {
+      if (candidate === document.body || candidate.tagName === "MAIN") break;
+      if (looksLikeReceiptLineItem(candidate)) {
+        discovered.push(candidate);
+        break;
+      }
+    }
+  }
+
+  return [...new Set(discovered)];
+}
+
+function looksLikeReceiptLineItem(element: HTMLElement): boolean {
+  const text = normalizedText(element);
+  if (text.length < 18 || text.length > 1_500 || currencyAmounts(text).length === 0) return false;
+
+  const hasImage = Boolean(element.querySelector("img"));
+  const hasSku = /\b(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*[a-z0-9-]{3,}/i.test(text);
+  const hasQuantity =
+    /\b(?:qty|quantity)\s*[:x]?\s*\d+/i.test(text) ||
+    Boolean(element.querySelector("[data-quantity], [data-label*='qty' i], [data-label*='quantity' i], [data-th*='qty' i], [data-th*='quantity' i], [aria-label*='qty' i], [aria-label*='quantity' i]"));
+  const hasUnitOrTotal =
+    /\b(?:each|unit\s+price|item\s+total|total)\b/i.test(text) ||
+    Boolean(element.querySelector("[data-line-total], [data-label*='each' i], [data-label*='total' i], [data-th*='each' i], [data-th*='total' i], [aria-label*='each' i], [aria-label*='total' i]"));
+  const signalCount = Number(hasImage) + Number(hasSku) + Number(hasQuantity) + Number(hasUnitOrTotal);
+
+  if (signalCount < 3 || (!hasSku && !hasQuantity)) return false;
+  if (
+    /\b(?:billing address|shipping address|payment method|order summary)\b/i.test(text) &&
+    !hasSku
+  ) return false;
+  return Boolean(inferProductName(element));
+}
+
+function inferProductName(element: HTMLElement): string | null {
+  const candidates = Array.from(element.querySelectorAll<HTMLElement>(
+    "[aria-label], strong, b, a, h1, h2, h3, h4, p, span, div",
+  )).slice(0, 160);
+  let best: { value: string; score: number } | null = null;
+
+  for (const candidate of candidates) {
+    if (candidate.children.length > 2) continue;
+    const value = normalizedText(candidate);
+    if (value.length < 6 || value.length > 180 || currencyAmounts(value).length) continue;
+    if (/^(?:sku|style|color|colour|size|status|qty|quantity|each|total|subtotal|shipping|delivery|tax|ordered|order date)\b/i.test(value)) continue;
+    if (/^(?:new|men'?s|women'?s|kids?|accessories)$/i.test(value)) continue;
+    const words = value.split(/\s+/).filter(Boolean);
+    if (words.length < 2 || !/[a-z]{3}/i.test(value)) continue;
+
+    const metadata = `${candidate.className || ""} ${candidate.getAttribute("data-testid") || ""} ${candidate.getAttribute("data-test") || ""}`;
+    const score =
+      Math.min(words.length, 10) +
+      (/(?:product|item)[-_ ]?(?:name|title)|(?:name|title)[-_ ]?(?:product|item)/i.test(metadata) ? 20 : 0) +
+      (/^H[1-4]$/.test(candidate.tagName) ? 14 : 0) +
+      (candidate.tagName === "STRONG" || candidate.tagName === "B" ? 8 : 0) +
+      (candidate.tagName === "A" ? 5 : 0);
+
+    if (!best || score > best.score) best = { value, score };
+  }
+
+  return best?.value ?? null;
+}
+
+function extractLineItemQuantity(element: HTMLElement): number {
+  const explicit =
+    element.dataset.afterbuyQuantity ??
+    textFromSelectors(element, [
+      "[data-afterbuy-quantity]",
+      "[data-quantity]",
+      "[data-label*='qty' i]",
+      "[data-label*='quantity' i]",
+      "[data-th*='qty' i]",
+      "[data-th*='quantity' i]",
+      "[aria-label*='qty' i]",
+      "[aria-label*='quantity' i]",
+      "[headers*='qty' i]",
+      "[headers*='quantity' i]",
+      "[data-test*='quantity']",
+      "[data-testid*='quantity']",
+      "[class*='quantity']",
+      "[class~='qty' i]",
+    ]);
+  if (explicit) return parseQuantity(explicit);
+  const match = normalizedText(element).match(/\b(?:qty|quantity)\s*[:x]?\s*(\d+)/i);
+  return parseQuantity(match?.[1]);
+}
+
+function extractLineItemSku(element: HTMLElement): string | null {
+  const explicit =
+    element.dataset.afterbuySku ??
+    textFromSelectors(element, [
+      "[data-afterbuy-sku]",
+      "[data-sku]",
+      "[data-test*='sku']",
+      "[data-testid*='sku']",
+      "[class*='sku' i]",
+    ]);
+  const value = explicit ?? normalizedText(element).match(
+    /\b(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*([a-z0-9-]{3,})/i,
+  )?.[1];
+  if (!value) return null;
+  return value.replace(/^\s*(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*/i, "").trim() || null;
+}
+
+function findMatchingProductUrl(
+  document: Document,
+  productName: string,
+  sku: string | null,
+  sourceUrl: string,
+  expectedHost: string,
+): ReturnType<typeof normalizeItemUrl> | null {
+  const productTokens = productName.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+  let best: { normalized: NonNullable<ReturnType<typeof normalizeItemUrl>>; score: number } | null = null;
+
+  for (const link of Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]")).slice(0, 600)) {
+    const normalized = normalizeProductCandidateUrl(link.href, sourceUrl, expectedHost);
+    if (!normalized || normalized.url === sourceUrl) continue;
+    const url = new URL(normalized.url);
+
+    const linkText = `${link.textContent ?? ""} ${link.getAttribute("aria-label") ?? ""} ${link.getAttribute("title") ?? ""} ${link.querySelector("img")?.alt ?? ""}`.toLowerCase();
+    const haystack = `${linkText} ${url.pathname.toLowerCase()}`;
+    const tokenMatches = new Set(productTokens.filter((token) => haystack.includes(token))).size;
+    const score = tokenMatches * 3 + (sku && haystack.includes(sku.toLowerCase()) ? 18 : 0);
+    if (score > 0 && (!best || score > best.score)) best = { normalized, score };
+  }
+
+  return best?.normalized ?? null;
+}
+
+function normalizeProductCandidateUrl(
+  rawUrl: string,
+  sourceUrl: string,
+  expectedHost: string,
+): ReturnType<typeof normalizeItemUrl> | null {
+  const normalized = normalizeItemUrl(rawUrl, sourceUrl, expectedHost);
+  if (!normalized) return null;
+  const url = new URL(normalized.url);
+  if (
+    url.pathname === "/" ||
+    /(?:checkout|order|confirm|receipt|return|policy|account|cart|print)/i.test(url.pathname)
+  ) return null;
+  return normalized;
+}
+
+function deepestLineItemElements(elements: HTMLElement[]): HTMLElement[] {
+  return elements.filter((element) => !elements.some((candidate) =>
+    candidate !== element &&
+    element.contains(candidate) &&
+    Boolean(
+      candidate.querySelector("a[href], [data-afterbuy-product-url]") &&
+      currencyAmounts(candidate.textContent ?? "").length,
+    ),
+  ));
+}
+
+function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnType<typeof parsePrice> {
+  const labeledUnitPrice = textFromSelectors(element, [
+    "[data-label*='each' i]",
+    "[data-label*='unit price' i]",
+    "[data-th*='each' i]",
+    "[data-th*='unit price' i]",
+    "[aria-label*='each' i]",
+    "[aria-label*='unit price' i]",
+    "[headers*='each' i]",
+    "[headers*='unit' i]",
+    "[class*='each' i]",
+    "[class*='unit-price' i]",
+  ]);
+  const parsedLabeledUnitPrice = parsePrice(currencyAmounts(labeledUnitPrice ?? "")[0] ?? labeledUnitPrice);
+  if (parsedLabeledUnitPrice) return parsedLabeledUnitPrice;
+
+  const receiptText = normalizedText(element);
+  const explicitUnitAmount = receiptText.match(
+    /\b(?:each|unit\s+price)\b\s*[:\-]?\s*((?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*\d[\d.,]*)/i,
+  )?.[1];
+  const explicitUnitPrice = parsePrice(explicitUnitAmount);
+  if (explicitUnitPrice) return explicitUnitPrice;
+
+  const priceElements = Array.from(element.querySelectorAll<HTMLElement>([
+    "[data-afterbuy-price-paid]",
+    "[data-line-item-price]",
+    "[data-line-price]",
+    "[data-line-total]",
+    "[data-test*='price' i]",
+    "[data-testid*='price' i]",
+    "[class*='price' i]",
+    "th",
+    "td",
+    "[role='cell']",
+  ].join(",")));
+  const sources = [...new Set(priceElements)]
+    .map((candidate) => ({
+      element: candidate,
+      text: candidate.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }))
+    .filter(({ text }) => Boolean(
+      text && currencyAmounts(text).length && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
+    ));
+  const selected = sources.at(-1);
+  const source = selected?.text ?? element.textContent ?? "";
+  const amount = currencyAmounts(source).at(-1);
+  const price = parsePrice(amount ?? source);
+  if (!price || quantity <= 1 || !selected || !isLineTotal(selected.element, source)) return price;
+  return {
+    amountMinor: Math.max(1, Math.round(price.amountMinor / quantity)),
+    currency: price.currency,
+  };
+}
+
+function extractPurchaseDate(document: Document, fallbackNow: Date): string {
+  const explicit =
+    attrFromSelectors(document, ["time[datetime]", "[data-afterbuy-purchased-at]", "[data-order-date]"], "datetime") ??
+    textFromSelectors(document, ["[data-afterbuy-purchased-at]", "[data-order-date]", "[data-purchase-date]", "[class*='order-date' i]"]);
+  const bodyMatch = normalizedText(document.body).match(
+    /\border\s*date\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/i,
+  )?.[1];
+  return parsePurchaseDate(explicit ?? bodyMatch) ?? fallbackNow.toISOString();
+}
+
+function parsePurchaseDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const iso = value.match(
+    /\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?\b/i,
+  )?.[0];
+  if (iso) {
+    const parsedIso = new Date(iso);
+    if (!Number.isNaN(parsedIso.getTime())) return parsedIso.toISOString();
+  }
+  const uk = value.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (uk?.[1] && uk[2] && uk[3]) {
+    const year = Number(uk[3].length === 2 ? `20${uk[3]}` : uk[3]);
+    const month = Number(uk[2]);
+    const day = Number(uk[1]);
+    const hour = Number(uk[4] ?? 12);
+    const minute = Number(uk[5] ?? 0);
+    const second = Number(uk[6] ?? 0);
+    const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+      return date.toISOString();
+    }
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function normalizedText(value: Element | null): string {
+  return (value?.textContent ?? "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isLineTotal(element: Element, text: string): boolean {
+  if (/(?:each|per\s+(?:item|unit)|unit\s+price|\/\s*(?:item|unit)|\bea\.?\b)/i.test(text)) {
+    return false;
+  }
+  return (
+    element.matches("[data-line-total], [data-order-line-total], [data-testid*='total' i], [data-test*='total' i], [class*='total' i]") ||
+    /(?:line|item)\s+total|subtotal/i.test(text)
+  );
+}
+
+function currencyAmounts(value: string): string[] {
+  return value.match(
+    /(?:(?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*-?\s*\d[\d.,]*|\d[\d.,]*\s*\b(?:GBP|USD|EUR)\b)/gi,
+  ) ?? [];
 }
 
 function buildDraft(input: {

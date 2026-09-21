@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import {
   extractSavedProduct,
   findProductPageImage,
+  findProductPageImages,
   selectProductImage,
 } from "../index";
 
@@ -43,6 +44,43 @@ describe("smart product image selection", () => {
       url: "https://shop.example.com/images/aurora-lamp-main.jpg",
       source: "gallery",
     });
+  });
+
+  it("returns a ranked, deduplicated gallery shortlist for manual selection", () => {
+    const { document } = parseHTML(`
+      <main>
+        <h1>Aurora Glass Lamp</h1>
+        <div class="product-gallery">
+          <img src="/images/aurora-lamp-front.jpg" width="900" height="900" alt="Aurora Glass Lamp product front">
+          <img src="/images/aurora-lamp-side.jpg" width="900" height="900" alt="Aurora Glass Lamp side">
+          <img src="/images/aurora-lamp-front.jpg" width="900" height="900" alt="Aurora Glass Lamp product front">
+        </div>
+      </main>
+    `);
+
+    expect(findProductPageImages(document, baseUrl, { productName: "Aurora Glass Lamp" }).map(({ url }) => url))
+      .toEqual([
+        "https://shop.example.com/images/aurora-lamp-front.jpg",
+        "https://shop.example.com/images/aurora-lamp-side.jpg",
+      ]);
+  });
+
+  it("offers one best-quality URL for each gallery image element", () => {
+    const { document } = parseHTML(`
+      <main>
+        <h1>Aurora Glass Lamp</h1>
+        <div class="product-gallery">
+          <img
+            src="/images/aurora-lamp-front.jpg?width=240"
+            srcset="/images/aurora-lamp-front.jpg?width=240 240w, /images/aurora-lamp-front.jpg?width=1200 1200w"
+            data-zoom-image="/images/aurora-lamp-front.jpg?width=1800"
+            width="900" height="900" alt="Aurora Glass Lamp product front">
+        </div>
+      </main>
+    `);
+
+    expect(findProductPageImages(document, baseUrl, { productName: "Aurora Glass Lamp" }).map(({ url }) => url))
+      .toEqual(["https://shop.example.com/images/aurora-lamp-front.jpg?width=1200"]);
   });
 
   it("prefers a product-only catalogue shot over the first lifestyle image", () => {

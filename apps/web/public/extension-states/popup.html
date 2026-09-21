@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tracer</title>
+    <link rel="preload" href="assets/tracer-empty-box.webp" as="image" type="image/webp" />
     <style>
       :root {
         --ink: #191916;
@@ -772,6 +773,7 @@
       .loading-dots svg {
         display: none;
       }
+      .loading-dots img { display:none; }
       .loading-skeleton {
         width: min(100%, 270px);
         height: 132px;
@@ -1347,10 +1349,14 @@
       .item-detail-screen h1 { color: #171a18; font: 650 20px/1.2 Arial,sans-serif; letter-spacing: -.45px; overflow-wrap: anywhere; }
       .items-heading span { border-radius: 999px; background: #f4f4f2; padding: 8px 14px; color: #60676b; font-size: 14px; line-height: 1; white-space: nowrap; }
       .items-list { display: grid; gap: 10px; max-height: 280px; overflow-y: auto; padding: 1px; }
-      .items-message { display: grid; justify-items: center; gap: 7px; padding: 52px 18px 44px; color: #71777b; text-align: center; }
+      .items-message { display: grid; justify-items: center; gap: 5px; padding: 36px 18px 30px; color: #71777b; text-align: center; }
       .items-message strong { color: #252722; font-size: 14px; }
-      .items-message span { font-size: 12px; line-height: 1.45; }
-      .items-message button { margin-top: 7px; border: 1px solid #e2e0da; border-radius: 8px; background: #fffefd; padding: 8px 13px; color: #252722; font-size: 12px; font-weight: 600; }
+      .items-message span { max-width: 220px; font-size: 12px; line-height: 1.4; }
+      .items-message .items-refresh { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-top: 8px; border: 1px solid #e4e1da; border-radius: 50%; background: transparent; padding: 0; color: #353833; transition: background-color .15s ease, transform .15s ease; }
+      .items-message .items-refresh svg { width: 16px; height: 16px; }
+      .items-message .items-refresh:hover { background: #f3f1ec; }
+      .items-message .items-refresh:active { transform: rotate(18deg); }
+      .items-message .items-refresh:focus-visible { outline: 2px solid #2f332f; outline-offset: 2px; }
       .item-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 9px; width: 100%; border: 1px solid #e6e6e1; border-radius: 11px; background: rgba(255,255,255,.62); padding: 15px 13px; text-align: left; }
       .item-row strong { display: block; max-width: 220px; color: #171a18; font-size: 14px; line-height: 1.3; font-weight: 650; }
       .item-row span { display: block; margin-top: 7px; color: #2f7068; font-size: 12px; }
@@ -1404,11 +1410,15 @@
       .idle-copy h1 { font: 600 21px/1.2 Arial,sans-serif; letter-spacing: -.35px; color: #111827; }
       .idle-copy p { font: 400 14px/1.45 Arial,sans-serif; width: auto; max-width: 245px; color: #5f6872; margin-top: 5px; }
       .idle-copy p + p, .idle-screen .feature-card, .idle-actions, .idle-divider, .idle-screen .privacy-note { display: none; }
-      main[data-screen="detecting"] .state-screen { align-content: center; padding: 0 20px; }
+      main[data-screen="detecting"] .state-screen { align-content: center; min-height:460px; padding: 0 10px 24px; }
       main[data-screen="detecting"] .state-panel { background: transparent; border: 0; box-shadow: none; gap: 0; min-height: 0; padding: 0; text-align: center; }
-      main[data-screen="detecting"] .state-panel strong { display: block; font: 500 16px/1.25 Arial,sans-serif; margin-bottom: 22px; }
-      main[data-screen="detecting"] .state-panel p { color: #7a8082; font: 400 13px/1.4 Arial,sans-serif; grid-row: 3; margin-top: 0; }
-      main[data-screen="detecting"] .loading-dots { grid-row: 2; }
+      main[data-screen="detecting"] .state-panel strong { display:block; grid-row:2; color:#353630; background:linear-gradient(100deg,#353630 30%,#b6b3a9 48%,#353630 66%); background-size:250% 100%; background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:loading-text-shimmer 2.6s ease-in-out infinite; font-family:'Tracer Serif',Georgia,serif; font-size:31px; font-weight:400; line-height:1.12; letter-spacing:-.8px; margin:0; }
+      main[data-screen="detecting"] .state-panel p { grid-row:3; color:#a3a39d; font-family:inherit; font-size:15px; font-weight:350; line-height:1.5; margin:14px auto 0; max-width:300px; white-space:pre-line; }
+      main[data-screen="detecting"] .loading-dots { display:grid; grid-row:1; width:100%; height:252px; margin:0 auto 28px; place-items:center; }
+      main[data-screen="detecting"] .loading-dots img { display:block; width:310px; max-width:100%; height:244px; object-fit:contain; animation:loading-breathe 2.2s ease-in-out infinite; }
+      @keyframes loading-text-shimmer { from { background-position:150% 0; } to { background-position:-100% 0; } }
+      main[data-screen="detecting"] .loading-skeleton { display:none; }
+      @keyframes loading-breathe { 0%,100% { opacity:.9; transform:translateY(0); } 50% { opacity:1; transform:translateY(-3px); } }
       main[data-screen="detecting"] .skeleton, main[data-screen="detecting"] #stateClose { display: none; }
       .settings[data-visible="true"] { display: grid; margin-top: 12px; }
       .confetti { overflow: visible; }
@@ -1462,7 +1472,7 @@
 
       .settings-card {
         align-items: center;
-        background: rgb(255 255 255 / 48%);
+        background: #fff;
         border: 1px solid #e7e2da;
         border-radius: 12px;
         box-shadow: 0 1px 2px rgb(39 35 29 / 2%);
@@ -1538,7 +1548,7 @@
         cursor: wait;
       }
 
-      .settings-clear-pill { position: relative; overflow: hidden; border: 1px solid #e7e2da; border-radius: 12px; background: rgb(255 255 255 / 48%); }
+      .settings-clear-pill { position: relative; overflow: hidden; border: 1px solid #dce3e9; border-radius: 12px; background: #fff; }
       .settings-clear-pill .settings-clear { border: 0; background: transparent; box-shadow: none; transition: transform 360ms cubic-bezier(.22,1,.36,1), opacity 240ms ease; }
       .settings-clear-pill[data-confirming="true"] .settings-clear { transform: translateX(-35%); opacity: 0; pointer-events: none; }
       .clear-confirmation { position: absolute; inset: 0; display: flex; align-items: center; gap: 12px; padding: 12px; transform: translateX(100%); opacity: 0; visibility: hidden; transition: transform 360ms cubic-bezier(.22,1,.36,1), opacity 240ms ease, visibility 360ms; }
@@ -1575,10 +1585,10 @@
       .brand .fan-mark { display:none; }
       .brand .wordmark-image { width:84px; height:28px; object-fit:contain; transform:translateX(6px); }
       .topbar, main[data-screen] .topbar { height:40px; padding:0 2px; margin-bottom:22px; }
-      .menu-toggle,.popup-back,.settings-toggle { border-radius:50%; border-color:#d8e0e7; background:#fffdfa; box-shadow:0 3px 12px #273e5310; }
+      .menu-toggle,.popup-back,.settings-toggle { border-radius:50%; border-color:#d8e0e7; background:#fff; box-shadow:0 3px 12px #273e5310; }
       h1,.items-heading h1,.item-detail-screen h1,.settings-heading h1,.state-panel > strong { font-family:'Tracer Serif',Georgia,serif; font-weight:400; font-size:29px; line-height:1.1; letter-spacing:-.02em; white-space:normal; }
       .product-title h2 { font-family:inherit; font-size:16px; line-height:1.3; }
-      .product-card,.success-summary,.item-row,.settings-card,.popup-menu,.item-facts { background:#fffdfa; border-color:#dce3e9; border-radius:18px; box-shadow:0 8px 24px #273e5308; }
+      .product-card,.success-summary,.item-row,.settings-card,.popup-menu,.item-facts { background:#fff; border-color:#dce3e9; border-radius:18px; box-shadow:0 8px 24px #273e5308; }
       .settings-cards { gap:12px; }
       .settings-card { padding:18px; }
       .settings-card-copy p { color:#626a72; line-height:1.5; }
@@ -1625,7 +1635,8 @@
       .items-segments { display:flex; gap:4px; padding:4px; background:#eeece5; border-radius:999px; margin:14px 0; }
       .items-segments button { flex:1; border:0; background:transparent; border-radius:999px; padding:10px; color:#666b64; font:600 13px Arial,sans-serif; }
       .items-segments button[aria-pressed="true"] { background:#fffdfa; color:#22231f; box-shadow:0 2px 5px #22231f0a; }
-      .saved-product,.saved-row { padding:16px; border:1px solid #e6e3db; border-radius:18px; background:#fffdfa; }
+      .saved-product,.saved-row { padding:16px; border:1px solid #e6e3db; border-radius:18px; background:#fff; }
+      .saved-row[data-alert="true"] { border-color:#b9d9c1; box-shadow:0 10px 24px rgb(63 118 80 / 10%); }
       .watchlist-screen .saved-product {
         align-content:start;
         box-shadow:0 16px 32px #29292312;
@@ -1643,6 +1654,11 @@
       }
       .saved-product strong,.saved-row strong { display:block; font:600 14px/1.4 Arial,sans-serif; overflow-wrap:anywhere; }
       .saved-product p,.saved-row p { color:#737870; font:400 12px/1.5 Arial,sans-serif; margin:5px 0; }
+      .saved-row .saved-monitoring-status { color:#737870; font-weight:600; }
+      .saved-row .saved-monitoring-status[data-state="watching"],
+      .saved-row .saved-monitoring-status[data-state="alert"] { color:#3f7650; }
+      .saved-row .saved-monitoring-status[data-state="off"],
+      .saved-row .saved-monitoring-status[data-state="unavailable"] { color:#92968f; }
       .saved-product img,.saved-row img { width:48px; height:48px; object-fit:contain; border-radius:10px; float:left; margin:0 12px 8px 0; }
       .watchlist-screen .saved-product img {
         background:#f1eee8;
@@ -1772,7 +1788,7 @@
         text-align:center;
         width:calc(100% + 24px);
       }
-      .idle-tip { display:grid; grid-template-columns:34px 1fr; align-items:center; gap:10px; padding:14px; border:1px solid #e7e2da; border-radius:18px; background:#fffdfa; }
+      .idle-tip { display:grid; grid-template-columns:34px 1fr; align-items:center; gap:10px; padding:14px; border:1px solid #e7e2da; border-radius:18px; background:#fff; }
       .idle-tip > svg { width:34px; height:34px; color:#242622; }
       .idle-tip > div { padding-left:10px; border-left:1px solid #eae6df; }
       .idle-tip strong { font:600 13px/1.3 Arial,sans-serif; }
@@ -1808,6 +1824,138 @@
       .saved-row footer a .open-item-icon svg { height:100%; width:100%; }
       .saved-row footer button { margin-left:auto; }
       [hidden] { display:none !important; }
+      /* Purchase confirmation screens share the landing page's pearl cards and editorial type. */
+      main:is([data-screen="detected"], [data-screen="review"], [data-screen="protected"], [data-screen="duplicate"]) {
+        overflow-y: auto;
+        background: #faf8f3;
+      }
+      .detected-screen, .success-screen { padding: 4px 0 16px; align-content: start; gap: 18px; }
+      .detected-copy h1, .success-copy h1 { font: 400 34px/1.06 'Tracer Serif', Georgia, serif; letter-spacing: -.025em; margin: 0; }
+      .detected-screen .check-icon, .success-screen .check-icon { width: 52px; height: 52px; margin: 0 auto 18px; background: #e3effb; color: #3266a0; box-shadow: none; }
+      .success-screen .check-icon { background: #e4f2e8; color: #34754d; }
+      .detected-screen .check-icon svg, .success-screen .check-icon svg { width: 25px; height: 25px; }
+      .detected-screen .purchase-card, .success-screen .success-summary { background: #fff; border: 1px solid #e6e3dc; border-radius: 20px; padding: 20px; box-shadow: 0 12px 30px #272c3009; }
+      .detected-screen .product-head, .success-screen .product-head { text-align: left; display: block; }
+      .detected-screen .product-title h2, .success-screen .product-title h2 { font: 600 15px/1.4 inherit; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.4; margin: 0; max-width: none; text-align: left; }
+      .detected-screen .details, .success-screen .summary-details { display: grid; margin: 14px 0 0; padding-top: 10px; border-top: 1px solid #ece9e2; gap: 8px; }
+      .detected-screen .details .detail-row { display: none; }
+      .detected-screen .details .detail-row:first-child, .detected-screen .details .detail-row:nth-child(2) { display: flex; justify-content: space-between; gap: 16px; }
+      .detected-screen .details dd, .success-screen .summary-details dd { overflow-wrap: anywhere; min-width: 0; }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.item-subtitle, .match, .divider, .details, .summary-details, .summary-status) { display: none; }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.purchase-card, .success-summary) { padding-block: 18px; }
+      .detected-screen .ready-copy, .success-screen .ready-copy { border: 0; padding: 0; margin: 0; color: #73736d; font: 400 13px/1.55 system-ui, sans-serif; }
+      .detected-screen .protect, .success-screen .dashboard-cta { border-radius: 999px; min-height: 46px; font-family: inherit; box-shadow: none; }
+
+      /* Receipt-led confirmation layout, scaled to the popup width. */
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) { background: #fffefd; }
+      .detected-screen, .success-screen { align-content: start; gap: 18px; min-height: 0; padding: 6px 22px 22px; }
+      .detected-copy, .success-copy { text-align: center; }
+      .detected-copy h1, .success-copy h1 { font-family: 'Purchase Serif', Georgia, serif; font-size: clamp(30px, 8.8vw, 38px); letter-spacing: -.035em; line-height: 1.02; margin: 0; }
+      .purchase-intro { color: #676761; font: 400 13px/1.45 Arial, sans-serif; margin: 10px auto 0; max-width: 290px; }
+      .detected-copy .purchase-intro { color: #8b8b84; font-size: 11px; line-height: 1.4; margin-top: 7px; }
+      .detected-screen .purchase-card, .success-screen .success-summary { background: #fff; border: 1px solid #e5e2dc; border-radius: 18px; box-shadow: 0 10px 28px rgb(39 44 48 / 7%); padding: 18px 20px; width: 100%; }
+      .detected-screen .product-head, .success-screen .product-head { text-align: left; }
+      .detected-screen .product-title h2, .success-screen .product-title h2 { font-size: 15px; line-height: 1.3; text-align: left; }
+      .detected-screen .item-subtitle, .success-screen .item-subtitle { display: block; color: #73736d; font-size: 12px; margin-top: 4px; }
+      .detected-screen .match { display: inline-flex; margin-top: 7px; }
+      .detected-screen .divider, .detected-screen .details, .detected-screen .window-card, .detected-screen .review-panel, .detected-screen #reviewDetails, .detected-screen #maybeLater, .success-summary .summary-details, .success-summary .summary-status { display: block; }
+      .detected-screen .details, .success-screen .summary-details { margin: 16px 0 0; padding-top: 12px; }
+      .detected-screen .details .detail-row, .success-screen .summary-details .detail-row { display: flex; justify-content: space-between; }
+      .detected-screen .details .detail-row:nth-child(n+3) { display: none; }
+      .detected-screen .window-card, .detected-screen .review-panel, .detected-screen #reviewDetails { display: none; }
+      .detected-screen .details .detail-row:nth-child(3) { display: none; }
+      .detected-screen .details .detail-row#productUrlRow { display: none; }
+      .detected-screen > .ready-copy { display: none; }
+      .detected-screen .ready-copy, .success-screen .ready-copy { color: #676761; font: 400 13px/1.45 Arial, sans-serif; }
+      .detected-copy .purchase-intro { color: #777871; font-size: 15px; line-height: 1.5; margin-top: 10px; }
+      .detected-screen { min-height: 500px; justify-content: center; }
+      .detected-screen .purchase-card { min-height: 126px; }
+      .detected-screen .details .detail-row:nth-child(1), .detected-screen .details .detail-row:nth-child(2) { display: flex !important; }
+      .detected-screen .details .detail-row:nth-child(1) dd { color: #20221f; font-size: 18px; font-weight: 700; }
+      .detected-screen .details .detail-row:nth-child(2) dd { color: #676761; font-size: 13px; }
+      .detected-screen .actions, .success-screen .summary-actions { width: 100%; }
+      .detected-screen .protect, .success-screen .dashboard-cta { border-radius: 999px; width: 100%; }
+      @media (min-width: 480px) {
+        body { width: 460px; }
+        main { min-height: 620px; padding: 24px 28px 30px; }
+        .detected-screen, .success-screen { padding: 8px 28px 28px; }
+        .purchase-receipt { height: 250px; width: 270px; margin-bottom: 16px; }
+        .purchase-receipt > img { height: 350px; left: -40px; top: -48px; width: 350px; }
+        .receipt-tick { height: 31px; left: 165px; top: 104px; width: 31px; }
+        .receipt-tick svg { height: 31px; width: 31px; }
+        .detected-copy h1, .success-copy h1 { font-size: 42px; }
+        .purchase-intro { font-size: 16px; }
+      }
+
+      @font-face { font-family: 'Purchase Serif'; src: url('assets/PurchaseSerif.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+      .detected-copy h1, .success-copy h1 { font-family: 'Purchase Serif', Georgia, serif; font-size: clamp(27px, 8vw, 32px); line-height: 1.1; text-wrap: balance; }
+      .purchase-receipt { display: block; position: relative; width: 160px; height: 146px; margin: 0 auto 12px; overflow: hidden; }
+      .purchase-receipt > img { position: absolute; width: 210px; max-width: none; height: 210px; left: -25px; top: -29px; mix-blend-mode: darken; }
+      .receipt-tick { position: absolute; left: 98px; top: 60px; width: 19px; height: 19px; border-radius: 50%; background: #9da891; display: grid; place-items: center; }
+      .receipt-tick svg { width: 19px; height: 19px; overflow: visible; }
+      .receipt-tick path { fill: none; stroke: white; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+      main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: receipt-tick-reveal .5s .2s ease forwards; }
+      @keyframes receipt-tick-reveal { to { stroke-dashoffset: 0; } }
+      @media (prefers-reduced-motion: reduce) { main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: none; stroke-dashoffset: 0; } }
+
+      /* Purchase-detected layout: compact receipt hero and useful order summary. */
+      main[data-screen="detected"] { overflow:hidden; }
+      main[data-screen="detected"] .detected-screen { align-content:start; gap:14px; justify-content:stretch; min-height:0; padding:0 2px 10px; }
+      main[data-screen="detected"] .detected-copy { gap:0; }
+      main[data-screen="detected"] .purchase-receipt { height:146px; margin:0 auto 8px; overflow:visible; width:176px; }
+      main[data-screen="detected"] .purchase-receipt > img { height:224px; left:-24px; mix-blend-mode:normal; top:-35px; width:224px; }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) :is(.detected-screen,.success-screen) { padding-top:0; }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) .purchase-receipt {
+        height:146px;
+        margin:0 auto 8px;
+        overflow:visible;
+        width:176px;
+      }
+      main:is([data-screen="detected"],[data-screen="protected"],[data-screen="duplicate"]) .purchase-receipt > img {
+        height:224px;
+        left:-24px;
+        mix-blend-mode:normal;
+        top:-35px;
+        width:224px;
+      }
+      main[data-screen="detected"] .receipt-tick { opacity:0; transform:scale(.58); }
+      main[data-screen="detected"] .receipt-tick path { animation:none; stroke-dashoffset:1; }
+      main:is([data-screen="protected"],[data-screen="duplicate"]) .receipt-tick { display:grid; }
+      main[data-screen="protected"] .receipt-tick {
+        animation:receipt-tick-pop .56s cubic-bezier(.2,.9,.25,1.25) forwards;
+        opacity:0;
+        transform:scale(.58);
+      }
+      main[data-screen="protected"] .receipt-tick path { animation:receipt-tick-reveal .44s .16s ease forwards; }
+      main[data-screen="duplicate"] .receipt-tick { opacity:1; transform:scale(1); }
+      main[data-screen="duplicate"] .receipt-tick path { animation:none; stroke-dashoffset:0; }
+      @keyframes receipt-tick-pop {
+        0% { opacity:0; transform:scale(.58); }
+        68% { opacity:1; transform:scale(1.14); }
+        100% { opacity:1; transform:scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        main[data-screen="protected"] .receipt-tick { animation:none; opacity:1; transform:scale(1); }
+        main[data-screen="protected"] .receipt-tick path { animation:none; stroke-dashoffset:0; }
+      }
+      main[data-screen="detected"] .detected-copy h1 { font-family:'Tracer Serif',Georgia,serif; font-size:34px; letter-spacing:-.025em; line-height:1; }
+      main[data-screen="detected"] .detected-copy .purchase-intro { color:#85857f; font:350 14px/1.45 Arial,sans-serif; margin:12px auto 0; }
+      main[data-screen="detected"] .purchase-card { align-items:center; display:grid; grid-template-columns:minmax(0,1fr) auto; min-height:96px; padding:17px 18px; }
+      main[data-screen="detected"] .product-head { grid-column:1; min-width:0; padding:0; transform:translateY(4px); }
+      main[data-screen="detected"] .product-title h2 { color:#22231f; font:650 14px/1.3 Arial,sans-serif; margin:0; }
+      main[data-screen="detected"] .purchase-date-line { color:#999994; display:block; font:350 12px/1.35 Arial,sans-serif; margin:7px 0 0; }
+      main[data-screen="detected"] :is(.item-subtitle,.match,.divider) { display:none; }
+      main[data-screen="detected"] .details { border:0; display:block; grid-column:2; margin:0 0 0 16px; padding:0 0 0 18px; position:relative; }
+      main[data-screen="detected"] .details::before { background:#e5e2dc; content:''; inset:0 auto 0 0; position:absolute; width:1px; }
+      main[data-screen="detected"] .details .detail-row { display:none !important; }
+      main[data-screen="detected"] .details .detail-row:first-child { display:block !important; }
+      main[data-screen="detected"] .details .detail-row:nth-child(2) { display:none !important; }
+      main[data-screen="detected"] .details .detail-row:first-child dt { display:none; }
+      main[data-screen="detected"] .details .detail-row:first-child dd { color:#22231f; font:650 18px/1.2 Arial,sans-serif; white-space:nowrap; }
+      main[data-screen="detected"] .actions { display:grid; gap:8px; margin:2px 0 0; }
+      main[data-screen="detected"] .protect { min-height:48px; position:relative; }
+      main[data-screen="detected"] .protect::after { content:'→'; font-size:19px; margin-left:18px; }
+      main[data-screen="detected"] #maybeLater { color:#999994; display:block; font:400 12px/1.2 Arial,sans-serif; min-height:28px; text-decoration:underline; text-underline-offset:3px; }
     </style>
   </head>
   <body>
@@ -1874,9 +2022,10 @@
 
       <section class="screen state-screen" aria-live="polite">
         <section class="state-panel">
-          <strong id="stateTitle">Looking for an item to save...</strong>
-          <p id="stateCopy">This usually takes a moment.</p>
+          <strong id="stateTitle">Finding your item...</strong>
+          <p id="stateCopy">This usually takes a moment.<br>Hang tight.</p>
           <div class="loading-dots" aria-hidden="true">
+            <img src="assets/tracer-loading.png" alt="">
             <div class="loading-skeleton">
               <span class="skeleton-line skeleton-line-long"></span>
               <span class="skeleton-line skeleton-line-mid"></span>
@@ -1901,7 +2050,7 @@
 
       <section class="screen idle-screen" aria-label="Nothing to save here">
         <div class="idle-illustration" aria-hidden="true">
-          <img src="assets/tracer-empty-box.png" alt="">
+          <img src="assets/tracer-empty-box.webp" alt="" width="768" height="768" loading="eager" decoding="sync" fetchpriority="high">
         </div>
         <section class="idle-copy">
           <h1 id="idleHeading">Nothing to save here</h1>
@@ -1919,8 +2068,9 @@
       </section>
 
       <section class="screen detected-screen" aria-label="Detected purchase">
-        <section class="detected-copy"><span class="check-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.4 4 4L18.4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-          <h1>Purchase found</h1>
+        <section class="detected-copy"><span class="purchase-receipt" aria-hidden="true"><img src="assets/purchase-receipt-detected.png" alt=""><span class="receipt-tick"><svg viewBox="0 0 24 24"><path pathLength="1" d="m6 12 4 4 8-8" /></svg></span></span>
+          <h1>Purchase detected.</h1>
+          <p class="purchase-intro">Tracer found a recent purchase.<br>We can keep watching it for you.</p>
 
         </section>
 
@@ -1928,6 +2078,7 @@
           <div class="product-head">
             <div class="product-title">
               <h2 id="productName">Detected purchase</h2>
+              <p class="purchase-date-line">Ordered <span id="purchaseDate">Unknown</span></p>
               <p class="item-subtitle" id="itemSubtitle">Ready to protect</p>
               <span class="match" id="matchStatus">Needs review</span>
             </div>
@@ -1941,10 +2092,6 @@
             <div class="detail-row">
               <dt>Retailer</dt>
               <dd id="retailer">Store</dd>
-            </div>
-            <div class="detail-row">
-              <dt>Purchase date</dt>
-              <dd id="purchaseDate">Unknown</dd>
             </div>
             <div class="detail-row" id="productUrlRow">
               <dt>Product URL</dt>
@@ -1993,7 +2140,6 @@
           <button class="save-review" id="saveReview" type="button">Save details</button>
         </section>
 
-        <p class="ready-copy">Ready to protect this purchase<br />and start monitoring.</p>
         <section class="actions">
           <button class="protect" id="protect" type="button" disabled>Protect this purchase</button>
           <button class="text-action" id="reviewDetails" type="button" disabled>Review details</button>
@@ -2017,13 +2163,10 @@
             <i style="--x: 50%; --y: 51px; --tx: -15px; --ty: -31px; --r: 164deg; --tone: #7e956f"></i>
             <i style="--x: 50%; --y: 51px; --tx: 15px; --ty: -35px; --r: 185deg; --tone: #c9c0b1"></i>
           </div>
-          <span class="check-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="24" height="24">
-              <path d="m6 12.4 4 4L18.4 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
+          <span class="purchase-receipt" aria-hidden="true"><img src="assets/purchase-receipt-detected.png" alt=""><span class="receipt-tick"><svg viewBox="0 0 24 24"><path pathLength="1" d="m6 12 4 4 8-8" /></svg></span></span>
           <section class="success-copy">
             <h1 id="successTitle">Purchase protected</h1>
+            <p class="purchase-intro">Tracer is now watching this purchase for price drops.</p>
 
           </section>
         </section>
@@ -2066,7 +2209,7 @@
           <article class="settings-card">
             <div class="settings-card-copy">
               <strong>Price drop alerts</strong>
-              <p>Get notified when a protected item drops in price.</p>
+              <p>Get notified when a saved or protected item drops in price.</p>
             </div>
             <button class="settings-switch" id="priceDropAlertsToggle" type="button" role="switch" aria-checked="true" aria-label="Price drop alerts"></button>
           </article>
@@ -2074,7 +2217,7 @@
           <article class="settings-card">
             <div class="settings-card-copy">
               <strong>Monitoring</strong>
-              <p>Tracer monitors your protected purchases automatically.</p>
+              <p>Tracer monitors your saved items and protected purchases automatically.</p>
             </div>
             <button class="settings-switch" id="monitoringToggle" type="button" role="switch" aria-checked="true" aria-label="Monitoring"></button>
           </article>
@@ -2083,7 +2226,7 @@
             <button class="settings-card settings-clear" id="clearProtectedPurchases" type="button" aria-expanded="false" aria-controls="clearConfirmation">
               <span class="settings-card-copy">
                 <strong>Clear protected purchases</strong>
-                <p>Remove all saved purchases from this device.</p>
+                <p>Stop monitoring all purchases.</p>
               </span>
               <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </button>
@@ -2136,8 +2279,9 @@ const state = new URLSearchParams(location.search).get('state') || 'detected';
 document.title = 'Tracer · ' + state + ' preview';
 const app = document.getElementById('app');
 app.dataset.screen = state === 'items-empty' || state === 'items-paused' ? 'items' : state === 'clear-confirmation' ? 'settings' : state === 'offline-saved' ? 'protected' : state;
+if(state==='detected') document.getElementById('protect').disabled=false;
 const set = (id,text) => {const el=document.getElementById(id);if(el)el.textContent=text;};
-set('productName','Sony WH-1000XM5');set('summaryProductName','Sony WH-1000XM5');set('totalPaid','£349.99');set('summaryPaid','£349.99');set('retailer','John Lewis');set('windowValue','Known retailer eligibility');
+set('productName','Sony WH-1000XM5');set('summaryProductName','Sony WH-1000XM5');set('totalPaid','£349.99');set('summaryPaid','£349.99');set('purchaseDate','24 May 2025');set('retailer','John Lewis');set('windowValue','Known retailer eligibility');
 set('detailName','Sony WH-1000XM5');
 if(state==='incomplete'){set('stateTitle','A few details are missing.');set('stateCopy','Review the purchase details before protecting this item.');}
 if(state==='offline-saved'){set('successTitle','Purchase saved');set('successCopy','Saved on this device. Monitoring starts automatically when Tracer reconnects.');set('summaryStatus','Watching');}

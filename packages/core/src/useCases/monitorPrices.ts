@@ -499,8 +499,13 @@ function validateSnapshot(
     throw new Error("Fetched product SKU does not match the protected product");
   }
 
-  if (snapshot.price.currency !== "GBP") {
-    throw new Error(`Unsupported monitoring currency ${snapshot.price.currency}`);
+  const purchaseCurrencies = new Set(purchases.map((purchase) => purchase.pricePaid.currency));
+  if (purchaseCurrencies.size !== 1 || !purchaseCurrencies.has(snapshot.price.currency)) {
+    throw new Error("Fetched product currency does not match the protected purchase");
+  }
+
+  if (previousObservation && previousObservation.price.currency !== snapshot.price.currency) {
+    throw new Error("Fetched product currency changed between monitoring checks");
   }
 
   if (snapshot.price.amountMinor <= 0) {

@@ -67,6 +67,7 @@ interface ProtectionStatusResponse {
 }
 
 interface DashboardPurchase extends PurchaseRecord {
+  imageUrl?: string | null;
   currentPriceDisplay?: string | null;
   monitoringStatus?: "watching" | "price_dropped" | "monitoring_paused" | "unable_to_check" | "unavailable";
   savingDisplay?: string | null;
@@ -121,10 +122,11 @@ type PopupState =
   | "detail"
   | "settings";
 
-const defaultApiBaseUrl = "http://127.0.0.1:4000";
-const defaultDashboardBaseUrl = "http://127.0.0.1:5173";
-const defaultUserId = "dev-user-afterbuy";
-const scanTimeoutMs = 3_500;
+const defaultApiBaseUrl = import.meta.env.VITE_AFTERBUY_API_BASE_URL ?? "http://127.0.0.1:4000";
+const defaultDashboardBaseUrl = import.meta.env.VITE_AFTERBUY_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173";
+const defaultUserId = import.meta.env.VITE_AFTERBUY_USER_ID ?? "dev-user-afterbuy";
+const scanTimeoutMs = 1_000;
+const cacheLookupTimeoutMs = 200;
 const pendingPurchasesStorageKey = "tracerPendingPurchases";
 const startWithDetectedPreview = import.meta.env.MODE === "preview";
 
@@ -211,8 +213,13 @@ let dashboardCache: DashboardData | null = null;
 let confettiPopulated = false;
 let tracerUserIdPromise: Promise<string> | null = null;
 let monitoringEnabled = true;
+let protectedItemCount = 0;
+let savedItemCount = 0;
+let savedItemsRecoveryRequested = false;
 
 let savedProduct: SavedProduct | null = null;
+let savedImageCandidates: string[] = [];
+let savedImageIndex = 0;
 const savedTab = getElement<HTMLButtonElement>('savedTab');
 const protectedTab = getElement<HTMLButtonElement>('protectedTab');
 const saveToTracer = getElement<HTMLButtonElement>('saveToTracer');
@@ -262,12 +269,11 @@ const preferencesReady = chrome.storage.sync.get([
   setSwitchValue(priceDropAlertsToggle, stored.priceDropAlertsEnabled !== false);
   monitoringEnabled = stored.monitoringEnabled !== false;
   setSwitchValue(monitoringToggle, monitoringEnabled);
-  void persistMonitoringSetting(monitoringEnabled).catch(() => undefined);
 });
 
-void refreshOpportunityStatus();
 if (startWithDetectedPreview) {
   renderDetectedPreview();
+  void refreshOpportunityStatus();
 } else {
   void scanActiveTab();
 }
@@ -536,6 +542,7 @@ async function scanActiveTab(): Promise<void> {
   } finally {
     if (runId === activeScanRunId) {
       scanButton.disabled = false;
+      void refreshOpportunityStatus();
     }
   }
 }
@@ -567,7 +574,9 @@ function renderCapturedPurchase(draft: PurchaseDraft, summary?: ScanResponse["su
   const total = sumLineItemTotals(draft.lineItems);
   const itemCount = draft.lineItems.length;
 
-  productName.textContent = primaryItem?.productName ?? summary?.productName ?? "Detected purchase";
+  productName.textContent = itemCount > 1
+    ? `${itemCount} items in this order`
+    : primaryItem?.productName ?? summary?.productName ?? "Detected purchase";
   itemSubtitle.textContent = buildSubtitle(draft, itemCount);
   totalPaid.textContent = total ? formatMoney(total) : summary?.totalDisplay ?? "Needs review";
   retailerLabel.textContent = draft.retailerName || summary?.retailerName || "Store";
@@ -602,7 +611,9 @@ function renderProtectedPurchase(options: {
         : "We’re now watching for price drops. We’ll let you know when it changes.";
   summaryStatus.textContent = options.pendingSync ? "Watching" : "Monitoring active";
   app.dataset.celebrate = String(options.newlyProtected);
-  summaryProductName.textContent = primaryItem?.productName ?? "Protected purchase";
+  summaryProductName.textContent = draft && draft.lineItems.length > 1
+    ? `${draft.lineItems.length} items in this order`
+    : primaryItem?.productName ?? "Protected purchase";
   summarySubtitle.textContent = draft ? buildSubtitle(draft, draft.lineItems.length) : "Monitoring active";
   summaryPaid.textContent = options.pricePaidDisplay ?? (total ? formatMoney(total) : "Protected");
   renderState(options.title === "Already protected" ? "duplicate" : "protected", options.title, successCopy.textContent);
@@ -736,11 +747,19 @@ function buildReviewedDraft(
 
 function getCachedPageScan(tabId: number, url: string): Promise<ScanResponse | null> {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (response: ScanResponse | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve(response);
+    };
+    const timeoutId = window.setTimeout(() => finish(null), cacheLookupTimeoutMs);
     chrome.runtime.sendMessage(
       { type: "TRACER_GET_CACHED_PAGE_SCAN", tabId, url },
       (response?: CachedScanMessageResponse) => {
         void chrome.runtime.lastError;
-        resolve(response?.ok && response.response ? response.response : null);
+        finish(response?.ok && response.response ? response.response : null);
       },
     );
   });
@@ -749,7 +768,10 @@ function getCachedPageScan(tabId: number, url: string): Promise<ScanResponse | n
 async function scanPurchasePage(tabId: number): Promise<ScanResponse | null> {
   try {
     await withTimeout(
-      chrome.scripting.executeScript({ target: { tabId }, files: ["genericCapture.js"] }),
+      chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["genericCapture.js", "watchlistCapture.js"],
+      }),
       scanTimeoutMs,
       "Purchase scan timed out.",
     );
@@ -866,24 +888,40 @@ function samePurchaseDraft(left: PurchaseDraft, right: PurchaseDraft): boolean {
   if (
     left.retailerId !== right.retailerId ||
     left.purchasedAt !== right.purchasedAt ||
-    (left.orderReference && right.orderReference && left.orderReference !== right.orderReference)
+    left.orderReference !== right.orderReference ||
+    left.lineItems.length !== right.lineItems.length
   ) {
     return false;
   }
 
-  const leftItem = left.lineItems[0];
-  const rightItem = right.lineItems[0];
-  if (!leftItem || !rightItem) return false;
+  const unmatchedItems = [...right.lineItems];
+  return left.lineItems.every((leftItem) => {
+    const matchIndex = unmatchedItems.findIndex((rightItem) =>
+      samePurchaseLineItem(leftItem, rightItem),
+    );
+    if (matchIndex === -1) return false;
+    unmatchedItems.splice(matchIndex, 1);
+    return true;
+  });
+}
+
+function samePurchaseLineItem(
+  left: PurchaseDraft["lineItems"][number],
+  right: PurchaseDraft["lineItems"][number],
+): boolean {
   return (
-    leftItem.productName.trim().toLowerCase() === rightItem.productName.trim().toLowerCase() &&
-    leftItem.pricePaid.currency === rightItem.pricePaid.currency &&
-    leftItem.pricePaid.amountMinor === rightItem.pricePaid.amountMinor
+    left.productName.trim().toLowerCase() === right.productName.trim().toLowerCase() &&
+    left.pricePaid.currency === right.pricePaid.currency &&
+    left.pricePaid.amountMinor === right.pricePaid.amountMinor &&
+    left.quantity === right.quantity
   );
 }
 
 function buildPendingPurchaseId(draft: PurchaseDraft): string {
-  const item = draft.lineItems[0];
-  const input = `${draft.retailerId}|${draft.orderReference ?? ""}|${draft.purchasedAt}|${item?.productName ?? "purchase"}|${item?.pricePaid.amountMinor ?? 0}`;
+  const itemFingerprint = draft.lineItems
+    .map((item) => `${item.productName.trim().toLowerCase()}|${item.pricePaid.currency}|${item.pricePaid.amountMinor}|${item.quantity}`)
+    .join("||");
+  const input = `${draft.retailerId}|${draft.orderReference ?? ""}|${draft.purchasedAt}|${itemFingerprint}`;
   let hash = 2_166_136_261;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
@@ -909,14 +947,22 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
 }
 
 function refreshOpportunityStatus(): Promise<void> {
-  return new Promise((resolve) => {
+  const protectedCount = new Promise<void>((resolve) => {
     chrome.runtime.sendMessage({ type: "TRACER_SYNC_OPPORTUNITIES" }, (response?: SyncMessageResponse) => {
       if (response?.ok) {
-        menuItemsCount.textContent = `(${response.response.protectedPurchaseCount})`;
+        protectedItemCount = response.response.protectedPurchaseCount;
       }
       resolve();
     });
   });
+  const savedCount = watchlistRequest<SavedItem[]>('LIST').then((items) => {
+    savedItemCount = items.length;
+  }).catch(() => undefined);
+  return Promise.all([protectedCount, savedCount]).then(updateMenuItemsCount);
+}
+
+function updateMenuItemsCount(): void {
+  menuItemsCount.textContent = `(${protectedItemCount + savedItemCount})`;
 }
 
 function sumLineItemTotals(items: PurchaseLineItemDraft[]): Money | null {
@@ -1078,6 +1124,9 @@ async function toggleSetting(
     if (key === "monitoringEnabled") {
       monitoringEnabled = next;
       void persistMonitoringSetting(next).catch(() => undefined);
+      if (currentState === 'items' && savedTab.getAttribute('aria-pressed') === 'true') {
+        void showSavedItems();
+      }
     }
   } catch {
     setSwitchValue(toggle, previous);
@@ -1133,11 +1182,22 @@ async function clearAllProtectedPurchases(): Promise<void> {
   confirmClearPurchases.disabled = true;
   cancelClearPurchases.disabled = true;
   clearProtectedPurchases.setAttribute("aria-busy", "true");
+  let clearedLocalPurchases = false;
 
   try {
     await preferencesReady;
     const userId = await getTracerUserId();
     const pendingPurchases = await getPendingPurchases();
+    if (pendingPurchases.length > 0) {
+      await chrome.storage.local.set({ [pendingPurchasesStorageKey]: [] });
+      clearedLocalPurchases = true;
+      if (dashboardCache) {
+        dashboardCache = {
+          ...dashboardCache,
+          purchases: dashboardCache.purchases.filter((item) => !item.pendingDraftId),
+        };
+      }
+    }
     let data = dashboardCache;
 
     if (!data) {
@@ -1175,14 +1235,11 @@ async function clearAllProtectedPurchases(): Promise<void> {
       }
     }
 
-    if (pendingPurchases.length > 0) {
-      await chrome.storage.local.set({ [pendingPurchasesStorageKey]: [] });
-    }
-
     dashboardCache = { purchases: [], opportunities: [] };
-    menuItemsCount.textContent = "(0)";
+    protectedItemCount = 0;
+    updateMenuItemsCount();
     itemsCount.textContent = "0 items";
-    renderItemsMessage("No protected purchases", "Items you protect will appear here.");
+    renderItemsMessage("No protected purchases", "Items you protect will appear here.", true, "Refresh");
     protectedPurchaseId = null;
     selectedPurchaseId = null;
     if (settingsReturnState === "protected" || settingsReturnState === "duplicate") {
@@ -1193,7 +1250,10 @@ async function clearAllProtectedPurchases(): Promise<void> {
     hideClearConfirmation();
   } catch (error) {
     console.error("Tracer could not clear protected purchases", error);
-    clearConfirmationMessage.textContent = "Couldn’t clear the purchases. Try again.";
+    dashboardCache = null;
+    clearConfirmationMessage.textContent = clearedLocalPurchases
+      ? "Local purchases cleared. Reconnect to clear server purchases."
+      : "Couldn’t reach or update your purchases. Check the server connection, then retry.";
     clearConfirmationMessage.dataset.error = "true";
     confirmClearPurchases.disabled = false;
   } finally {
@@ -1233,12 +1293,15 @@ async function clearAllSavedItems(): Promise<void> {
   clearSavedItems.setAttribute("aria-busy", "true");
   try {
     await watchlistRequest<void>('CLEAR');
+    savedItemCount = 0;
+    updateMenuItemsCount();
     if (savedProduct && settingsReturnState === 'watchlist') {
       getElement('watchHeading').textContent = 'Save for later.';
       saveToTracer.textContent = 'Save to Tracer';
       saveToTracer.dataset.status = 'ready';
       saveToTracer.disabled = false;
       watchFeedback.textContent = '';
+      renderSavedProduct(getElement('watchProduct'), savedProduct, true);
     }
     hideClearSavedConfirmation();
   } catch (error) {
@@ -1288,7 +1351,7 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
     return;
   }
 
-  itemsList.replaceChildren();
+  renderItemsLoading(options.force ? "Refreshing purchases…" : "Loading purchases…");
   try {
     await preferencesReady;
     const [userId, pendingPurchases] = await Promise.all([getTracerUserId(), getPendingPurchases()]);
@@ -1320,7 +1383,7 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
       return;
     }
     itemsCount.textContent = "0 items";
-    renderItemsMessage("No locally saved purchases", "Tracer will also check your synced items when it reconnects.", true);
+    renderItemsMessage("No purchases saved offline", "Reconnect to check synced items.", true);
   }
 }
 
@@ -1351,6 +1414,7 @@ function mergePendingDashboard(data: DashboardData, pending: PendingProtectedPur
     };
     if (pendingPurchase.draft.orderReference) purchase.orderReference = pendingPurchase.draft.orderReference;
     if (item.externalProductId) purchase.externalProductId = item.externalProductId;
+    if (item.imageUrl) purchase.imageUrl = item.imageUrl;
     return purchase;
   })).filter((purchase) => !remoteKeys.has(`${purchase.retailerId}|${purchase.orderReference ?? ""}|${purchase.purchasedAt}|${purchase.productName.trim().toLowerCase()}`));
 
@@ -1366,11 +1430,12 @@ function renderProtectedItems(data: DashboardData, loadRunId: number): void {
   }
 
   const { purchases, opportunities } = data;
+  protectedItemCount = purchases.length;
   itemsCount.textContent = `${purchases.length} item${purchases.length === 1 ? "" : "s"}`;
-  menuItemsCount.textContent = `(${purchases.length})`;
+  updateMenuItemsCount();
 
   if (purchases.length === 0) {
-    renderItemsMessage("No protected purchases", "Items you protect will appear here.");
+    renderItemsMessage("No protected purchases", "Items you protect will appear here.", true, "Refresh");
     return;
   }
 
@@ -1388,13 +1453,37 @@ function renderProtectedItems(data: DashboardData, loadRunId: number): void {
     const priceDropped = !monitoringPaused && purchase.monitoringStatus === "price_dropped";
     const savingDisplay = purchase.savingDisplay ?? opportunity?.potentialSavingDisplay ?? "";
     const row = document.createElement("button");
+    row.type = "button";
     row.className = "item-row";
     row.dataset.alert = String(priceDropped);
+    row.dataset.error = String(
+      !monitoringPaused &&
+      (purchase.monitoringStatus === "unable_to_check" || purchase.monitoringStatus === "unavailable"),
+    );
     row.dataset.paused = String(monitoringPaused);
+    row.dataset.hasImage = String(Boolean(purchase.imageUrl));
+
+    if (purchase.imageUrl) {
+      const image = document.createElement("img");
+      image.src = purchase.imageUrl;
+      image.alt = "";
+      image.loading = "lazy";
+      image.setAttribute("loading", "lazy");
+      image.decoding = "async";
+      image.referrerPolicy = "no-referrer";
+      image.addEventListener("error", () => {
+        image.remove();
+        row.dataset.hasImage = "false";
+      });
+      row.append(image);
+    }
+
     const copy = document.createElement("span");
+    copy.className = "item-row-copy";
     const name = document.createElement("strong");
     name.textContent = purchase.productName;
     const status = document.createElement("span");
+    status.className = "item-row-status";
     status.textContent = monitoringPaused ? "● Paused" : monitoringStatusLabel(purchase.monitoringStatus);
     copy.append(name, status);
     const saving = document.createElement("em");
@@ -1409,7 +1498,12 @@ function renderProtectedItems(data: DashboardData, loadRunId: number): void {
   itemsList.replaceChildren(rows);
 }
 
-function renderItemsMessage(title: string, copy: string, retry = false): void {
+function renderItemsMessage(
+  title: string,
+  copy: string,
+  retry = false,
+  buttonLabel = "Try again",
+): void {
   const message = document.createElement("div");
   message.className = "items-message";
   const heading = document.createElement("strong");
@@ -1421,12 +1515,38 @@ function renderItemsMessage(title: string, copy: string, retry = false): void {
   if (retry) {
     const retryButton = document.createElement("button");
     retryButton.type = "button";
-    retryButton.textContent = "Try again";
+    retryButton.className = "items-refresh";
+    retryButton.setAttribute(
+      "aria-label",
+      buttonLabel === "Refresh" ? "Refresh protected purchases" : "Try loading purchases again",
+    );
+    retryButton.title = buttonLabel;
+    retryButton.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>${buttonLabel}</span>
+    `;
     retryButton.addEventListener("click", () => { void showProtectedItems({ force: true }); });
     message.append(retryButton);
   }
 
   itemsList.replaceChildren(message);
+}
+
+function renderItemsLoading(label: string): void {
+  const loading = document.createElement("div");
+  loading.className = "items-loading";
+  loading.setAttribute("role", "status");
+
+  const spinner = document.createElement("span");
+  spinner.className = "items-loading-spinner";
+  spinner.setAttribute("aria-hidden", "true");
+
+  const copy = document.createElement("span");
+  copy.textContent = label;
+  loading.append(spinner, copy);
+  itemsList.replaceChildren(loading);
 }
 
 function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOpportunity): void {
@@ -1642,6 +1762,50 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+const imagePresentationParams = new Set([
+  "auto", "bg", "background", "cache", "cb", "crop", "dpr", "fit", "fm", "fmt", "format",
+  "h", "height", "hei", "imheight", "imwidth", "ixlib", "maxheight", "maxwidth", "q", "quality",
+  "rect", "sh", "sw", "tr", "transformation", "v", "ver", "version", "w", "wid", "width",
+]);
+
+function dedupeSavedImageCandidates(candidates: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (!value) continue;
+    const identity = savedImageIdentity(value);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    unique.push(value);
+  }
+  return unique;
+}
+
+function savedImageIdentity(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    for (const key of [...url.searchParams.keys()]) {
+      const normalizedKey = key.toLowerCase();
+      if (
+        imagePresentationParams.has(normalizedKey) ||
+        normalizedKey.startsWith("utm_") ||
+        /^\$.*\$$/.test(normalizedKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+    url.searchParams.sort();
+    const port = url.port && !((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80"))
+      ? `:${url.port}`
+      : "";
+    return `${url.hostname.toLowerCase()}${port}${url.pathname}${url.search}`;
+  } catch {
+    return value;
+  }
+}
+
 function getElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
 
@@ -1661,17 +1825,27 @@ async function watchlistRequest<T>(type: string, payload: Record<string, unknown
 
 async function offerSaveProduct(tabId: number, runId: number): Promise<boolean> {
   try {
-    await withTimeout(chrome.scripting.executeScript({target:{tabId}, files:['watchlistCapture.js']}), scanTimeoutMs, 'Product scan timed out.');
-    const response = await withTimeout(chrome.tabs.sendMessage(tabId, {type:'TRACER_EXTRACT_SAVED_PRODUCT'}), scanTimeoutMs, 'Product scan timed out.') as {product: SavedProduct | null};
+    const response = await withTimeout(chrome.tabs.sendMessage(tabId, {type:'TRACER_EXTRACT_SAVED_PRODUCT'}), scanTimeoutMs, 'Product scan timed out.') as {
+      product: SavedProduct | null;
+      imageCandidates?: string[];
+    };
     if (runId !== activeScanRunId) return true;
     if (!response?.product) return false;
     savedProduct = response.product;
+    savedImageCandidates = dedupeSavedImageCandidates([
+      savedProduct.imageUrl,
+      ...(response.imageCandidates ?? []),
+    ]);
+    savedImageIndex = Math.max(0, savedImageCandidates.indexOf(savedProduct.imageUrl ?? ''));
+    if (!savedProduct.imageUrl && savedImageCandidates[0]) {
+      savedProduct = { ...savedProduct, imageUrl: savedImageCandidates[0] };
+    }
     const savedItems = await watchlistRequest<SavedItem[]>('LIST').catch(() => []);
     if (runId !== activeScanRunId) return true;
     const alreadySaved = savedItems.some((item) =>
       normalizeSavedUrl(item.canonicalUrl) === normalizeSavedUrl(savedProduct!.canonicalUrl)
     );
-    renderSavedProduct(getElement('watchProduct'), savedProduct);
+    renderSavedProduct(getElement('watchProduct'), savedProduct, !alreadySaved);
     saveToTracer.disabled = alreadySaved;
     saveToTracer.textContent = alreadySaved ? 'Already saved' : 'Save to Tracer';
     saveToTracer.dataset.status = alreadySaved ? 'existing' : 'ready';
@@ -1688,11 +1862,16 @@ async function saveCurrentProduct(): Promise<void> {
   saveToTracer.textContent = 'Saving…';
   saveToTracer.dataset.status = 'saving';
   try {
-    await watchlistRequest<{duplicate:boolean}>('SAVE', {product:savedProduct});
+    const result = await watchlistRequest<{duplicate:boolean}>('SAVE', {product:savedProduct});
+    if (!result.duplicate) {
+      savedItemCount += 1;
+      updateMenuItemsCount();
+    }
     getElement('watchHeading').textContent = 'Saved.';
+    renderSavedProduct(getElement('watchProduct'), savedProduct);
     saveToTracer.textContent = 'Saved';
     saveToTracer.dataset.status = 'saved';
-    watchFeedback.textContent = 'Find it in Your items → Saved. Buy it, then protect your purchase with Tracer.';
+    watchFeedback.textContent = 'Tracer is now watching this price. Find it in Your items → Saved.';
     populateConfetti(watchlistConfetti);
     app.dataset.celebrate = 'true';
     window.setTimeout(() => {
@@ -1711,19 +1890,47 @@ function setItemsSegment(saved: boolean): void {
   protectedTab.setAttribute('aria-pressed', String(!saved));
 }
 
-function renderSavedProduct(container: HTMLElement, item: SavedProduct | SavedItem): void {
+function renderSavedProduct(
+  container: HTMLElement,
+  item: SavedProduct | SavedItem,
+  showImagePicker = false,
+): void {
   container.replaceChildren();
   container.dataset.hasImage = String(Boolean(item.imageUrl));
   if (item.imageUrl) {
     const image = document.createElement('img');
     image.src = item.imageUrl;
     image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
     image.referrerPolicy = 'no-referrer';
     image.addEventListener('error', () => {
-      image.remove();
-      container.dataset.hasImage = 'false';
+      if (showImagePicker && savedProduct) {
+        savedImageCandidates = savedImageCandidates.filter((url) => url !== item.imageUrl);
+        savedImageIndex = savedImageCandidates.length ? savedImageIndex % savedImageCandidates.length : 0;
+        const nextProduct = { ...savedProduct };
+        const nextImage = savedImageCandidates[savedImageIndex];
+        if (nextImage) nextProduct.imageUrl = nextImage;
+        else delete nextProduct.imageUrl;
+        savedProduct = nextProduct;
+        renderSavedProduct(container, savedProduct, true);
+      } else {
+        image.remove();
+        container.dataset.hasImage = 'false';
+      }
     });
-    container.append(image);
+    if (showImagePicker && savedImageCandidates.length > 1) {
+      const picker = document.createElement('div');
+      picker.className = 'saved-image-picker';
+      const previous = createImageArrow('previous');
+      const next = createImageArrow('next');
+      previous.addEventListener('click', () => selectSavedImage(-1));
+      next.addEventListener('click', () => selectSavedImage(1));
+      picker.append(previous, image, next);
+      container.append(picker);
+    } else {
+      container.append(image);
+    }
   }
   const copy = document.createElement('div');
   copy.className = 'saved-copy';
@@ -1732,23 +1939,58 @@ function renderSavedProduct(container: HTMLElement, item: SavedProduct | SavedIt
   const retailer = document.createElement('p');
   retailer.textContent = item.retailer;
   copy.append(title, retailer);
-  if (item.savedPrice) {
+  const displayPrice = 'currentPrice' in item && item.currentPrice
+    ? item.currentPrice
+    : item.savedPrice;
+  if (displayPrice) {
     const price = document.createElement('p');
     price.className = 'saved-price';
-    price.textContent = `${formatMoney(item.savedPrice)} · price when saved`;
+    price.textContent = `${formatMoney(displayPrice)} · ${'currentPrice' in item && item.currentPrice ? 'current price' : 'price when saved'}`;
     copy.append(price);
   }
   if ('monitoringStatus' in item) {
     const status = document.createElement('p');
     status.className = 'saved-monitoring-status';
     const dropped = item.monitoringStatus === 'price_dropped' && item.priceDropAmount;
-    status.dataset.alert = String(Boolean(dropped));
-    status.textContent = dropped
+    const monitoringState = !monitoringEnabled
+      ? 'off'
+      : dropped
+        ? 'alert'
+        : item.monitoringStatus === 'watching'
+          ? 'watching'
+          : 'unavailable';
+    status.dataset.state = monitoringState;
+    status.textContent = monitoringState === 'off'
+      ? '● Price watching is off'
+      : dropped
       ? `● Price dropped ${formatMoney(item.priceDropAmount!)}${item.priceDropPercent ? ` (${item.priceDropPercent}%)` : ''}`
       : item.monitoringStatus === 'unavailable' ? '● Unable to check price' : '● Watching for price drops';
     copy.append(status);
   }
   container.append(copy);
+}
+
+function createImageArrow(direction: 'previous' | 'next'): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `saved-image-arrow saved-image-arrow--${direction}`;
+  button.setAttribute('aria-label', `${direction === 'previous' ? 'Previous' : 'Next'} product image`);
+  button.innerHTML = `
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="${direction === 'previous' ? 'm12 5-5 5 5 5' : 'm8 5 5 5-5 5'}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+  return button;
+}
+
+function selectSavedImage(offset: -1 | 1): void {
+  if (!savedProduct || savedImageCandidates.length < 2) return;
+  savedImageIndex = (savedImageIndex + offset + savedImageCandidates.length) % savedImageCandidates.length;
+  const selectedImage = savedImageCandidates[savedImageIndex];
+  if (!selectedImage) return;
+  const nextProduct = { ...savedProduct, imageUrl: selectedImage };
+  savedProduct = nextProduct;
+  renderSavedProduct(getElement('watchProduct'), nextProduct, true);
 }
 
 async function showSavedItems(): Promise<void> {
@@ -1760,14 +2002,21 @@ async function showSavedItems(): Promise<void> {
   try {
     const items = await watchlistRequest<SavedItem[]>('LIST');
     if (runId !== itemsLoadRunId || currentState !== 'items') return;
+    savedItemCount = items.length;
+    updateMenuItemsCount();
     itemsCount.textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'}`;
     if (!items.length) {
       renderItemsMessage('A place for your maybes.', 'Open Tracer on a product page and choose Save to Tracer.');
       return;
     }
-    for (const item of items.reverse()) {
+    const orderedItems = [...items].sort((left, right) => {
+      const alertDifference = Number(right.monitoringStatus === 'price_dropped') - Number(left.monitoringStatus === 'price_dropped');
+      return alertDifference || right.savedAt.localeCompare(left.savedAt);
+    });
+    for (const item of orderedItems) {
       const row = document.createElement('article');
       row.className = 'saved-row';
+      row.dataset.alert = String(item.monitoringStatus === 'price_dropped');
       renderSavedProduct(row, item);
       const footer = document.createElement('footer');
       const open = document.createElement('a');
@@ -1788,8 +2037,23 @@ async function showSavedItems(): Promise<void> {
       row.append(footer);
       itemsList.append(row);
     }
+    if (!savedItemsRecoveryRequested && items.some(savedItemNeedsPriceRefresh)) {
+      savedItemsRecoveryRequested = true;
+      void watchlistRequest<void>('MONITOR').then(() => {
+        if (currentState === 'items' && savedTab.getAttribute('aria-pressed') === 'true') {
+          void showSavedItems();
+        }
+      }).catch(() => undefined);
+    }
   } catch {
     if (runId !== itemsLoadRunId || currentState !== 'items') return;
     renderItemsMessage('Saved items unavailable', 'Select Saved to try again. Your protected purchases are separate.');
   }
+}
+
+function savedItemNeedsPriceRefresh(item: SavedItem): boolean {
+  if (item.monitoringStatus === 'unavailable' || !item.lastCheckedAt) return true;
+  const lastCheckedAt = new Date(item.lastCheckedAt).getTime();
+  if (!Number.isFinite(lastCheckedAt)) return true;
+  return Date.now() - lastCheckedAt >= 6 * 60 * 60 * 1_000;
 }

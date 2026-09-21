@@ -116,7 +116,6 @@ function LandingPageB() {
       </div>
       <LandingBValueStatement />
       <LandingBFeatures />
-      <LandingBDemo />
       <Footer />
     </main>
   );
@@ -216,6 +215,18 @@ function LandingBValueStatement() {
     <section className="landing-b-value">
       <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
       <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
+      <div className="landing-b-video-placeholder" role="img" aria-label="Tracer product demo video placeholder">
+        <div className="landing-b-video-bar" aria-hidden="true">
+          <span /><span /><span />
+          <p>Tracer in action</p>
+          <small>Demo video</small>
+        </div>
+        <div className="landing-b-video-poster">
+          <div className="landing-b-video-play" aria-hidden="true"><i /></div>
+          <strong>See how Tracer keeps watch</strong>
+          <p>Product demo coming soon</p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -301,95 +312,6 @@ function LandingBFeatures() {
             </div>
           </div>
         </article>
-      </div>
-    </section>
-  );
-}
-
-function LandingBDemo() {
-  const [step, setStep] = useState(0);
-  const moments = [
-    {
-      label: "Save",
-      eyebrow: "FROM ANY SHOP",
-      title: "A home for every maybe.",
-      description: "Save something you like and find it again without keeping another tab open.",
-      state: "Saved item",
-      readoutLabel: "Saved price",
-      readout: "£349.99",
-      note: "Ready whenever you are",
-      action: "Saved to Tracer",
-    },
-    {
-      label: "Buy",
-      eyebrow: "AFTER CHECKOUT",
-      title: "Bought it? Tracer stays with it.",
-      description: "A saved item becomes a protected purchase, so the checking can continue after checkout.",
-      state: "Purchase detected",
-      readoutLabel: "You paid",
-      readout: "£349.99",
-      note: "Protection available",
-      action: "Purchase protected",
-    },
-    {
-      label: "Watch",
-      eyebrow: "IN THE BACKGROUND",
-      title: "Nothing for you to remember.",
-      description: "Tracer quietly checks the price and keeps an eye on useful policy windows.",
-      state: "Still watching",
-      readoutLabel: "Current price",
-      readout: "£349.99",
-      note: "Checked just now",
-      action: "Monitoring automatically",
-    },
-    {
-      label: "Save money",
-      eyebrow: "WHEN IT MATTERS",
-      title: "A £30 drop, right on time.",
-      description: "When something meaningful changes, Tracer gives you a clear reason to come back.",
-      state: "Price drop detected",
-      readoutLabel: "New price",
-      readout: "£319.99",
-      note: "£30 less than you paid",
-      action: "Saving found",
-    },
-  ];
-  const moment = moments[step];
-  const momentIcons = [Bookmark, ShoppingBag, ShieldCheck, ArrowDown];
-
-  return (
-    <section className="landing-b-demo" aria-labelledby="landing-b-demo-title">
-      <header className="landing-b-demo-heading">
-        <div><span>FOLLOW ONE ITEM</span><h2 id="landing-b-demo-title">From “maybe”<br />to money saved.</h2></div>
-        <p>See how one product moves through Tracer—from the moment you save it to the moment its price moves.</p>
-      </header>
-      <div className="landing-b-journey-shell">
-        <div className="landing-b-journey-nav" role="group" aria-label="Item journey">
-          {moments.map((item, index) => {
-            const MomentIcon = momentIcons[index];
-            return <button key={item.label} aria-pressed={step === index} onClick={() => setStep(index)}><span><MomentIcon aria-hidden="true" size={17} /></span><small>{String(index + 1).padStart(2, "0")}</small><strong>{item.label}</strong></button>;
-          })}
-        </div>
-        <div className="landing-b-journey-main">
-          <div className="landing-b-journey-copy" key={`copy-${step}`}>
-            <span>{moment.eyebrow}</span>
-            <h3>{moment.title}</h3>
-            <p>{moment.description}</p>
-            <button onClick={() => setStep((step + 1) % moments.length)}>{step === moments.length - 1 ? "Start again" : "See the next moment"}<ArrowRight aria-hidden="true" size={17} /></button>
-          </div>
-          <div className="landing-b-journey-preview" key={`preview-${step}`}>
-            <div className="landing-b-journey-card">
-              <header><img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" /><span>{moment.state}</span></header>
-              <div className="landing-b-journey-product"><img src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" /><div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div></div>
-              <div className="landing-b-journey-readout" data-saving={step === 3}>
-                <div><small>{moment.readoutLabel}</small><strong>{moment.readout}</strong></div>
-                <span>{moment.note}</span>
-              </div>
-              <div className="landing-b-journey-status"><CheckCircle2 aria-hidden="true" size={17} /><span>{moment.action}</span></div>
-            </div>
-            {step === 3 && <div className="landing-b-journey-alert"><span><ArrowDown aria-hidden="true" size={22} /></span><div><strong>Price drop detected</strong><p>This item is now £30 less.</p></div><Bell aria-hidden="true" size={18} /></div>}
-          </div>
-        </div>
       </div>
     </section>
   );

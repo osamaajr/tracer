@@ -49,14 +49,14 @@
 
 .landing-b-hover-card {
   --card-rotation: 0deg;
-  --entry-delay: 120ms;
+  --entry-delay: 180ms;
   --entry-x: 0px;
   --entry-y: 16px;
   --float-distance: -3px;
   --float-duration: 7s;
   animation:
-    landing-b-card-enter 720ms var(--entry-delay) cubic-bezier(.22,1,.36,1) both,
-    landing-b-card-float var(--float-duration) calc(var(--entry-delay) + 900ms) ease-in-out infinite;
+    landing-b-card-enter 1200ms var(--entry-delay) cubic-bezier(.22,1,.36,1) both,
+    landing-b-card-float var(--float-duration) calc(var(--entry-delay) + 1380ms) ease-in-out infinite;
   background: #fffdfa;
   border: 1px solid rgb(77 88 99 / 10%);
   box-shadow: 0 18px 50px rgb(0 0 0 / 10%);
@@ -224,7 +224,7 @@
 
 .landing-b-alert-price {
   --card-rotation: 6deg;
-  --entry-delay: 200ms;
+  --entry-delay: 420ms;
   --entry-y: -10px;
   --float-duration: 6.8s;
   min-height: 104px;
@@ -236,7 +236,7 @@
 
 .landing-b-alert-up {
   --card-rotation: -8deg;
-  --entry-delay: 280ms;
+  --entry-delay: 660ms;
   --entry-x: 26px;
   --entry-y: 0px;
   --float-duration: 7.6s;
@@ -251,7 +251,7 @@
 
 .landing-b-alert-return {
   --card-rotation: -5deg;
-  --entry-delay: 360ms;
+  --entry-delay: 900ms;
   --entry-y: 18px;
   --float-duration: 8s;
   bottom: 38px;
@@ -485,7 +485,7 @@
 .landing-shell-b > .site-footer .footer-giant-wordmark em {
   display: inline-block;
   font-style: normal;
-  transform: translateX(-.025em);
+  transform: translateX(-.045em);
 }
 
 .landing-shell-b > .site-footer .footer-clouds {
@@ -555,7 +555,7 @@
   display: grid;
   justify-items: center;
   min-height: 58svh;
-  padding-bottom: 110px;
+  padding-bottom: 132px;
   padding-top: 96px;
   text-align: center;
 }
@@ -572,6 +572,93 @@
   font-size: 1.08rem;
   line-height: 1.55;
   margin: 26px 0 0;
+}
+
+.landing-b-video-placeholder {
+  background: #fffdfa;
+  border: 1px solid rgb(55 70 82 / 14%);
+  border-radius: 28px;
+  box-shadow: 0 28px 70px rgb(39 44 48 / 11%);
+  margin-top: clamp(52px, 6vw, 76px);
+  overflow: hidden;
+  text-align: left;
+  width: 100%;
+}
+
+.landing-b-video-bar {
+  align-items: center;
+  border-bottom: 1px solid rgb(55 70 82 / 10%);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 9px 9px 9px 1fr auto;
+  min-height: 54px;
+  padding: 0 22px;
+}
+
+.landing-b-video-bar > span {
+  background: #d5d9dc;
+  border-radius: 50%;
+  height: 9px;
+  width: 9px;
+}
+
+.landing-b-video-bar p,
+.landing-b-video-bar small {
+  color: #72777b;
+  font-size: .76rem;
+  margin: 0;
+}
+
+.landing-b-video-bar p {
+  justify-self: center;
+}
+
+.landing-b-video-poster {
+  align-content: center;
+  aspect-ratio: 16 / 8.6;
+  background:
+    linear-gradient(120deg, rgb(220 238 255 / 74%), rgb(255 253 247 / 74%)),
+    url('/assets/landing-b/tracer-sky.webp') 50% 70% / cover no-repeat;
+  display: grid;
+  justify-items: center;
+  min-height: 360px;
+  padding: 48px;
+  text-align: center;
+}
+
+.landing-b-video-play {
+  align-items: center;
+  background: #171813;
+  border-radius: 50%;
+  box-shadow: 0 14px 34px rgb(23 24 19 / 24%);
+  display: flex;
+  height: 78px;
+  justify-content: center;
+  margin-bottom: 24px;
+  width: 78px;
+}
+
+.landing-b-video-play i {
+  border-bottom: 9px solid transparent;
+  border-left: 15px solid #fff;
+  border-top: 9px solid transparent;
+  display: block;
+  margin-left: 5px;
+}
+
+.landing-b-video-poster strong {
+  color: #171813;
+  font-family: "Tracer B Reference Serif", Charter, Georgia, serif;
+  font-size: clamp(2rem, 3.8vw, 3.7rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+
+.landing-b-video-poster p {
+  color: #66615a;
+  font-size: .92rem;
+  margin-top: 16px;
 }
 
 .landing-b-body-section {
@@ -1100,9 +1187,8 @@
 
 .landing-shell-b .site-header.landing-header::before {
   background:
-    radial-gradient(circle at 18% 25%, rgb(255 255 255 / 94%) 0 18%, transparent 43%),
-    radial-gradient(circle at 76% 18%, rgb(255 247 238 / 72%) 0 16%, transparent 42%),
-    linear-gradient(180deg, rgb(249 252 255 / 91%), rgb(238 247 255 / 84%));
+    linear-gradient(90deg, rgb(255 253 249 / 91%) 0 42%, rgb(250 251 249 / 82%) 72%, rgb(255 250 242 / 86%) 100%),
+    url('/assets/landing-b/tracer-sky.webp') 88% 82% / 185% auto no-repeat;
   border-radius: inherit;
   content: "";
   inset: 0;
@@ -1256,6 +1342,27 @@
   .landing-b-value h2,
   .landing-b-final-cta h2 {
     font-size: clamp(2.8rem, 13vw, 4rem);
+  }
+
+  .landing-b-video-placeholder {
+    border-radius: 20px;
+    margin-top: 42px;
+  }
+
+  .landing-b-video-bar {
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  .landing-b-video-poster {
+    min-height: 260px;
+    padding: 32px 20px;
+  }
+
+  .landing-b-video-play {
+    height: 64px;
+    margin-bottom: 20px;
+    width: 64px;
   }
 
   .landing-b-body-section {
@@ -1431,351 +1538,6 @@
   .landing-b-subpage .contact-card { padding:26px 22px; }
 }
 
-.landing-b-demo {
-  margin: 0 auto;
-  max-width: 1280px;
-  padding: 76px 38px 128px;
-}
-
-.landing-b-demo-heading {
-  align-items: end;
-  display: grid;
-  gap: 56px;
-  grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
-  margin-bottom: 42px;
-}
-
-.landing-b-demo-heading span,
-.landing-b-journey-copy > span {
-  color: #65717e;
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .14em;
-}
-
-.landing-b-demo-heading h2,
-.landing-b-journey-copy h3 {
-  font-family: "Tracer B Reference Serif", Georgia, serif;
-  font-weight: 400;
-  letter-spacing: -.025em;
-}
-
-.landing-b-demo-heading h2 {
-  font-size: clamp(2.8rem, 4.7vw, 4.4rem);
-  line-height: .98;
-  margin: 17px 0 0;
-}
-
-.landing-b-demo-heading > p {
-  color: #66615a;
-  font-size: 1rem;
-  line-height: 1.65;
-  margin: 0 0 5px;
-  max-width: 390px;
-}
-
-.landing-b-journey-shell {
-  background: #fffdfa;
-  border: 1px solid rgb(48 64 79 / 12%);
-  border-radius: 28px;
-  box-shadow: 0 24px 70px rgb(45 66 87 / 10%);
-  overflow: hidden;
-}
-
-.landing-b-journey-nav {
-  background: #fffdfa;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.landing-b-journey-nav button {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-right: 1px solid rgb(48 64 79 / 10%);
-  color: #747873;
-  cursor: pointer;
-  display: grid;
-  font: inherit;
-  gap: 3px 10px;
-  grid-template-columns: 34px 1fr;
-  padding: 17px 20px;
-  text-align: left;
-  transition: background 220ms ease, color 220ms ease;
-}
-
-.landing-b-journey-nav button:last-child {
-  border-right: 0;
-}
-
-.landing-b-journey-nav button > span {
-  align-items: center;
-  background: #f0f1ef;
-  border-radius: 50%;
-  display: flex;
-  grid-row: 1 / 3;
-  height: 34px;
-  justify-content: center;
-  width: 34px;
-}
-
-.landing-b-journey-nav button small {
-  font-size: .62rem;
-  letter-spacing: .08em;
-}
-
-.landing-b-journey-nav button strong {
-  color: #2b2c29;
-  font-size: .82rem;
-}
-
-.landing-b-journey-nav button[aria-pressed="true"] {
-  background: #e3effb;
-  color: #275b8f;
-}
-
-.landing-b-journey-nav button[aria-pressed="true"] > span {
-  background: #fff;
-  color: #1769b1;
-}
-
-.landing-b-journey-main {
-  align-items: center;
-  background:
-    linear-gradient(90deg, rgb(226 240 253 / 92%), rgb(233 244 253 / 80%)),
-    url('/assets/landing-b/tracer-sky.webp') center 54% / cover;
-  border-top: 1px solid rgb(48 64 79 / 10%);
-  display: grid;
-  gap: clamp(48px, 6vw, 86px);
-  grid-template-columns: minmax(0, 1fr) minmax(390px, .9fr);
-  min-height: 500px;
-  overflow: hidden;
-  padding: clamp(46px, 5vw, 68px);
-  position: relative;
-}
-
-.landing-b-journey-main::after {
-  background: radial-gradient(ellipse at 50% 130%, rgb(255 252 247 / 84%) 0 32%, transparent 68%);
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-}
-
-.landing-b-journey-copy,
-.landing-b-journey-preview {
-  position: relative;
-  z-index: 1;
-}
-
-.landing-b-journey-copy {
-  animation: landing-b-demo-enter 360ms ease both;
-  max-width: 500px;
-}
-
-.landing-b-journey-copy h3 {
-  font-size: clamp(2.6rem, 4vw, 3.8rem);
-  line-height: 1;
-  margin: 18px 0;
-}
-
-.landing-b-journey-copy p {
-  color: #536577;
-  font-size: 1rem;
-  line-height: 1.65;
-  margin: 0;
-  max-width: 430px;
-}
-
-.landing-b-journey-copy button {
-  align-items: center;
-  background: #171915;
-  border: 0;
-  border-radius: 999px;
-  color: #fff;
-  cursor: pointer;
-  display: inline-flex;
-  font: inherit;
-  font-size: .84rem;
-  gap: 10px;
-  margin-top: 28px;
-  padding: 13px 18px;
-}
-
-.landing-b-journey-preview {
-  animation: landing-b-demo-enter 360ms ease both;
-  justify-self: end;
-  padding-bottom: 34px;
-  width: min(100%, 480px);
-}
-
-.landing-b-journey-card {
-  background: #fffdfa;
-  border: 1px solid rgb(54 65 75 / 12%);
-  border-radius: 24px;
-  box-shadow: 0 22px 48px rgb(43 66 89 / 14%);
-  padding: 25px;
-}
-
-.landing-b-journey-card header {
-  align-items: center;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.landing-b-journey-card header img {
-  height: 31px;
-  object-fit: contain;
-  width: 92px;
-}
-
-.landing-b-journey-card header span {
-  color: #69726b;
-  font-size: .74rem;
-}
-
-.landing-b-journey-product {
-  align-items: center;
-  border-bottom: 1px solid rgb(40 35 28 / 9%);
-  display: grid;
-  gap: 18px;
-  grid-template-columns: 76px 1fr;
-  margin-top: 22px;
-  padding-bottom: 20px;
-}
-
-.landing-b-journey-product > img {
-  background: #f3efe7;
-  border-radius: 16px;
-  height: 78px;
-  object-fit: contain;
-  padding: 7px;
-  width: 76px;
-}
-
-.landing-b-journey-product strong {
-  color: #22231f;
-  font-size: .94rem;
-}
-
-.landing-b-journey-product p {
-  color: #74746e;
-  font-size: .8rem;
-  margin: 6px 0 0;
-}
-
-.landing-b-journey-readout {
-  align-items: center;
-  background: #f5f3ee;
-  border-radius: 15px;
-  display: flex;
-  justify-content: space-between;
-  margin-top: 18px;
-  padding: 15px 17px;
-}
-
-.landing-b-journey-readout > div {
-  display: grid;
-  gap: 4px;
-}
-
-.landing-b-journey-readout small,
-.landing-b-journey-readout > span {
-  color: #737570;
-  font-size: .7rem;
-}
-
-.landing-b-journey-readout strong {
-  color: #242521;
-  font-size: 1.15rem;
-}
-
-.landing-b-journey-readout[data-saving="true"] {
-  background: #e6f3e8;
-}
-
-.landing-b-journey-readout[data-saving="true"] > span,
-.landing-b-journey-readout[data-saving="true"] strong {
-  color: #28603a;
-}
-
-.landing-b-journey-status {
-  align-items: center;
-  color: #315c3d;
-  display: flex;
-  font-size: .78rem;
-  font-weight: 700;
-  gap: 8px;
-  margin-top: 17px;
-}
-
-.landing-b-journey-alert {
-  align-items: center;
-  background: #fffdfa;
-  border: 1px solid rgb(54 65 75 / 11%);
-  border-radius: 17px;
-  bottom: 0;
-  box-shadow: 0 18px 38px rgb(43 66 89 / 16%);
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 42px 1fr auto;
-  left: -26px;
-  padding: 16px;
-  position: absolute;
-  right: 18px;
-  transform: rotate(-2deg);
-}
-
-.landing-b-journey-alert > span {
-  align-items: center;
-  background: #ffe4e7;
-  border-radius: 50%;
-  color: #e22f45;
-  display: flex;
-  height: 42px;
-  justify-content: center;
-  width: 42px;
-}
-
-.landing-b-journey-alert strong {
-  font-size: .86rem;
-}
-
-.landing-b-journey-alert p {
-  color: #6d6f6c;
-  font-size: .72rem;
-  margin: 4px 0 0;
-}
-
-.landing-b-demo button:focus-visible {
-  outline: 2px solid #3266a0;
-  outline-offset: 3px;
-}
-
-.landing-b-journey-nav button:hover {
-  background: #edf4fa;
-}
-
-@keyframes landing-b-demo-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@media (max-width: 760px) {
-  .landing-b-demo { padding: 52px 20px 80px; }
-  .landing-b-demo-heading { align-items: start; gap: 22px; grid-template-columns: 1fr; }
-  .landing-b-demo-heading h2 { font-size: clamp(2.8rem, 13vw, 4rem); }
-  .landing-b-demo-heading > p { max-width: 520px; }
-  .landing-b-journey-nav { grid-template-columns: 1fr 1fr; }
-  .landing-b-journey-nav button { border-bottom: 1px solid rgb(48 64 79 / 10%); }
-  .landing-b-journey-nav button:nth-child(2) { border-right: 0; }
-  .landing-b-journey-main { gap: 38px; grid-template-columns: 1fr; min-height: 0; padding: 36px 24px 42px; }
-  .landing-b-journey-copy h3 { font-size: clamp(2.5rem, 12vw, 3.5rem); }
-  .landing-b-journey-preview { justify-self: center; padding-bottom: 0; width: 100%; }
-  .landing-b-journey-alert { margin-top: 16px; position: static; transform: rotate(-1deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .landing-b-journey-copy,
   .landing-b-journey-preview { animation: none; }
@@ -1784,3 +1546,20 @@
 }
 
 .landing-b-value .landing-b-watchlist-note { max-width:490px; margin:24px auto 0; font-size:.9rem; line-height:1.65; color:#737870; }
+
+/* Reveal once; independent translate preserves the cards' existing tilt. */
+.landing-shell-b .scroll-reveal {
+  transition: opacity 780ms ease var(--reveal-delay, 0ms),
+    translate 780ms cubic-bezier(.22, 1, .36, 1) var(--reveal-delay, 0ms);
+}
+.landing-shell-b .scroll-reveal-pending {
+  opacity: 0;
+  translate: 0 28px;
+}
+@media (prefers-reduced-motion: reduce), print {
+  .landing-shell-b .scroll-reveal {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+}
