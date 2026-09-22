@@ -21,24 +21,7 @@ import {
   type PurchaseRecord,
   type UserMonitoringPreference,
 } from "@afterbuy/core";
-
-interface StoreState {
-  products: ProductRecord[];
-  purchases: PurchaseRecord[];
-  observations: PriceObservationRecord[];
-  opportunities: OpportunityRecord[];
-  activityEvents: ActivityEventRecord[];
-  monitoringPreferences: UserMonitoringPreference[];
-}
-
-const emptyStore: StoreState = {
-  products: [],
-  purchases: [],
-  observations: [],
-  opportunities: [],
-  activityEvents: [],
-  monitoringPreferences: [],
-};
+import { clone, emptyStore, isMissingFileError, isMonitoringEnabled, type StoreState } from "./fileStore";
 
 export class FileAfterBuyRepository implements AfterBuyRepository {
   private queue: Promise<void> = Promise.resolve();
@@ -512,27 +495,4 @@ export class FileAfterBuyRepository implements AfterBuyRepository {
     await writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
     await rename(temporaryPath, this.filePath);
   }
-}
-
-function clone<T>(value: T): T {
-  if (value === null) {
-    return value;
-  }
-
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  );
-}
-
-function isMonitoringEnabled(state: StoreState, userId: string): boolean {
-  return state.monitoringPreferences.find(
-    (preference) => preference.userId === userId,
-  )?.enabled !== false;
 }

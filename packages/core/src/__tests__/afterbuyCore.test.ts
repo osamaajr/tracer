@@ -351,6 +351,30 @@ describe("generic store extraction", () => {
     ]);
   });
 
+  it("uses receipt table headers to distinguish unit price, quantity and line total", () => {
+    const document = parseHTML(`
+      <html><body><main>
+        <h1>Thank you for your order</h1><p>Order Number: TABLE-2201</p>
+        <table>
+          <thead><tr><th>Item</th><th>Each</th><th>QTY</th><th>Total</th></tr></thead>
+          <tbody><tr>
+            <td><a href="https://shop.example.com/products/wool-throw"><img src="https://shop.example.com/images/throw.jpg" alt="Merino Wool Throw" /></a><strong>Merino Wool Throw</strong><span>SKU: THROW-88</span></td>
+            <td>£28.00</td><td>3</td><td>£84.00</td>
+          </tr></tbody>
+        </table>
+      </main></body></html>
+    `).document;
+
+    const draft = extractGenericPurchaseFromDocument(
+      document,
+      "https://shop.example.com/order-confirm/TABLE-2201",
+    );
+
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Merino Wool Throw", quantity: 3, pricePaid: gbp(2_800), sku: "THROW-88" },
+    ]);
+  });
+
   it("fails closed when a generic order points to a different store host", () => {
     const document = genericFixtureDocument("order-with-cross-store-product.html");
 
@@ -974,6 +998,32 @@ describe("Shopify account order extraction", () => {
       }],
     });
     expect(draft && validatePurchaseDraft(draft)).toEqual([]);
+  });
+
+  it("uses the net merchandise price after an order discount and excludes shipping", () => {
+    const document = parseHTML(`
+      <html>
+        <head><title>Order #5042 - Seven Gates - Account</title></head>
+        <body><main>
+          <h1>Order #5042</h1><p>Confirmed 28 Jul 2026</p>
+          <table aria-label="Order items"><tr>
+            <td><a aria-label="Clover Bracelet Full Silver Charms" href="https://sevengatesjewellery.com/products/clover-bracelet?variant=54776061722968"><img src="https://sevengatesjewellery.com/cdn/shop/bracelet.jpg"></a></td>
+            <td>£35.00</td>
+          </tr></table>
+          <section aria-label="Order totals">
+            <p>Subtotal £35.00</p>
+            <div><span>Order discount</span><span>WELCOME</span><span>-£5.25</span></div>
+            <p>Shipping £2.99</p><p>Total GBP £32.74</p><p>Total savings £5.25</p>
+          </section>
+        </main></body>
+      </html>
+    `).document;
+
+    const draft = extractShopifyAccountPurchaseFromDocument(document, shopifyOrderUrl);
+
+    expect(draft?.lineItems).toMatchObject([
+      { productName: "Clover Bracelet Full Silver Charms", quantity: 1, pricePaid: gbp(2_975) },
+    ]);
   });
 
   it("extracts every Shopify order row with its final per-item price", async () => {

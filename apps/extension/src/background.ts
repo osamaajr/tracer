@@ -1,15 +1,27 @@
 import { WatchlistRepository, connectAcceptedSavedItems, type AcceptedProtectionResponse } from "./watchlistRepository";
-import { normalizeSavedUrl, type SavedProduct, type SavedItem } from "@afterbuy/core";
+import { normalizeSavedUrl, type SavedProduct } from "@afterbuy/core";
 import type { PurchaseDraft } from "@afterbuy/core";
 import {
   buildPriceDropNotifications,
   type SyncedPriceDrop,
 } from "./priceDropNotifications";
 import {
-  buildInternalMonitoringUrl,
-  evaluateSavedPrice,
+  getPendingPurchases,
+  queuePendingPurchase,
+  samePurchaseDraft,
+  setPendingPurchases,
+  type PendingProtectedPurchase,
+} from "./pendingPurchases";
+import {
   isInternalMonitoringUrl,
 } from "./savedPriceMonitoring";
+import {
+  activeMonitoringTabs,
+  cleanupOrphanedMonitoringTabs,
+  forgetMonitoringTab,
+  monitorSavedItems,
+} from "./savedItemMonitor";
+import { defaultApiBaseUrl, defaultUserId } from "./config";
 
 interface ProtectPurchaseMessage {
   type: "AFTERBUY_PROTECT_PURCHASE";
@@ -64,31 +76,19 @@ interface ExtensionSyncResponse {
   priceDrops: SyncedPriceDrop[];
 }
 
-interface PendingProtectedPurchase {
-  id: string;
-  draft: PurchaseDraft;
-  queuedAt: string;
-}
-
-const defaultApiBaseUrl =
-  import.meta.env.VITE_AFTERBUY_API_BASE_URL ?? "http://127.0.0.1:4000";
-const defaultUserId = import.meta.env.VITE_AFTERBUY_USER_ID ?? "dev-user-afterbuy";
 const syncAlarmName = "TRACER_OPPORTUNITY_SYNC";
 const savedMonitorAlarmName = "TRACER_SAVED_ITEM_MONITOR";
 const syncPeriodMinutes = 60;
 const savedMonitorPeriodMinutes = 360;
 const startupSyncDelayMinutes = 1;
 const startupSavedMonitorDelayMinutes = savedMonitorPeriodMinutes;
-const pendingPurchasesStorageKey = "tracerPendingPurchases";
 const autoOpenedPageByTab = new Map<number, string>();
 const autoOpeningTabs = new Set<number>();
 const automaticScanTimers = new Map<number, ReturnType<typeof setTimeout>>();
 const pageScanCache = new Map<number, { url: string; response: PageScanResponse }>();
-const activeMonitoringTabs = new Set<number>();
 let apiBaseUrlPromise: Promise<string> | null = null;
 let userIdPromise: Promise<string> | null = null;
 let priceDropAlertsEnabledPromise: Promise<boolean> | null = null;
-let savedMonitorRun: Promise<void> | null = null;
 
 // MV3 service workers can be stopped between events. Re-checking the alarms
 // whenever this worker starts keeps price watching alive even if Chrome cleared
@@ -108,7 +108,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     void syncOpportunities({ notify: true });
   }
   if (alarm.name === savedMonitorAlarmName) {
-    void monitorSavedItems();
+    void monitorSavedItems(watchlist, monitoringDependencies);
   }
 });
 
@@ -119,7 +119,7 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  activeMonitoringTabs.delete(tabId);
+  forgetMonitoringTab(tabId);
   autoOpenedPageByTab.delete(tabId);
   autoOpeningTabs.delete(tabId);
   const timer = automaticScanTimers.get(tabId);
@@ -171,6 +171,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 const watchlist = new WatchlistRepository(chrome.storage.local);
+const monitoringDependencies = {
+  getPriceDropAlertsEnabled,
+  createNotification,
+};
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (!String(message?.type).startsWith('TRACER_WATCHLIST_')) return false;
   // Writes are only accepted from extension pages, never website content scripts.
@@ -181,7 +185,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     case 'TRACER_WATCHLIST_SAVE': task = watchlist.save(message.product as SavedProduct); break;
     case 'TRACER_WATCHLIST_REMOVE': task = watchlist.remove(message.id); break;
     case 'TRACER_WATCHLIST_CLEAR': task = watchlist.clearSaved(); break;
-    case 'TRACER_WATCHLIST_MONITOR': task = monitorSavedItems(message.onlyUnavailable ? "unavailable" : "all"); break;
+    case 'TRACER_WATCHLIST_MONITOR': task = monitorSavedItems(watchlist, monitoringDependencies, message.onlyUnavailable ? "unavailable" : "all"); break;
     default: return false;
   }
   void task.then(result => respond({ok:true, result})).catch(() => respond({ok:false, error:'Could not update saved items. Please try again.'}));
@@ -502,79 +506,8 @@ async function flushPendingPurchases(apiBaseUrl: string, userId: string): Promis
   }
 
   if (remaining.length !== pending.length) {
-    await chrome.storage.local.set({ [pendingPurchasesStorageKey]: remaining });
+    await setPendingPurchases(remaining);
   }
-}
-
-async function queuePendingPurchase(draft: PurchaseDraft): Promise<{ purchase: PendingProtectedPurchase; created: boolean }> {
-  const pending = await getPendingPurchases();
-  const existing = pending.find((purchase) => samePurchaseDraft(purchase.draft, draft));
-  if (existing) return { purchase: existing, created: false };
-  const purchase: PendingProtectedPurchase = {
-    id: buildPendingPurchaseId(draft),
-    draft,
-    queuedAt: new Date().toISOString(),
-  };
-  await chrome.storage.local.set({ [pendingPurchasesStorageKey]: [...pending, purchase] });
-  return { purchase, created: true };
-}
-
-async function getPendingPurchases(): Promise<PendingProtectedPurchase[]> {
-  const stored = await chrome.storage.local.get(pendingPurchasesStorageKey);
-  const value = stored[pendingPurchasesStorageKey];
-  return Array.isArray(value) ? value.filter(isPendingPurchase) : [];
-}
-
-function isPendingPurchase(value: unknown): value is PendingProtectedPurchase {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<PendingProtectedPurchase>;
-  return typeof candidate.id === "string" && Boolean(candidate.draft) && typeof candidate.queuedAt === "string";
-}
-
-function samePurchaseDraft(left: PurchaseDraft, right: PurchaseDraft): boolean {
-  if (
-    left.retailerId !== right.retailerId ||
-    left.purchasedAt !== right.purchasedAt ||
-    left.orderReference !== right.orderReference ||
-    left.lineItems.length !== right.lineItems.length
-  ) {
-    return false;
-  }
-
-  const unmatchedItems = [...right.lineItems];
-  return left.lineItems.every((leftItem) => {
-    const matchIndex = unmatchedItems.findIndex((rightItem) =>
-      samePurchaseLineItem(leftItem, rightItem),
-    );
-    if (matchIndex === -1) return false;
-    unmatchedItems.splice(matchIndex, 1);
-    return true;
-  });
-}
-
-function samePurchaseLineItem(
-  left: PurchaseDraft["lineItems"][number],
-  right: PurchaseDraft["lineItems"][number],
-): boolean {
-  return (
-    left.productName.trim().toLowerCase() === right.productName.trim().toLowerCase() &&
-    left.pricePaid.currency === right.pricePaid.currency &&
-    left.pricePaid.amountMinor === right.pricePaid.amountMinor &&
-    left.quantity === right.quantity
-  );
-}
-
-function buildPendingPurchaseId(draft: PurchaseDraft): string {
-  const itemFingerprint = draft.lineItems
-    .map((item) => `${item.productName.trim().toLowerCase()}|${item.pricePaid.currency}|${item.pricePaid.amountMinor}|${item.quantity}`)
-    .join("||");
-  const input = `${draft.retailerId}|${draft.orderReference ?? ""}|${draft.purchasedAt}|${itemFingerprint}`;
-  let hash = 2_166_136_261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return `local_${(hash >>> 0).toString(36)}`;
 }
 
 async function readResponseError(response: Response): Promise<string> {
@@ -638,141 +571,6 @@ async function createNotification(input: {
     title: input.title,
     message: input.message,
   });
-}
-
-function monitorSavedItems(mode: "all" | "unavailable" = "all"): Promise<void> {
-  savedMonitorRun ??= runSavedItemMonitoring(mode).finally(() => {
-    savedMonitorRun = null;
-  });
-  return savedMonitorRun;
-}
-
-async function runSavedItemMonitoring(mode: "all" | "unavailable"): Promise<void> {
-  const settings = await chrome.storage.sync.get("monitoringEnabled").catch((): Record<string, unknown> => ({}));
-  if (settings.monitoringEnabled === false) return;
-  const items = (await watchlist.all()).filter((item) =>
-    item.status === "saved" && (mode === "all" || item.monitoringStatus === "unavailable")
-  );
-  const queue = [...items].sort((left, right) =>
-    Number(Boolean(left.savedPrice)) - Number(Boolean(right.savedPrice))
-  );
-  const workers = Array.from({ length: Math.min(2, queue.length) }, async () => {
-    while (queue.length) {
-      const item = queue.shift();
-      if (item) await monitorSavedItem(item).catch(() => undefined);
-    }
-  });
-  await Promise.all(workers);
-}
-
-async function monitorSavedItem(item: SavedItem): Promise<void> {
-  const checkedAt = new Date().toISOString();
-  let tabId: number | undefined;
-  try {
-    const tab = await chrome.tabs.create({
-      url: buildInternalMonitoringUrl(normalizeSavedUrl(item.canonicalUrl)),
-      active: false,
-    });
-    tabId = tab.id;
-    if (typeof tabId !== "number") throw new Error("monitor_tab_unavailable");
-    activeMonitoringTabs.add(tabId);
-    await waitForTabReady(tabId);
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["watchlistCapture.js"] });
-    const monitoredProduct = await readSavedProductWithRetries(tabId);
-    const latest = monitoredProduct?.savedPrice;
-    if (!latest || latest.amountMinor <= 0) {
-      throw new Error("monitor_price_unavailable");
-    }
-
-    if (!item.savedPrice) {
-      await watchlist.updateMonitoring(item.id, {
-        savedPrice: latest,
-        currentPrice: latest,
-        monitoringStatus: "watching",
-        lastCheckedAt: checkedAt,
-      });
-      return;
-    }
-    if (latest.currency !== item.savedPrice.currency) throw new Error("monitor_currency_changed");
-
-    const decision = evaluateSavedPrice(item, latest, checkedAt);
-    const updatedItem = await watchlist.updateMonitoring(item.id, {
-      currentPrice: decision.currentPrice,
-      ...(decision.priceDropAmount ? { priceDropAmount: decision.priceDropAmount } : { priceDropAmount: undefined }),
-      ...(decision.priceDropPercent !== undefined ? { priceDropPercent: decision.priceDropPercent } : { priceDropPercent: undefined }),
-      monitoringStatus: decision.monitoringStatus,
-      lastCheckedAt: decision.lastCheckedAt,
-      ...(decision.lastNotifiedPrice ? { lastNotifiedPrice: decision.lastNotifiedPrice } : { lastNotifiedPrice: undefined }),
-    });
-    if (updatedItem && decision.shouldNotify && await getPriceDropAlertsEnabled()) {
-      const saving = formatMonitoringMoney(decision.priceDropAmount!);
-      const percentText = decision.priceDropPercent === undefined ? "" : ` (${decision.priceDropPercent}%)`;
-      await createNotification({
-        id: `tracer-saved-drop:${item.id}:${latest.amountMinor}`,
-        title: "Price drop detected",
-        message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less${percentText}.`,
-      }).catch(() => undefined);
-    }
-  } catch {
-    // A temporary loading, network, or extraction failure must not erase a valid
-    // price or turn an actively watched item into a permanent error state.
-    if (!item.savedPrice && !item.currentPrice) {
-      await watchlist.updateMonitoring(item.id, { monitoringStatus: "unavailable", lastCheckedAt: checkedAt });
-    } else if (item.monitoringStatus === "unavailable") {
-      await watchlist.updateMonitoring(item.id, {
-        monitoringStatus: item.priceDropAmount ? "price_dropped" : "watching",
-      });
-    }
-  } finally {
-    if (typeof tabId === "number") {
-      await chrome.tabs.remove(tabId).catch(() => undefined);
-      activeMonitoringTabs.delete(tabId);
-    }
-  }
-}
-
-async function cleanupOrphanedMonitoringTabs(): Promise<void> {
-  const tabs = await chrome.tabs.query({}).catch((): chrome.tabs.Tab[] => []);
-  await Promise.all(tabs.map(async (tab) => {
-    if (
-      typeof tab.id === "number" &&
-      tab.url &&
-      isInternalMonitoringUrl(tab.url) &&
-      !activeMonitoringTabs.has(tab.id)
-    ) {
-      await chrome.tabs.remove(tab.id).catch(() => undefined);
-    }
-  }));
-}
-
-async function readSavedProductWithRetries(tabId: number): Promise<SavedProduct | null> {
-  const delays = [0, 300, 700, 1_500, 2_500];
-  let lastProduct: SavedProduct | null = null;
-  for (const delay of delays) {
-    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-    const response = await chrome.tabs.sendMessage(tabId, { type: "TRACER_EXTRACT_SAVED_PRODUCT" }) as { product?: SavedProduct | null };
-    lastProduct = response?.product ?? lastProduct;
-    if (lastProduct?.savedPrice) return lastProduct;
-  }
-  return lastProduct;
-}
-
-function waitForTabReady(tabId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => { cleanup(); reject(new Error("monitor_tab_timeout")); }, 15_000);
-    const cleanup = () => { clearTimeout(timeout); chrome.tabs.onUpdated.removeListener(listener); };
-    const listener = (updatedTabId: number, changeInfo: { status?: string }) => {
-      if (updatedTabId === tabId && changeInfo.status === "complete") { cleanup(); resolve(); }
-    };
-    chrome.tabs.onUpdated.addListener(listener);
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === "complete") { cleanup(); resolve(); }
-    }).catch(() => { cleanup(); reject(new Error("monitor_tab_closed")); });
-  });
-}
-
-function formatMonitoringMoney(money: { amountMinor: number; currency: string }): string {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: money.currency }).format(money.amountMinor / 100);
 }
 
 async function ensureSyncAlarm(): Promise<void> {

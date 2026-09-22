@@ -10,6 +10,14 @@ import {
   type PurchaseLineItemDraft,
   type PurchaseRecord,
 } from "@afterbuy/core";
+import {
+  getPendingPurchases,
+  queuePendingPurchase,
+  samePurchaseDraft,
+  setPendingPurchases,
+  type PendingProtectedPurchase,
+} from "./pendingPurchases";
+import { defaultApiBaseUrl, defaultDashboardBaseUrl, defaultUserId } from "./config";
 
 interface ScanResponse {
   ok: boolean;
@@ -88,12 +96,6 @@ interface DashboardData {
   opportunities: DashboardOpportunity[];
 }
 
-interface PendingProtectedPurchase {
-  id: string;
-  draft: PurchaseDraft;
-  queuedAt: string;
-}
-
 interface CachedScanMessageResponse {
   ok: boolean;
   response?: ScanResponse;
@@ -122,12 +124,8 @@ type PopupState =
   | "detail"
   | "settings";
 
-const defaultApiBaseUrl = import.meta.env.VITE_AFTERBUY_API_BASE_URL ?? "http://127.0.0.1:4000";
-const defaultDashboardBaseUrl = import.meta.env.VITE_AFTERBUY_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173";
-const defaultUserId = import.meta.env.VITE_AFTERBUY_USER_ID ?? "dev-user-afterbuy";
 const scanTimeoutMs = 1_000;
 const cacheLookupTimeoutMs = 200;
-const pendingPurchasesStorageKey = "tracerPendingPurchases";
 const startWithDetectedPreview = import.meta.env.MODE === "preview";
 
 const app = getElement<HTMLElement>("app");
@@ -835,24 +833,12 @@ async function checkProtectionStatus(draft: PurchaseDraft): Promise<ProtectionSt
 
 async function protectPurchaseOffline(draft: PurchaseDraft): Promise<void> {
   try {
-    const pending = await getPendingPurchases();
-    const existing = pending.find((purchase) => samePurchaseDraft(purchase.draft, draft));
-    const purchase = existing ?? {
-      id: buildPendingPurchaseId(draft),
-      draft,
-      queuedAt: new Date().toISOString(),
-    };
-
-    if (!existing) {
-      await chrome.storage.local.set({
-        [pendingPurchasesStorageKey]: [...pending, purchase],
-      });
-    }
+    const { purchase, created } = await queuePendingPurchase(draft);
 
     protectedPurchaseId = purchase.id;
     dashboardCache = null;
     renderProtectedPurchase({
-      title: existing ? "Already protected" : "Purchase saved",
+      title: created ? "Purchase saved" : "Already protected",
       newlyProtected: false,
       pendingSync: true,
     });
@@ -870,65 +856,6 @@ async function protectPurchaseOffline(draft: PurchaseDraft): Promise<void> {
   }
 }
 
-async function getPendingPurchases(): Promise<PendingProtectedPurchase[]> {
-  const stored = await chrome.storage.local.get(pendingPurchasesStorageKey);
-  const pending = stored[pendingPurchasesStorageKey];
-  if (!Array.isArray(pending)) {
-    return [];
-  }
-
-  return pending.filter((purchase): purchase is PendingProtectedPurchase => {
-    if (!purchase || typeof purchase !== "object") return false;
-    const candidate = purchase as Partial<PendingProtectedPurchase>;
-    return typeof candidate.id === "string" && Boolean(candidate.draft) && typeof candidate.queuedAt === "string";
-  });
-}
-
-function samePurchaseDraft(left: PurchaseDraft, right: PurchaseDraft): boolean {
-  if (
-    left.retailerId !== right.retailerId ||
-    left.purchasedAt !== right.purchasedAt ||
-    left.orderReference !== right.orderReference ||
-    left.lineItems.length !== right.lineItems.length
-  ) {
-    return false;
-  }
-
-  const unmatchedItems = [...right.lineItems];
-  return left.lineItems.every((leftItem) => {
-    const matchIndex = unmatchedItems.findIndex((rightItem) =>
-      samePurchaseLineItem(leftItem, rightItem),
-    );
-    if (matchIndex === -1) return false;
-    unmatchedItems.splice(matchIndex, 1);
-    return true;
-  });
-}
-
-function samePurchaseLineItem(
-  left: PurchaseDraft["lineItems"][number],
-  right: PurchaseDraft["lineItems"][number],
-): boolean {
-  return (
-    left.productName.trim().toLowerCase() === right.productName.trim().toLowerCase() &&
-    left.pricePaid.currency === right.pricePaid.currency &&
-    left.pricePaid.amountMinor === right.pricePaid.amountMinor &&
-    left.quantity === right.quantity
-  );
-}
-
-function buildPendingPurchaseId(draft: PurchaseDraft): string {
-  const itemFingerprint = draft.lineItems
-    .map((item) => `${item.productName.trim().toLowerCase()}|${item.pricePaid.currency}|${item.pricePaid.amountMinor}|${item.quantity}`)
-    .join("||");
-  const input = `${draft.retailerId}|${draft.orderReference ?? ""}|${draft.purchasedAt}|${itemFingerprint}`;
-  let hash = 2_166_136_261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return `local_${(hash >>> 0).toString(36)}`;
-}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -1189,7 +1116,7 @@ async function clearAllProtectedPurchases(): Promise<void> {
     const userId = await getTracerUserId();
     const pendingPurchases = await getPendingPurchases();
     if (pendingPurchases.length > 0) {
-      await chrome.storage.local.set({ [pendingPurchasesStorageKey]: [] });
+      await setPendingPurchases([]);
       clearedLocalPurchases = true;
       if (dashboardCache) {
         dashboardCache = {
@@ -1656,9 +1583,7 @@ async function deleteSelectedPurchase(): Promise<void> {
 
 async function removePendingPurchase(pendingDraftId: string): Promise<void> {
   const pending = await getPendingPurchases();
-  await chrome.storage.local.set({
-    [pendingPurchasesStorageKey]: pending.filter((purchase) => purchase.id !== pendingDraftId),
-  });
+  await setPendingPurchases(pending.filter((purchase) => purchase.id !== pendingDraftId));
 }
 
 function getTracerUserId(): Promise<string> {

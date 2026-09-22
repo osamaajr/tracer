@@ -409,12 +409,14 @@ function looksLikeReceiptLineItem(element: HTMLElement): boolean {
   if (text.length < 18 || text.length > 1_500 || currencyAmounts(text).length === 0) return false;
 
   const hasImage = Boolean(element.querySelector("img"));
-  const hasSku = /\b(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*[a-z0-9-]{3,}/i.test(text);
+  const hasSku = /(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*[a-z0-9-]{3,}/i.test(text);
   const hasQuantity =
-    /\b(?:qty|quantity)\s*[:x]?\s*\d+/i.test(text) ||
+    /(?:qty|quantity)\s*[:x]?\s*\d+/i.test(text) ||
+    Boolean(findTableCellByHeader(element, /^(?:qty|quantity)$/i)) ||
     Boolean(element.querySelector("[data-quantity], [data-label*='qty' i], [data-label*='quantity' i], [data-th*='qty' i], [data-th*='quantity' i], [aria-label*='qty' i], [aria-label*='quantity' i]"));
   const hasUnitOrTotal =
     /\b(?:each|unit\s+price|item\s+total|total)\b/i.test(text) ||
+    Boolean(findTableCellByHeader(element, /^(?:each|unit\s+price|item\s+total|total)$/i)) ||
     Boolean(element.querySelector("[data-line-total], [data-label*='each' i], [data-label*='total' i], [data-th*='each' i], [data-th*='total' i], [aria-label*='each' i], [aria-label*='total' i]"));
   const signalCount = Number(hasImage) + Number(hasSku) + Number(hasQuantity) + Number(hasUnitOrTotal);
 
@@ -475,7 +477,11 @@ function extractLineItemQuantity(element: HTMLElement): number {
       "[class~='qty' i]",
     ]);
   if (explicit) return parseQuantity(explicit);
-  const match = normalizedText(element).match(/\b(?:qty|quantity)\s*[:x]?\s*(\d+)/i);
+  const tableQuantity = findTableCellByHeader(element, /^(?:qty|quantity)$/i);
+  if (tableQuantity) return parseQuantity(tableQuantity);
+  const labelled = findDescendantText(element, /^(?:qty|quantity)\s*[:x]?\s*\d+$/i);
+  if (labelled) return parseQuantity(labelled);
+  const match = normalizedText(element).match(/(?:qty|quantity)\s*[:x]?\s*(\d+)/i);
   return parseQuantity(match?.[1]);
 }
 
@@ -489,11 +495,43 @@ function extractLineItemSku(element: HTMLElement): string | null {
       "[data-testid*='sku']",
       "[class*='sku' i]",
     ]);
-  const value = explicit ?? normalizedText(element).match(
-    /\b(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*([a-z0-9-]{3,})/i,
+  const labelled = findDescendantText(
+    element,
+    /^(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*[a-z0-9-]{3,}$/i,
+  );
+  const value = explicit ?? labelled ?? normalizedText(element).match(
+    /(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*([a-z0-9-]{3,})/i,
   )?.[1];
   if (!value) return null;
   return value.replace(/^\s*(?:sku|style\s*#?|product\s*(?:code|id))\s*[:#]?\s*/i, "").trim() || null;
+}
+
+function findDescendantText(element: HTMLElement, pattern: RegExp): string | null {
+  for (const candidate of Array.from(element.querySelectorAll<HTMLElement>("*"))) {
+    if (candidate.children.length > 0) continue;
+    const value = normalizedText(candidate);
+    if (value && pattern.test(value)) return value;
+  }
+  return null;
+}
+
+function findTableCellByHeader(element: HTMLElement, headerPattern: RegExp): string | null {
+  const row = element.matches("tr") ? element : element.closest<HTMLTableRowElement>("tr");
+  const table = row?.closest("table");
+  if (!row || !table) return null;
+
+  const cells = Array.from(row.querySelectorAll<HTMLElement>(":scope > th, :scope > td"));
+  if (cells.length === 0) return null;
+  const headerRows = Array.from(table.querySelectorAll<HTMLTableRowElement>("thead tr, tr")).filter(
+    (candidate) => candidate !== row && candidate.querySelector("th"),
+  );
+
+  for (const headerRow of headerRows) {
+    const headers = Array.from(headerRow.querySelectorAll<HTMLElement>(":scope > th, :scope > td"));
+    const index = headers.findIndex((header) => headerPattern.test(normalizedText(header)));
+    if (index >= 0 && cells[index]) return normalizedText(cells[index]);
+  }
+  return null;
 }
 
 function findMatchingProductUrl(
@@ -548,6 +586,12 @@ function deepestLineItemElements(elements: HTMLElement[]): HTMLElement[] {
 }
 
 function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnType<typeof parsePrice> {
+  const tableUnitPrice = findTableCellByHeader(element, /^(?:each|unit\s+price)$/i);
+  const parsedTableUnitPrice = parsePrice(
+    currencyAmounts(tableUnitPrice ?? "")[0] ?? tableUnitPrice,
+  );
+  if (parsedTableUnitPrice) return parsedTableUnitPrice;
+
   const labeledUnitPrice = textFromSelectors(element, [
     "[data-label*='each' i]",
     "[data-label*='unit price' i]",
