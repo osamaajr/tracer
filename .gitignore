@@ -1,6 +1,6 @@
 node_modules
 dist
-.afterbuy-data
+.tracer-data
 .env
 .env.local
 coverage
@@ -8,3 +8,4 @@ coverage
 *.tsbuildinfo
 *.zip
 .DS_Store
+apps/web/dev-pages/extension-states/

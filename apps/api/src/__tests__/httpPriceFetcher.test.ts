@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { ProductRecord } from "@afterbuy/core";
+import type { ProductRecord } from "@tracer/core";
 import { HttpPriceFetcher } from "../httpPriceFetcher";
 
 const product: ProductRecord = {

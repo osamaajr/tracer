@@ -16,8 +16,8 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "paths": {
-      "@afterbuy/core": ["./packages/core/src/index.ts"],
-      "@afterbuy/db": ["./packages/db/src/index.ts"]
+      "@tracer/core": ["./packages/core/src/index.ts"],
+      "@tracer/db": ["./packages/db/src/index.ts"]
     }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseHTML } from 'linkedom';
-import { extractSavedProduct, extractZaraSavedProduct, normalizeSavedUrl, savedMatchesPurchase, InMemoryAfterBuyRepository, protectPurchase, runPriceMonitoringCycle, type SavedProduct, type PurchaseDraft, type PurchaseRecord } from '@afterbuy/core';
+import { extractSavedProduct, extractZaraSavedProduct, findProductPageImages, normalizeSavedUrl, savedMatchesPurchase, InMemoryTracerRepository, protectPurchase, runPriceMonitoringCycle, type SavedProduct, type PurchaseDraft, type PurchaseRecord } from '@tracer/core';
 import { WatchlistRepository, watchlistKey, connectAcceptedSavedItems } from '../src/watchlistRepository';
 
 const url = 'https://shop.example.com/products/headphones';
@@ -161,6 +161,83 @@ describe('watchlist extraction', () => {
       imageUrl: 'https://www2.hm.com/shirt.jpg',
     });
   });
+  it('returns multiple unique product images for the save-image arrows', () => {
+    const {document} = parseHTML(`
+      <script type="application/ld+json">${JSON.stringify({
+        '@type':'Product',
+        name:'Oversized flannel shirt',
+        image:[
+          'https://www2.hm.com/shirt-front.jpg?width=1200',
+          'https://www2.hm.com/shirt-side.jpg?width=1200',
+          'https://www2.hm.com/shirt-back.jpg?width=1200',
+        ],
+      })}</script>
+      <main><div class="product-carousel"><picture><img src="https://www2.hm.com/shirt-front.jpg?width=400" alt="Oversized flannel shirt"></picture></div></main>
+    `);
+    expect(findProductPageImages(
+      document,
+      'https://www2.hm.com/en_gb/productpage.1360951001.html',
+      {productName:'Oversized flannel shirt'},
+    ).map((image) => image.url)).toEqual([
+      'https://www2.hm.com/shirt-front.jpg?width=1200',
+      'https://www2.hm.com/shirt-side.jpg?width=1200',
+      'https://www2.hm.com/shirt-back.jpg?width=1200',
+    ]);
+  });
+  it('keeps recommended-product images out of the current product picker', () => {
+    const {document} = parseHTML(`
+      <script type="application/ld+json">${JSON.stringify({
+        '@type':'Product',
+        name:'Relaxed Fit Printed T-shirt',
+        image:'https://lp2.hm.com/current-shirt-front.jpg?width=1200',
+      })}</script>
+      <main>
+        <section class="x9f3-media">
+          <picture><img src="https://lp2.hm.com/current-shirt-front.jpg?width=400" alt="Relaxed Fit Printed T-shirt front"></picture>
+          <picture><img src="https://lp2.hm.com/current-shirt-back.jpg?width=400" alt="Relaxed Fit Printed T-shirt back"></picture>
+        </section>
+        <section class="recommendations"><h2>You may also like</h2>
+          <picture><img src="https://lp2.hm.com/white-secondary-shirt.jpg?width=400" alt="Another T-shirt"></picture>
+        </section>
+      </main>
+    `);
+    const images = findProductPageImages(
+      document,
+      'https://www2.hm.com/en_gb/productpage.0967955204.html',
+      {productName:'Relaxed Fit Printed T-shirt'},
+    ).map((image) => image.url);
+    expect(images).toContain('https://lp2.hm.com/current-shirt-front.jpg?width=1200');
+    expect(images).toContain('https://lp2.hm.com/current-shirt-back.jpg?width=400');
+    expect(images).not.toContain('https://lp2.hm.com/white-secondary-shirt.jpg?width=400');
+  });
+  it('keeps image arrows when a retailer rewrites gallery URLs but preserves the product ID', () => {
+    const {document} = parseHTML(`
+      <meta property="og:image" content="https://lp2.hm.com/hmgoepprod?set=source[/model/1234567890/recommended.jpg]&amp;call=url[file:/product/main]">
+      <main>
+        <section class="product-media">
+          <picture><source srcset="https://image.hm.com/assets/hm/0967955204/black-front.avif?width=1200 1200w"><img src="https://image.hm.com/assets/hm/0967955204/black-front.avif?width=400" alt="Relaxed Fit Printed T-shirt front"></picture>
+          <picture><img src="https://image.hm.com/assets/hm/0967955204/black-back.avif?width=800" alt="Relaxed Fit Printed T-shirt back"></picture>
+          <picture><img src="https://image.hm.com/assets/hm/0967955204/black-detail.avif?width=800" alt="Relaxed Fit Printed T-shirt detail"></picture>
+        </section>
+        <section class="recommendations"><h2>You may also like</h2>
+          <picture><img src="https://image.hm.com/assets/hm/1234567890/white-shirt.avif?width=800" alt="Another T-shirt"></picture>
+        </section>
+      </main>
+    `);
+    const images = findProductPageImages(
+      document,
+      'https://www2.hm.com/en_gb/productpage.0967955204.html',
+      {
+        productName:'Relaxed Fit Printed T-shirt',
+        productIdentifiers:['0967955204'],
+      },
+    ).map((image) => image.url);
+    expect(images).toContain('https://image.hm.com/assets/hm/0967955204/black-front.avif?width=1200');
+    expect(images).toContain('https://image.hm.com/assets/hm/0967955204/black-back.avif?width=800');
+    expect(images).toContain('https://image.hm.com/assets/hm/0967955204/black-detail.avif?width=800');
+    expect(images.some((image) => image.includes('1234567890'))).toBe(false);
+    expect(images).toHaveLength(3);
+  });
   it('ignores ambiguous offers and unknown currencies', () => {
     expect(extractSavedProduct(productDoc({offers:[{price:10,priceCurrency:'GBP'},{price:20,priceCurrency:'GBP'}]}),url)?.savedPrice).toBeUndefined();
     expect(extractSavedProduct(productDoc({offers:{price:10}}),url)?.savedPrice).toBeUndefined();
@@ -301,7 +378,7 @@ describe('protection reconciliation', () => {
 
 it('keeps saved-only items out of real monitoring before and after purchase conversion', async () => {
   const {repository: watchlist}=storageHarness();
-  const purchases=new InMemoryAfterBuyRepository();
+  const purchases=new InMemoryTracerRepository();
   await watchlist.save(saved);
   await watchlist.save({...saved,name:'Chair',canonicalUrl:'https://shop.example.com/products/chair'});
   const checked: string[]=[];

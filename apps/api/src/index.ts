@@ -1,15 +1,15 @@
-import { createAfterBuyServer } from "./server";
+import { createTracerServer } from "./server";
 import { loadConfig } from "./config";
 import { HttpPriceFetcher } from "./httpPriceFetcher";
 import { startMonitoringScheduler } from "./monitoringScheduler";
-import { FileAfterBuyRepository } from "./repositories/fileAfterBuyRepository";
+import { FileTracerRepository } from "./repositories/fileTracerRepository";
 
 const config = loadConfig();
 
 async function start(): Promise<void> {
-  const repository = new FileAfterBuyRepository(config.dataFile);
+  const repository = new FileTracerRepository(config.dataFile);
   const priceFetcher = new HttpPriceFetcher();
-  const server = await createAfterBuyServer({ config, repository, priceFetcher });
+  const server = await createTracerServer({ config, repository, priceFetcher });
   let stopMonitoring: () => void = () => undefined;
   server.addHook("onClose", async () => stopMonitoring());
 
@@ -18,7 +18,7 @@ async function start(): Promise<void> {
     stopMonitoring = startMonitoringScheduler({
       repository,
       priceFetcher,
-      intervalHours: Number(process.env.AFTERBUY_MONITOR_INTERVAL_HOURS ?? 12),
+      intervalHours: Number(process.env.TRACER_MONITOR_INTERVAL_HOURS ?? 12),
       log: (entry) => server.log.info(entry),
     });
   } catch (error) {

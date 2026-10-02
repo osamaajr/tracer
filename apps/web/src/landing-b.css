@@ -1,7 +1,7 @@
 /* Reference font for the local Landing B preview. */
 @font-face {
   font-family: "Tracer B Reference Serif";
-  src: url('/assets/landing-b/AnthropicSerif-Roman-Web.woff2') format('woff2');
+  src: url('./assets/landing-b/AnthropicSerif-Roman-Web.woff2') format('woff2');
   font-style: normal;
   font-weight: 300 800;
   font-display: swap;
@@ -15,7 +15,7 @@
 .landing-b-sky {
   --landing-b-sky-shift: 0px;
   background-color: #a8c7ee;
-  background-image: url('/assets/landing-b/tracer-sky.webp');
+  background-image: url('./assets/landing-b/tracer-sky.webp');
   background-position: center var(--landing-b-sky-shift);
   background-repeat: no-repeat;
   background-size: cover;
@@ -361,7 +361,7 @@
 
 .landing-shell-b .brand::before,
 .landing-shell-b .extension-topbar > div:first-child::before {
-  background: url('/assets/landing-b/tracer-wordmark-outline-transparent.png') center / contain no-repeat;
+  background: url('./assets/landing-b/tracer-wordmark-outline-transparent.webp') center / contain no-repeat;
   content: "";
   display: block;
   flex: 0 0 auto;
@@ -380,7 +380,7 @@
 .landing-shell-b > .site-footer {
   background:
     linear-gradient(180deg, rgb(128 181 233 / 20%), rgb(93 158 222 / 8%)),
-    url('/assets/landing-b/tracer-sky.webp') 50% 58% / cover no-repeat;
+    url('./assets/landing-b/tracer-sky.webp') 50% 58% / cover no-repeat;
   border-top: 0;
   color: #111820;
   gap: 20px;
@@ -433,7 +433,7 @@
 }
 
 .landing-shell-b > .site-footer .brand::before {
-  background-image: url('/assets/landing-b/tracer-wordmark-outline-transparent.png');
+  background-image: url('./assets/landing-b/tracer-wordmark-outline-transparent.webp');
   height: 36px;
   width: 144px;
 }
@@ -461,15 +461,16 @@
 
 .landing-shell-b > .site-footer .footer-giant-wordmark {
   bottom: -110px;
-  color: rgb(255 255 255 / 38%);
+  color: rgb(255 255 255 / 62%);
   display: block;
   left: 50%;
   pointer-events: none;
   position: absolute;
   text-align: center;
+  text-shadow: 0 2px 18px rgb(36 77 115 / 10%);
   transform: translateX(-50%);
   width: 116vw;
-  z-index: 1;
+  z-index: 3;
 }
 
 .landing-shell-b > .site-footer .footer-giant-wordmark span {
@@ -618,7 +619,7 @@
   aspect-ratio: 16 / 8.6;
   background:
     linear-gradient(120deg, rgb(220 238 255 / 74%), rgb(255 253 247 / 74%)),
-    url('/assets/landing-b/tracer-sky.webp') 50% 70% / cover no-repeat;
+    url('./assets/landing-b/tracer-sky.webp') 50% 70% / cover no-repeat;
   display: grid;
   justify-items: center;
   min-height: 360px;
@@ -761,21 +762,17 @@
 }
 
 .landing-b-feature-alert {
-  align-items: center;
-  border-radius: 22px;
-  display: grid;
-  gap: 13px;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
-  min-height: 188px;
-  padding: 24px;
+  border-radius: 24px;
+  display: block;
+  padding: 22px;
   position: relative;
-  transform: rotate(1.8deg);
+  transform: none;
   width: min(100%, 454px);
   z-index: 2;
 }
 
 .landing-b-feature-visual:hover .landing-b-feature-alert {
-  transform: translateY(-4px) rotate(1.8deg);
+  transform: translateY(-5px);
 }
 
 .landing-b-monitor-card {
@@ -797,13 +794,46 @@
 .landing-b-feature-alert-icon {
   align-items: center;
   background: #e9f1e8;
-  border-radius: 50%;
+  border-radius: 10px;
   color: #39724a;
   display: inline-flex;
-  height: 48px;
+  height: 32px;
   justify-content: center;
-  width: 48px;
+  width: 32px;
 }
+
+.landing-b-drop-header {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+}
+
+.landing-b-drop-product {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 68px minmax(0, 1fr);
+  margin: 22px 0;
+}
+
+.landing-b-drop-product img {
+  background: #eaf0f4;
+  border-radius: 14px;
+  height: 68px;
+  object-fit: contain;
+  padding: 8px;
+  width: 68px;
+}
+
+.landing-b-drop-product div > span {
+  color: #8a8c89;
+  display: block;
+  font-size: .6rem;
+  margin-bottom: 5px;
+}
+
+.landing-b-drop-product div > p { font-size: .66rem; }
 
 .landing-b-feature-alert strong,
 .landing-b-monitor-card strong,
@@ -833,14 +863,17 @@
 
 .landing-b-feature-price-row {
   align-items: center;
-  border-top: 1px solid rgb(40 35 28 / 9%);
-  display: flex;
-  gap: 14px;
-  grid-column: 1 / -1;
-  grid-template-columns: 64px minmax(0, 1fr);
-  margin-top: 3px;
-  padding-top: 20px;
+  background: #eef4ed;
+  border: 1px solid #e3ebdf;
+  border-radius: 15px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  padding: 14px 18px;
 }
+
+.landing-b-feature-price-row > svg { color: #91a48c; }
+.landing-b-feature-price-row s { color: #83907e; font-size: .95rem; text-decoration-thickness: 1px; }
 
 .landing-b-feature-price-row span {
   display: grid;
@@ -855,19 +888,36 @@
 }
 
 .landing-b-feature-price-row strong {
-  font-size: 1.2rem;
+  color: #325b39;
+  font-size: 1.4rem;
   letter-spacing: -.025em;
 }
 
-.landing-b-feature-price-row em {
-  background: #e4f4e8;
+.landing-b-drop-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.landing-b-drop-footer > span {
+  align-items: center;
+  color: #7c8d77;
+  display: inline-flex;
+  font-size: .6rem;
+  gap: 5px;
+}
+
+.landing-b-drop-footer em {
+  background: #e7f0e3;
   border-radius: 999px;
   color: #22603b;
-  font-size: .76rem;
+  font-size: .7rem;
   font-style: normal;
   font-weight: 730;
-  padding: 7px 10px;
-  margin-left: auto;
+  padding: 6px 10px;
   white-space: nowrap;
 }
 
@@ -984,6 +1034,14 @@
 }
 
 .landing-b-save-card {
+  background: #fffdfa;
+  border: 1px solid #e8e7e3;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  padding: 22px;
+  transition: transform 300ms ease, box-shadow 300ms ease;
   width: min(100%, 454px);
 }
 
@@ -994,40 +1052,109 @@
   grid-template-columns: 40px minmax(0, 1fr) auto;
 }
 
-.landing-b-save-card > header > span {
+.landing-b-save-mark {
   align-items: center;
-  background: #e4f4e8;
-  border-radius: 50%;
-  color: #22603b;
+  background: #e6f0fb;
+  border-radius: 13px;
+  color: #2874bd;
   display: inline-flex;
   height: 40px;
   justify-content: center;
   width: 40px;
 }
 
-.landing-b-save-card > header p span {
+.landing-b-save-card > header strong {
+  color: #252a2e;
+  font-size: 1rem;
+  letter-spacing: -.025em;
+}
+
+.landing-b-save-card > header p {
+  color: #7b7e80;
+  font-size: .72rem;
+  margin: 4px 0 0;
+}
+
+.landing-b-save-count {
+  background: #f2f3f0;
+  border: 1px solid #e8e9e5;
+  border-radius: 999px;
+  color: #62675f;
+  font-size: .65rem;
+  font-weight: 600;
+  padding: 6px 9px;
   white-space: nowrap;
 }
 
-.landing-b-save-detail {
-  align-items: center;
-  background: #f6f4ef;
-  border: 1px solid rgb(40 35 28 / 8%);
-  border-radius: 15px;
-  color: #53534f;
+.landing-b-save-products {
   display: grid;
-  gap: 10px;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  margin-top: 20px;
-  padding: 14px 16px;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0 16px;
 }
 
-.landing-b-save-detail > svg {
-  color: #39724a;
+.landing-b-save-product {
+  min-width: 0;
 }
 
-.landing-b-save-detail strong {
-  color: #22231f;
+.landing-b-save-thumbnail {
+  align-items: center;
+  height: 80px;
+  border: 1px solid rgb(40 50 60 / 4%);
+  border-radius: 14px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.landing-b-save-thumbnail-blue { background: #eaf0f4; }
+.landing-b-save-thumbnail-sand { background: #f3ede3; color: #9b7850; }
+.landing-b-save-thumbnail-green { background: #e9eee7; color: #64765c; }
+
+.landing-b-save-thumbnail img {
+  height: 84%;
+  object-fit: contain;
+  width: 78%;
+}
+
+.landing-b-save-product > strong,
+.landing-b-save-product > span {
+  display: block;
+  font-size: .7rem;
+  line-height: 1.5;
+}
+
+.landing-b-save-product > strong { color: #383e42; font-weight: 600; }
+.landing-b-save-product > span { color: #8a8c89; font-size: .65rem; }
+
+.landing-b-save-card > footer {
+  align-items: center;
+  border-top: 1px solid #eeeee9;
+  color: #92958e;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: .6rem;
+  gap: 8px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.landing-b-save-card > footer > span {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.landing-b-save-watching { color: #547457; }
+.landing-b-save-watching i {
+  background: #6d9270;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #edf3ec;
+  height: 5px;
+  margin-right: 3px;
+  width: 5px;
 }
 
 .landing-b-update-card {
@@ -1069,11 +1196,11 @@
 }
 
 .landing-b-save-card {
-  transform: rotate(1.25deg);
+  transform: none;
 }
 
 .landing-b-drop-visual .landing-b-feature-alert {
-  transform: rotate(-1.5deg);
+  transform: none;
 }
 
 .landing-b-update-visual .landing-b-update-card {
@@ -1085,11 +1212,11 @@
 }
 
 .landing-b-save-visual:hover .landing-b-save-card {
-  transform: translateY(-5px) rotate(1.25deg);
+  transform: translateY(-5px);
 }
 
 .landing-b-drop-visual:hover .landing-b-feature-alert {
-  transform: translateY(-5px) rotate(-1.5deg);
+  transform: translateY(-5px);
 }
 
 .landing-b-update-visual:hover .landing-b-update-card {
@@ -1188,7 +1315,7 @@
 .landing-shell-b .site-header.landing-header::before {
   background:
     linear-gradient(90deg, rgb(255 253 249 / 91%) 0 42%, rgb(250 251 249 / 82%) 72%, rgb(255 250 242 / 86%) 100%),
-    url('/assets/landing-b/tracer-sky.webp') 88% 82% / 185% auto no-repeat;
+    url('./assets/landing-b/tracer-sky.webp') 88% 82% / 185% auto no-repeat;
   border-radius: inherit;
   content: "";
   inset: 0;
@@ -1260,6 +1387,7 @@
 
   .landing-b-drop-visual,
   .landing-b-monitor-visual,
+  .landing-b-save-visual,
   .landing-b-update-visual {
     padding-left: 34px;
     padding-right: 34px;
@@ -1396,15 +1524,14 @@
 
   .landing-b-drop-visual,
   .landing-b-monitor-visual,
+  .landing-b-save-visual,
   .landing-b-update-visual {
     padding: 18px 0 30px;
   }
 
   .landing-b-feature-alert {
-    gap: 12px;
-    grid-template-columns: 46px minmax(0, 1fr);
-    padding: 16px;
-    width: 96%;
+    padding: 18px;
+    width: 100%;
   }
 
   .landing-b-feature-alert time {
@@ -1416,12 +1543,8 @@
   }
 
   .landing-b-feature-alert-icon {
-    height: 46px;
-    width: 46px;
-  }
-
-  .landing-b-feature-price-row em {
-    display: none;
+    height: 32px;
+    width: 32px;
   }
 
   .landing-b-monitor-card,
@@ -1479,7 +1602,7 @@
 }
 
 .landing-b-subpage.site-page-shell {
-  background: linear-gradient(180deg, rgb(250 248 243 / 0%) 0, #faf8f3 510px), url('/assets/landing-b/tracer-sky.webp') center top / 100% auto no-repeat, #faf8f3;
+  background: linear-gradient(180deg, rgb(250 248 243 / 0%) 0, #faf8f3 510px), url('./assets/landing-b/tracer-sky.webp') center top / 100% auto no-repeat, #faf8f3;
   color: #22231f;
 }
 .landing-b-subpage .site-page-main {

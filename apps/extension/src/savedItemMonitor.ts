@@ -1,4 +1,4 @@
-import { normalizeSavedUrl, type SavedProduct, type SavedItem } from "@afterbuy/core";
+import { normalizeSavedUrl, type SavedProduct, type SavedItem } from "@tracer/core";
 import { evaluateSavedPrice, buildInternalMonitoringUrl, isInternalMonitoringUrl } from "./savedPriceMonitoring";
 import { WatchlistRepository } from "./watchlistRepository";
 
@@ -96,7 +96,10 @@ async function monitorSavedItem(
       ...(decision.priceDropPercent !== undefined ? { priceDropPercent: decision.priceDropPercent } : { priceDropPercent: undefined }),
       monitoringStatus: decision.monitoringStatus,
       lastCheckedAt: decision.lastCheckedAt,
-      ...(decision.lastNotifiedPrice ? { lastNotifiedPrice: decision.lastNotifiedPrice } : { lastNotifiedPrice: undefined }),
+      // Keep an existing delivery marker while a new alert is pending, but
+      // clear it after recovery so a later return to the same low price can
+      // generate a fresh notification.
+      ...(!decision.shouldNotify ? { lastNotifiedPrice: decision.lastNotifiedPrice } : {}),
     });
     if (updatedItem && decision.shouldNotify && await dependencies.getPriceDropAlertsEnabled()) {
       const saving = formatMonitoringMoney(decision.priceDropAmount!);
@@ -105,7 +108,10 @@ async function monitorSavedItem(
         id: `tracer-saved-drop:${item.id}:${latest.amountMinor}`,
         title: "Price drop detected",
         message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less${percentText}.`,
-      }).catch(() => undefined);
+      });
+      // A failed browser notification must remain retryable on the next check.
+      // Persist the delivery marker only after Chrome confirms creation.
+      await watchlist.updateMonitoring(item.id, { lastNotifiedPrice: latest });
     }
   } catch {
     // A temporary loading, network, or extraction failure must not erase a valid
@@ -127,16 +133,15 @@ async function monitorSavedItem(
 
 export async function cleanupOrphanedMonitoringTabs(): Promise<void> {
   const tabs = await chrome.tabs.query({}).catch((): chrome.tabs.Tab[] => []);
-  await Promise.all(tabs.map(async (tab) => {
-    if (
-      typeof tab.id === "number" &&
-      tab.url &&
-      isInternalMonitoringUrl(tab.url) &&
-      !activeMonitoringTabs.has(tab.id)
-    ) {
-      await chrome.tabs.remove(tab.id).catch(() => undefined);
-    }
-  }));
+  await Promise.all(tabs.map(cleanupOrphanedMonitoringTab));
+}
+
+export async function cleanupOrphanedMonitoringTab(tab: chrome.tabs.Tab): Promise<void> {
+  // A new monitoring tab can emit onUpdated before tabs.create resolves.
+  if (savedMonitorRun || typeof tab.id !== "number" || activeMonitoringTabs.has(tab.id)) return;
+  if (isInternalMonitoringUrl(tab.url ?? "") || isInternalMonitoringUrl(tab.pendingUrl ?? "")) {
+    await chrome.tabs.remove(tab.id).catch(() => undefined);
+  }
 }
 
 async function readSavedProductWithRetries(tabId: number): Promise<SavedProduct | null> {

@@ -1,9 +1,12 @@
+import { parseHTML } from "linkedom";
 import { gbp } from "../packages/core/src/domain/money";
 import type { PriceFetcher, ProductPriceSnapshot, PurchaseDraft } from "../packages/core/src/domain/types";
-import { InMemoryAfterBuyRepository } from "../packages/core/src/repositories/inMemoryRepository";
+import { InMemoryTracerRepository } from "../packages/core/src/repositories/inMemoryRepository";
 import { runPriceMonitoringCycle } from "../packages/core/src/useCases/monitorPrices";
 import { protectPurchase } from "../packages/core/src/useCases/protectPurchase";
 import { buildPriceDropNotifications } from "../apps/extension/src/priceDropNotifications";
+import { extractGenericProductFromDocument } from "../packages/core/src/retailers/genericStoreExtractor";
+import { extractJohnLewisProductFromDocument } from "../packages/core/src/retailers/johnLewisProductExtractor";
 
 const userId = "e2e-user";
 const paidAt = "2026-09-01T08:00:00.000Z";
@@ -28,7 +31,30 @@ const draft: PurchaseDraft = {
   }],
 };
 
-const repository = new InMemoryAfterBuyRepository();
+const productPage = parseHTML(`
+  <html><head><script type="application/ld+json">${JSON.stringify([
+    { "@type": "Product", name: "Recommended kettle", url: "https://shop.example.com/products/kettle", offers: { price: "9.99", priceCurrency: "GBP" } },
+    { "@type": "Product", name: "Trail Pack 24L, Moss Green", url: productUrl, sku: "TP24-MOSS", offers: { price: "69.50", priceCurrency: "GBP" } },
+  ])}</script></head><body><main><h1>Trail Pack 24L, Moss Green</h1></main></body></html>
+`).document;
+const extracted = extractGenericProductFromDocument(productPage, productUrl, paidAt, draft.lineItems[0]?.productName);
+assert(extracted?.price.amountMinor === 6_950, "monitoring selected a recommended product price");
+assert(extracted?.sku === "TP24-MOSS", "monitoring selected the wrong product identity");
+const johnLewisPage = parseHTML(`
+  <html><head><script type="application/ld+json">${JSON.stringify([
+    { "@type": "Product", name: "Recommended speaker", url: "https://www.johnlewis.com/speaker/p9988776", offers: { price: "19.99" } },
+    { "@type": "Product", name: "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black", url: "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334", offers: { price: "319.99" } },
+  ])}</script></head><body><main><h1>Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black</h1></main></body></html>
+`).document;
+const johnLewisPrice = extractJohnLewisProductFromDocument(
+  johnLewisPage,
+  "https://www.johnlewis.com/sony-wh-1000xm6-wireless-bluetooth-noise-cancelling-headphones-black/p1122334",
+  paidAt,
+  "Sony WH-1000XM6 Wireless Bluetooth Noise Cancelling Headphones, Black",
+);
+assert(johnLewisPrice?.price.amountMinor === 31_999, "John Lewis monitoring selected a recommended product price");
+
+const repository = new InMemoryTracerRepository();
 const protectedResult = await protectPurchase(repository, { userId, draft, now: draft.purchasedAt });
 const purchase = protectedResult.accepted[0]?.purchase;
 assert(purchase && protectedResult.accepted[0]?.status === "created", "purchase was not protected");

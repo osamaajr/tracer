@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SavedItem } from "@afterbuy/core";
+import type { SavedItem } from "@tracer/core";
 import {
   buildInternalMonitoringUrl,
   evaluateSavedPrice,

@@ -1,6 +1,6 @@
 import { WatchlistRepository, connectAcceptedSavedItems, type AcceptedProtectionResponse } from "./watchlistRepository";
-import { normalizeSavedUrl, type SavedProduct } from "@afterbuy/core";
-import type { PurchaseDraft } from "@afterbuy/core";
+import { type SavedProduct } from "@tracer/core";
+import type { PurchaseDraft } from "@tracer/core";
 import {
   buildPriceDropNotifications,
   type SyncedPriceDrop,
@@ -13,18 +13,22 @@ import {
   type PendingProtectedPurchase,
 } from "./pendingPurchases";
 import {
-  isInternalMonitoringUrl,
-} from "./savedPriceMonitoring";
-import {
-  activeMonitoringTabs,
   cleanupOrphanedMonitoringTabs,
+  cleanupOrphanedMonitoringTab,
   forgetMonitoringTab,
   monitorSavedItems,
 } from "./savedItemMonitor";
+import { savedMonitorReadyAtKey, shouldRunSavedMonitorAlarm } from "./savedMonitorAlarm";
 import { defaultApiBaseUrl, defaultUserId } from "./config";
 
+const serviceWorkerStartedAt = performance.now();
+const backgroundTraceEnabled = import.meta.env.MODE !== "production" || import.meta.env.VITE_TRACER_STARTUP_TRACE === true;
+if (backgroundTraceEnabled) {
+  console.debug(`[Tracer startup] service worker module evaluation began (timeOrigin ${performance.timeOrigin})`);
+}
+
 interface ProtectPurchaseMessage {
-  type: "AFTERBUY_PROTECT_PURCHASE";
+  type: "TRACER_PROTECT_PURCHASE";
   purchaseDraft: PurchaseDraft;
 }
 
@@ -81,7 +85,6 @@ const savedMonitorAlarmName = "TRACER_SAVED_ITEM_MONITOR";
 const syncPeriodMinutes = 60;
 const savedMonitorPeriodMinutes = 360;
 const startupSyncDelayMinutes = 1;
-const startupSavedMonitorDelayMinutes = savedMonitorPeriodMinutes;
 const autoOpenedPageByTab = new Map<number, string>();
 const autoOpeningTabs = new Set<number>();
 const automaticScanTimers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -90,17 +93,15 @@ let apiBaseUrlPromise: Promise<string> | null = null;
 let userIdPromise: Promise<string> | null = null;
 let priceDropAlertsEnabledPromise: Promise<boolean> | null = null;
 
-// MV3 service workers can be stopped between events. Re-checking the alarms
-// whenever this worker starts keeps price watching alive even if Chrome cleared
-// an alarm or the extension was reloaded during development.
-void cleanupOrphanedMonitoringTabs().finally(() => ensureMonitoringSchedules());
-
+// Session storage survives MV3 worker restarts but clears on browser restart.
+// Register listeners synchronously so Chrome can deliver startup events.
 chrome.runtime.onInstalled.addListener(() => {
-  void ensureMonitoringSchedules();
+  void Promise.all([ensureSyncAlarm(), resetSavedMonitorAlarm()]);
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void cleanupOrphanedMonitoringTabs().finally(() => resetAlarmsAfterStartup());
+  void resetAlarmsAfterStartup();
+  void cleanupOrphanedMonitoringTabs();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -108,7 +109,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     void syncOpportunities({ notify: true });
   }
   if (alarm.name === savedMonitorAlarmName) {
-    void monitorSavedItems(watchlist, monitoringDependencies);
+    void chrome.storage.session.get(savedMonitorReadyAtKey).then((stored) => {
+      if (shouldRunSavedMonitorAlarm(alarm.scheduledTime, stored[savedMonitorReadyAtKey])) {
+        return monitorSavedItems(watchlist, monitoringDependencies);
+      }
+      // An overdue alarm can arrive before onStartup, even in a fresh worker.
+      if (stored[savedMonitorReadyAtKey] === undefined) return resetSavedMonitorAlarm();
+    }).catch(() => undefined);
   }
 });
 
@@ -129,14 +136,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (
-    changeInfo.status === "complete" &&
-    tab.url &&
-    isInternalMonitoringUrl(tab.url) &&
-    !activeMonitoringTabs.has(tabId)
-  ) {
-    void chrome.tabs.remove(tabId).catch(() => undefined);
-    return;
+  // Monitoring tabs are lifecycle-managed by savedItemMonitor. Closing them
+  // here races tabs.create() and can kill a legitimate monitor before its
+  // capture script runs; the cleanup helper checks for an active run.
+  if (changeInfo.url || changeInfo.status === "loading" || changeInfo.status === "complete") {
+    void cleanupOrphanedMonitoringTab(tab);
   }
   if (changeInfo.status === "loading" || changeInfo.url) {
     autoOpenedPageByTab.delete(tabId);
@@ -211,7 +215,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
     return false;
   }
 
-  if (message.type === "AFTERBUY_PROTECT_PURCHASE") {
+  if (message.type === "TRACER_PROTECT_PURCHASE") {
     void protectPurchase(message.purchaseDraft)
       .then((response) => {
         sendResponse({ ok: true, response });
@@ -259,6 +263,10 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return false;
 });
 
+if (backgroundTraceEnabled) {
+  console.debug(`[Tracer startup] service worker listeners registered: ${(performance.now() - serviceWorkerStartedAt).toFixed(1)}ms`);
+}
+
 async function openPopupForDetectedPurchase(
   message: PurchasePageCandidateMessage,
   sender: chrome.runtime.MessageSender,
@@ -298,7 +306,7 @@ async function openPopupForTab(
       files: ["genericCapture.js"],
     });
     const response = await chrome.tabs.sendMessage(tab.id, {
-      type: "AFTERBUY_SCAN_PAGE",
+      type: "TRACER_SCAN_PAGE",
     }) as PageScanResponse;
     if (!response?.ok || !response.draft) {
       return false;
@@ -435,7 +443,7 @@ async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<un
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-afterbuy-user-id": userId,
+        "x-tracer-user-id": userId,
       },
       body: JSON.stringify({ purchaseDraft }),
     });
@@ -451,7 +459,7 @@ async function syncOpportunities(options: { notify: boolean }): Promise<Extensio
     const [apiBaseUrl, userId] = await Promise.all([getApiBaseUrl(), getUserId()]);
     await flushPendingPurchases(apiBaseUrl, userId).catch(() => undefined);
     const response = await fetchApi(`${apiBaseUrl}/api/extension/sync`, {
-      headers: { "x-afterbuy-user-id": userId },
+      headers: { "x-tracer-user-id": userId },
     });
     if (!response.ok) throw new Error(`Tracer API returned ${response.status}`);
     const sync = (await response.json()) as ExtensionSyncResponse;
@@ -477,7 +485,7 @@ function postProtectedPurchase(apiBaseUrl: string, userId: string, purchaseDraft
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-afterbuy-user-id": userId,
+      "x-tracer-user-id": userId,
     },
     body: JSON.stringify({ purchaseDraft }),
   });
@@ -584,31 +592,23 @@ async function ensureSyncAlarm(): Promise<void> {
   }
 }
 
-async function ensureSavedMonitorAlarm(): Promise<void> {
-  const existing = await chrome.alarms.get(savedMonitorAlarmName);
-  if (!existing) {
-    await chrome.alarms.create(savedMonitorAlarmName, {
-      delayInMinutes: savedMonitorPeriodMinutes,
-      periodInMinutes: savedMonitorPeriodMinutes,
-    });
-  }
-}
-
-async function ensureMonitoringSchedules(): Promise<void> {
-  await Promise.all([ensureSyncAlarm(), ensureSavedMonitorAlarm()]);
-}
-
 async function resetAlarmsAfterStartup(): Promise<void> {
   await Promise.all([
     chrome.alarms.create(syncAlarmName, {
       delayInMinutes: startupSyncDelayMinutes,
       periodInMinutes: syncPeriodMinutes,
     }),
-    chrome.alarms.create(savedMonitorAlarmName, {
-      delayInMinutes: startupSavedMonitorDelayMinutes,
-      periodInMinutes: savedMonitorPeriodMinutes,
-    }),
+    resetSavedMonitorAlarm(),
   ]);
+}
+
+async function resetSavedMonitorAlarm(): Promise<void> {
+  const readyAt = Date.now() + savedMonitorPeriodMinutes * 60_000;
+  await chrome.storage.session.set({ [savedMonitorReadyAtKey]: readyAt });
+  await chrome.alarms.create(savedMonitorAlarmName, {
+    delayInMinutes: savedMonitorPeriodMinutes,
+    periodInMinutes: savedMonitorPeriodMinutes,
+  });
 }
 
 async function syncMonitoringPreference(): Promise<void> {
@@ -622,7 +622,7 @@ async function syncMonitoringPreference(): Promise<void> {
       method: "PUT",
       headers: {
         "content-type": "application/json",
-        "x-afterbuy-user-id": userId,
+        "x-tracer-user-id": userId,
       },
       body: JSON.stringify({ enabled: stored.monitoringEnabled !== false }),
     });
@@ -678,9 +678,17 @@ async function fetchApi(url: string, options: RequestInit): Promise<Response> {
   const attempts = local ? 2 : 1;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const requestStartedAt = performance.now();
     try {
-      return await fetch(url, { ...options, signal: AbortSignal.timeout(local ? 2_000 : 5_000) });
+      const response = await fetch(url, { ...options, signal: AbortSignal.timeout(local ? 2_000 : 5_000) });
+      if (backgroundTraceEnabled) {
+        console.debug(`[Tracer startup] network ${new URL(url).pathname}: ${(performance.now() - requestStartedAt).toFixed(1)}ms (HTTP ${response.status})`);
+      }
+      return response;
     } catch (error) {
+      if (backgroundTraceEnabled) {
+        console.debug(`[Tracer startup] network ${new URL(url).pathname} failed: ${(performance.now() - requestStartedAt).toFixed(1)}ms`);
+      }
       lastError = error;
       if (attempt < attempts - 1) await new Promise((resolve) => setTimeout(resolve, 250));
     }

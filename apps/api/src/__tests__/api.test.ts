@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   FixturePriceFetcher,
-  InMemoryAfterBuyRepository,
+  InMemoryTracerRepository,
   gbp,
   type PurchaseDraft,
   type ProductPriceSnapshot,
-} from "@afterbuy/core";
-import { createAfterBuyServer } from "../server";
+} from "@tracer/core";
+import { createTracerServer } from "../server";
 
 const purchaseDraft: PurchaseDraft = {
   retailerId: "john-lewis",
@@ -66,9 +66,9 @@ const droppedSnapshot: ProductPriceSnapshot = {
   availability: "in_stock",
 };
 
-describe("AfterBuy API", () => {
+describe("Tracer API", () => {
   it("runs the paid-to-dropped fixture flow through the development endpoint", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -76,7 +76,7 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
       priceFetcher: {
         fetchCurrentPrice: async () => {
           throw new Error("The deterministic development endpoint used the live fetcher");
@@ -87,7 +87,7 @@ describe("AfterBuy API", () => {
     const protectResponse = await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft: genericPurchaseDraft },
     });
 
@@ -129,7 +129,7 @@ describe("AfterBuy API", () => {
       await app.inject({
         method: "GET",
         url: "/api/dashboard",
-        headers: { "x-afterbuy-user-id": "user_1" },
+        headers: { "x-tracer-user-id": "user_1" },
       })
     ).json();
 
@@ -142,11 +142,26 @@ describe("AfterBuy API", () => {
     });
     expect(dashboard.opportunities).toHaveLength(0);
 
+    const priceHistory = await app.inject({
+      method: "GET",
+      url: `/api/purchases/${dashboard.purchases[0].id}/price-history`,
+      headers: { "x-tracer-user-id": "user_1" },
+    });
+    expect(priceHistory.statusCode).toBe(200);
+    expect(priceHistory.json().observations.map((entry: { price: { amountMinor: number } }) => entry.price.amountMinor))
+      .toEqual([8_450, 6_950]);
+    const otherUserHistory = await app.inject({
+      method: "GET",
+      url: `/api/purchases/${dashboard.purchases[0].id}/price-history`,
+      headers: { "x-tracer-user-id": "user_2" },
+    });
+    expect(otherUserHistory.statusCode).toBe(404);
+
     const sync = (
       await app.inject({
         method: "GET",
         url: "/api/extension/sync",
-        headers: { "x-afterbuy-user-id": "user_1" },
+        headers: { "x-tracer-user-id": "user_1" },
       })
     ).json();
     expect(sync.priceDrops).toEqual([
@@ -161,7 +176,7 @@ describe("AfterBuy API", () => {
   });
 
   it("protects a purchase and exposes the generated opportunity on the dashboard", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -169,14 +184,14 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
       priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
     });
 
     const protectResponse = await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft },
     });
 
@@ -186,7 +201,7 @@ describe("AfterBuy API", () => {
     const monitorResponse = await app.inject({
       method: "POST",
       url: "/api/dev/run-monitoring",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
 
     expect(monitorResponse.statusCode).toBe(200);
@@ -195,7 +210,7 @@ describe("AfterBuy API", () => {
     const dashboardResponse = await app.inject({
       method: "GET",
       url: "/api/dashboard",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     const dashboard = dashboardResponse.json();
 
@@ -220,7 +235,7 @@ describe("AfterBuy API", () => {
     const syncResponse = await app.inject({
       method: "GET",
       url: "/api/extension/sync",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     const sync = syncResponse.json();
 
@@ -238,7 +253,7 @@ describe("AfterBuy API", () => {
     const claimResponse = await app.inject({
       method: "POST",
       url: `/api/opportunities/${dashboard.opportunities[0].id}/claim-clicked`,
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
 
     expect(claimResponse.statusCode).toBe(200);
@@ -249,7 +264,7 @@ describe("AfterBuy API", () => {
     const otherUserDashboard = await app.inject({
       method: "GET",
       url: "/api/dashboard",
-      headers: { "x-afterbuy-user-id": "user_2" },
+      headers: { "x-tracer-user-id": "user_2" },
     });
 
     expect(otherUserDashboard.json().purchases).toHaveLength(0);
@@ -259,7 +274,7 @@ describe("AfterBuy API", () => {
   });
 
   it("rejects malformed purchase submissions", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -267,7 +282,7 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
       priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
     });
 
@@ -288,7 +303,7 @@ describe("AfterBuy API", () => {
   });
 
   it("accepts generic store purchases without requiring a retailer-specific adapter", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -296,14 +311,14 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
       priceFetcher: new FixturePriceFetcher([droppedSnapshot]),
     });
 
     const response = await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft: genericPurchaseDraft },
     });
 
@@ -323,7 +338,7 @@ describe("AfterBuy API", () => {
       throw new Error("Expected generic fixture line item");
     }
 
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -331,13 +346,13 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
     });
 
     const response = await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: {
         purchaseDraft: {
           ...genericPurchaseDraft,
@@ -358,7 +373,7 @@ describe("AfterBuy API", () => {
   it("returns an available protected-item image on the dashboard", async () => {
     const genericLineItem = genericPurchaseDraft.lineItems[0];
     if (!genericLineItem) throw new Error("Expected generic fixture line item");
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -366,14 +381,14 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
     });
     const imageUrl = "https://cdn.example.com/products/trail-pack-moss.jpg";
 
     await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: {
         purchaseDraft: {
           ...genericPurchaseDraft,
@@ -384,7 +399,7 @@ describe("AfterBuy API", () => {
     const dashboard = (await app.inject({
       method: "GET",
       url: "/api/dashboard",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     })).json();
 
     expect(dashboard.purchases[0]?.imageUrl).toBe(imageUrl);
@@ -392,7 +407,7 @@ describe("AfterBuy API", () => {
   });
 
   it("reports when a scanned purchase is already protected", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -400,13 +415,13 @@ describe("AfterBuy API", () => {
         enableDevAuth: true,
         enableDevEndpoints: true,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
     });
 
     const beforeProtection = await app.inject({
       method: "POST",
       url: "/api/purchases/protection-status",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft },
     });
 
@@ -419,14 +434,14 @@ describe("AfterBuy API", () => {
     await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft },
     });
 
     const afterProtection = await app.inject({
       method: "POST",
       url: "/api/purchases/protection-status",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft },
     });
     const body = afterProtection.json();
@@ -446,9 +461,9 @@ describe("AfterBuy API", () => {
   });
 
   it("pauses and resumes scheduled monitoring without deleting purchases", async () => {
-    const repository = new InMemoryAfterBuyRepository();
+    const repository = new InMemoryTracerRepository();
     let checks = 0;
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -468,14 +483,14 @@ describe("AfterBuy API", () => {
     await app.inject({
       method: "POST",
       url: "/api/purchases/protect",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { purchaseDraft },
     });
 
     const paused = await app.inject({
       method: "PUT",
       url: "/api/settings/monitoring",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { enabled: false },
     });
     expect(paused.json()).toMatchObject({ monitoringEnabled: false });
@@ -483,7 +498,7 @@ describe("AfterBuy API", () => {
     const skipped = await app.inject({
       method: "POST",
       url: "/api/monitoring/run",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     expect(skipped.json().summary.checkedProducts).toBe(0);
     expect(checks).toBe(0);
@@ -492,7 +507,7 @@ describe("AfterBuy API", () => {
       await app.inject({
         method: "GET",
         url: "/api/dashboard",
-        headers: { "x-afterbuy-user-id": "user_1" },
+        headers: { "x-tracer-user-id": "user_1" },
       })
     ).json();
     expect(pausedDashboard.purchases).toHaveLength(1);
@@ -501,13 +516,13 @@ describe("AfterBuy API", () => {
     await app.inject({
       method: "PUT",
       url: "/api/settings/monitoring",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
       payload: { enabled: true },
     });
     const resumed = await app.inject({
       method: "POST",
       url: "/api/monitoring/run",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     expect(resumed.json().summary.checkedProducts).toBe(1);
     expect(checks).toBe(1);
@@ -516,12 +531,12 @@ describe("AfterBuy API", () => {
     await app.inject({
       method: "DELETE",
       url: `/api/purchases/${purchases[0]?.id}`,
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     const afterClear = await app.inject({
       method: "POST",
       url: "/api/monitoring/run",
-      headers: { "x-afterbuy-user-id": "user_1" },
+      headers: { "x-tracer-user-id": "user_1" },
     });
     expect(afterClear.json().summary.checkedProducts).toBe(0);
     expect(checks).toBe(1);
@@ -530,7 +545,7 @@ describe("AfterBuy API", () => {
   });
 
   it("returns a clear auth error when development auth is disabled", async () => {
-    const app = await createAfterBuyServer({
+    const app = await createTracerServer({
       config: {
         port: 0,
         dataFile: ":memory:",
@@ -538,7 +553,7 @@ describe("AfterBuy API", () => {
         enableDevAuth: false,
         enableDevEndpoints: false,
       },
-      repository: new InMemoryAfterBuyRepository(),
+      repository: new InMemoryTracerRepository(),
     });
 
     const response = await app.inject({

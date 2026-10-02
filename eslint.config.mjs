@@ -8,7 +8,7 @@ export default tseslint.config(
       "node_modules",
       "**/dist/**",
       "coverage",
-      ".afterbuy-data",
+      ".tracer-data",
       "package-lock.json",
     ],
   },

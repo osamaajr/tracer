@@ -10,9 +10,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): ApiCon
   const nodeEnv = environment.NODE_ENV ?? "development";
 
   return {
-    port: Number(environment.AFTERBUY_API_PORT ?? 4000),
-    dataFile: environment.AFTERBUY_DATA_FILE ?? ".afterbuy-data/dev-store.json",
-    devUserId: environment.AFTERBUY_DEV_USER_ID ?? "dev-user-afterbuy",
+    port: Number(environment.TRACER_API_PORT ?? 4000),
+    dataFile: environment.TRACER_DATA_FILE ?? ".tracer-data/dev-store.json",
+    devUserId: environment.TRACER_DEV_USER_ID ?? "dev-user-tracer",
     enableDevAuth: nodeEnv !== "production",
     enableDevEndpoints: nodeEnv !== "production",
   };

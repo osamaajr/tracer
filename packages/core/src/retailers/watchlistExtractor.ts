@@ -18,19 +18,44 @@ export function normalizeSavedUrl(raw: string): string {
 }
 
 /** Product evidence is required; a title or an unrelated price alone is never enough. */
-export function extractSavedProduct(document: Document, pageUrl: string): SavedProduct | null {
+export function extractSavedProduct(
+  document: Document,
+  pageUrl: string,
+  options: { includeImage?: boolean; onTiming?: (name: string, durationMs: number) => void } = {},
+): SavedProduct | null {
   try {
-    const page = normalizePublicStoreUrl(pageUrl);
+    const measure = <T>(name: string, operation: () => T): T => {
+      if (!options.onTiming) return operation();
+      const startedAt = performance.now();
+      const value = operation();
+      options.onTiming?.(name, performance.now() - startedAt);
+      return value;
+    };
+    const page = measure('input URL normalization', () => normalizePublicStoreUrl(pageUrl));
     const requestedPath = new URL(page.url).pathname;
     if (/\/(?:cart|basket|checkout|account|orders?)(?:\/|$)/i.test(requestedPath)) return null;
     const isListingRoute = /\/(?:search|collections|category)(?:\/|$)/i.test(requestedPath);
     const hasNestedProductRoute = /\/products?\//i.test(requestedPath);
     if (isListingRoute && !hasNestedProductRoute) return null;
-    const meta = (key: string) => document.querySelector(`meta[property="${key}"], meta[name="${key}"]`)?.getAttribute('content')?.trim();
-    const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
-    const url = normalizePublicStoreUrl(new URL(canonical || page.url, page.url).href, { expectedHost: page.host }).url;
+    const metaValues = measure('meta and OpenGraph collection', () => {
+      const values = new Map<string, string>();
+      for (const element of Array.from(document.querySelectorAll<HTMLMetaElement>('meta[property], meta[name]'))) {
+        const value = element.getAttribute('content')?.trim();
+        if (!value) continue;
+        for (const attribute of ['property', 'name']) {
+          const key = element.getAttribute(attribute);
+          if (key && !values.has(key)) values.set(key, value);
+        }
+      }
+      return values;
+    });
+    const meta = (key: string) => metaValues.get(key);
+    const url = measure('canonical URL normalization', () => {
+      const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
+      return normalizePublicStoreUrl(new URL(canonical || page.url, page.url).href, { expectedHost: page.host }).url;
+    });
     if (new URL(url).pathname === '/') return null;
-    const objects = flattenJsonLd(extractJsonLdObjects(document));
+    const objects = measure('JSON-LD parse + traversal', () => flattenJsonLd(extractJsonLdObjects(document)));
     const entities = objects.flatMap(value => {
       const entity = asRecord(value)?.mainEntity;
       return [value, ...(Array.isArray(entity) ? entity : entity ? [entity] : [])];
@@ -44,20 +69,27 @@ export function extractSavedProduct(document: Document, pageUrl: string): SavedP
     if ((products.length > 1 || groups.length > 1) && !product) return null;
     // A lone recommended product must not turn an unrelated page into that product.
     if (typeof product?.url === 'string' && normalizeSavedUrl(new URL(product.url, page.url).href) !== normalizeSavedUrl(url)) return null;
-    const scopes = document.querySelectorAll('[itemtype$="/Product"]');
+    const scopes = measure('itemprop product scope scan', () => document.querySelectorAll('[itemtype$="/Product"]'));
     const scope = scopes.length === 1 ? scopes[0] : null;
     if (scopes.length > 1 && !product) return null;
     const ogProduct = /^(?:product|product\.item)$/i.test(meta('og:type') || '');
     const productRoute = /\/(?:products?|dp|p)\//i.test(new URL(url).pathname) ||
       /\/productpage\.\d+/i.test(new URL(url).pathname);
-    const productForm = document.querySelector('main form[action*="/cart/add"], form[action="/cart/add"]');
-    const addControl = Array.from(document.querySelectorAll('button, [role="button"]')).some((element) =>
-      /^add to (?:bag|basket|cart)$/i.test(element.textContent?.trim() ?? ''),
-    );
-    const hasSingleProductName = document.querySelectorAll('h1').length === 1 || Boolean(meta('og:title'));
+    const { productForm, addControl, headings } = measure('product DOM evidence scan', () => {
+      const form = document.querySelector('main form[action*="/cart/add"], form[action="/cart/add"]');
+      let hasAddControl = false;
+      for (const element of document.querySelectorAll('button, [role="button"]')) {
+        if (/^add to (?:bag|basket|cart)$/i.test(element.textContent?.trim() ?? '')) {
+          hasAddControl = true;
+          break;
+        }
+      }
+      return { productForm: form, addControl: hasAddControl, headings: document.querySelectorAll('h1') };
+    });
+    const hasSingleProductName = headings.length === 1 || Boolean(meta('og:title'));
     const domProduct = productRoute && hasSingleProductName && (Boolean(productForm) || addControl);
     if (!product && !scope && !ogProduct && !domProduct) return null;
-    const name = (firstString(product?.name) || scope?.querySelector('[itemprop="name"]')?.textContent || meta('og:title') || document.querySelector('h1')?.textContent)?.trim().replace(/\s+/g, ' ');
+    const name = (firstString(product?.name) || scope?.querySelector('[itemprop="name"]')?.textContent || meta('og:title') || headings[0]?.textContent)?.trim().replace(/\s+/g, ' ');
     if (!name || name.length < 2 || name.length > 300) return null;
     const retailerId = /(^|\.)johnlewis\.com$/.test(page.host) ? 'john-lewis' : createGenericRetailerIdFromHost(page.host);
     const retailer = retailerId === 'john-lewis'
@@ -86,14 +118,16 @@ export function extractSavedProduct(document: Document, pageUrl: string): SavedP
       const domPrice = findScopedDomPrice(document, currency ?? inferPageCurrency(page.url));
       if (domPrice) result.savedPrice = domPrice;
     }
-    const image = findProductPageImage(document, page.url, {
-      structuredImage: product?.image ?? variants[0]?.image,
-      productName: name,
-      retailerSelectors: retailerId === 'john-lewis'
-        ? ["[data-test*='product-image' i] img", "[data-testid*='product-image' i] img"]
-        : undefined,
-    });
-    if (image) result.imageUrl = image.url;
+    if (options.includeImage !== false) {
+      const image = findProductPageImage(document, page.url, {
+        structuredImage: product?.image ?? variants[0]?.image,
+        productName: name,
+        retailerSelectors: retailerId === 'john-lewis'
+          ? ["[data-test*='product-image' i] img", "[data-testid*='product-image' i] img"]
+          : undefined,
+      });
+      if (image) result.imageUrl = image.url;
+    }
     const sku = productSku || firstString(offer?.sku) || firstString(variants[0]?.sku);
     const productId = firstString(product?.productID) || firstString(product?.productGroupID) || normalizeRetailerUrl(retailerId, url).productId;
     if (sku) result.sku = sku;

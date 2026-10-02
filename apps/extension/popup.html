@@ -391,7 +391,7 @@
 
       .product-image {
         align-items: center;
-        background: #f0ede7;
+        background: #fff;
         border-radius: 8px;
         display: flex;
         flex: 0 0 78px;
@@ -1102,7 +1102,7 @@
       @keyframes items-spin { to { transform: rotate(360deg); } }
       .item-row { display: grid; grid-template-columns: 56px minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-height: 82px; border: 1px solid #e6e6e1; border-radius: 14px; background: rgba(255,255,255,.62); padding: 9px 12px; text-align: left; }
       .item-row[data-has-image="false"] { grid-template-columns: minmax(0,1fr) auto auto; min-height: 0; padding: 15px 13px; }
-      .item-row > img { display: block; width: 56px; height: 64px; border-radius: 10px; background: #f1eee8; object-fit: cover; }
+      .item-row > img { display: block; width: 56px; height: 64px; border: 1px solid #eeece7; border-radius: 10px; background: #fff; object-fit: contain; padding: 4px; }
       .item-row-copy { display: block; min-width: 0; margin: 0; }
       .item-row strong { display: -webkit-box; max-width: 100%; overflow: hidden; color: #171a18; font-size: 14px; line-height: 1.3; font-weight: 650; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
       .item-row .item-row-status { display: block; margin-top: 7px; color: #2f7068; font-size: 12px; }
@@ -1126,6 +1126,55 @@
       .detail-status[data-error="true"] { color: #9b3a32; }
       .detail-status[data-paused="true"] { color: #909493; }
       .detail-status[data-paused="true"] { color: #909493; }
+      .item-detail-screen { align-content: start; gap: 12px; padding: 4px 2px 16px; }
+      .detail-hero { display: grid; grid-template-columns: 88px minmax(0,1fr); align-items: center; gap: 15px; min-width: 0; }
+      .detail-image-wrap { display: grid; width: 88px; height: 92px; place-items: center; overflow: hidden; border: 1px solid #eeece7; border-radius: 15px; background: #fff; }
+      .detail-image-wrap[hidden] { display: none; }
+      .detail-image-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+      .detail-copy { display: grid; min-width: 0; gap: 7px; }
+      .item-detail-screen h1 { margin: 0; color: #191916; font: 400 23px/1.08 Georgia,serif; letter-spacing: -.45px; }
+      .detail-retailer { display: block; width: fit-content; max-width: 100%; overflow: hidden; color: #747a79; font-size: 12px; line-height: 1.35; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+      a.detail-retailer:hover { color: #2f7068; text-decoration: underline; text-underline-offset: 3px; }
+      .detail-meta { min-height: 32px; padding: 0 1px; }
+      .detail-status { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+      .detail-delete-copy { color: #747a79; font-size: 11px; }
+      .delete-item { width: 32px; height: 32px; flex-basis: 32px; }
+      .detail-price-card { display: grid; grid-template-columns: 1fr 1fr; position: relative; gap: 12px; padding: 14px; border: 1px solid #e8e5de; border-radius: 15px; background: #fff; box-shadow: 0 5px 18px #29272008; }
+      .detail-price-card::after { position: absolute; top: 14px; bottom: 14px; left: 50%; width: 1px; background: #eceae5; content: ""; }
+      .detail-price { display: grid; align-content: start; gap: 5px; min-width: 0; }
+      .detail-price-label { color: #83898a; font-size: 11px; }
+      .detail-price strong { overflow: hidden; color: #20221f; font-size: 19px; font-weight: 680; letter-spacing: -.35px; text-overflow: ellipsis; white-space: nowrap; }
+      .detail-price small { color: #828886; font-size: 10px; line-height: 1.35; }
+      .detail-price--current { padding-left: 8px; }
+      .detail-price-card[data-alert="true"] .detail-price--current strong { color: #34813d; }
+      .detail-price-card[data-error="true"] .detail-price--current strong { color: #a33f36; font-size: 14px; }
+      .detail-actions-card { overflow: hidden; padding: 0 13px; border: 1px solid #e8e5de; border-radius: 15px; background: #fff; box-shadow: 0 3px 12px #29272008; }
+      .detail-action-row,.detail-insight-row { display: flex; min-height: 58px; align-items: center; gap: 11px; }
+      .detail-action-row { border-bottom: 1px solid #efeee9; }
+      .detail-action-row > svg,.detail-insight-row > svg { width: 18px; height: 18px; flex: 0 0 18px; color: #48534f; }
+      .detail-product-link { display: flex; min-height: 58px; align-items: center; gap: 11px; border-bottom: 1px solid #efeee9; color: inherit; text-decoration: none; }
+      .detail-product-link > svg { width: 18px; height: 18px; flex: 0 0 18px; color: #48534f; }
+      .detail-product-link:hover .detail-action-copy strong { color: #2f7068; }
+      .detail-product-link:focus-visible { outline: 2px solid #267d6e; outline-offset: -2px; border-radius: 8px; }
+      .detail-product-link[hidden] { display: none; }
+      .detail-action-copy { display: grid; min-width: 0; flex: 1; gap: 4px; }
+      .detail-action-copy strong { overflow: hidden; color: #252722; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+      .detail-action-copy small { overflow: hidden; color: #777e7e; font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+      .detail-action-link { display: inline-flex; width: 34px; height: 34px; flex: 0 0 34px; align-items: center; justify-content: center; border: 1px solid #e9e7e1; border-radius: 10px; background: #fffdfa; color: #35403c; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
+      .detail-action-link:hover { border-color: #d9ded8; background: #f4f7f3; }
+      .detail-action-link:focus-visible,.detail-action-switch:focus-visible { outline: 2px solid #267d6e; outline-offset: 2px; }
+      .detail-action-link svg { width: 16px; height: 16px; }
+      .detail-action-link[hidden] { display: none; }
+      .detail-action-switch { display: inline-flex; width: 42px; height: 25px; flex: 0 0 42px; align-items: center; padding: 2px; border: 0; border-radius: 999px; background: #d8dedb; transition: background .15s ease; }
+      .detail-action-switch > span { width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0002; transition: transform .15s ease; }
+      .detail-action-switch[aria-checked="true"] { background: #2f7068; }
+      .detail-action-switch[aria-checked="true"] > span { transform: translateX(17px); }
+      .detail-insight-row { min-height: 49px; }
+      .detail-insight-row > svg { width: 16px; height: 16px; flex-basis: 16px; color: #818886; }
+      .detail-insight-row .detail-action-copy { gap: 0; }
+      .detail-insight-row .detail-action-copy strong { color: #747a79; font-size: 10px; font-weight: 550; }
+      .detail-insight-row .detail-action-copy small { font-size: 9px; }
+      .detail-insight-state { color: #818886; font-size: 10px; white-space: nowrap; }
       .delete-item { display: inline-flex; flex: 0 0 30px; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid #e8e6e1; border-radius: 8px; background: #fffefd; color: #747b7d; box-shadow: 0 2px 7px #2927200a; }
       .delete-item svg { width: 15px; height: 15px; }
       .delete-item:hover { border-color: #e5cbc7; background: #fff8f7; color: #a13f35; }
@@ -1406,7 +1455,7 @@
       .saved-row .saved-monitoring-status[data-state="unavailable"] { color:#9b3a32; }
       .saved-product img,.saved-row img { width:48px; height:48px; object-fit:contain; border-radius:10px; float:left; margin:0 12px 8px 0; }
       .watchlist-screen .saved-product img {
-        background:#f1eee8;
+        background:#fff;
         border-radius:12px;
         float:none;
         height:100%;
@@ -1416,6 +1465,7 @@
         min-height:0;
         object-fit:contain;
         object-position:center;
+        padding:4px;
         width:auto;
       }
       .watchlist-screen .saved-image-picker {
@@ -1580,12 +1630,15 @@
         padding:12px 14px 14px;
       }
       .saved-row img {
+        background:#fff;
+        border:1px solid #eeece7;
         border-radius:10px;
         float:none;
         grid-column:1;
         height:96px;
         margin:0;
-        object-fit:cover;
+        object-fit:contain;
+        padding:5px;
         width:78px;
       }
       .saved-row .saved-copy { grid-column:2; min-width:0; padding-top:2px; }
@@ -1665,21 +1718,22 @@
       .detected-copy h1, .success-copy h1 { font-family: Georgia, serif; font-size: clamp(27px, 8vw, 32px); line-height: 1.1; text-wrap: balance; }
       .purchase-receipt { display: block; position: relative; width: 160px; height: 146px; margin: 0 auto 12px; overflow: hidden; }
       .purchase-receipt > img { position: absolute; width: 210px; max-width: none; height: 210px; left: -25px; top: -29px; mix-blend-mode: darken; }
-      .receipt-tick { position: absolute; left: 98px; top: 60px; width: 19px; height: 19px; border-radius: 50%; background: #9da891; display: grid; place-items: center; }
+      .receipt-tick { position: absolute; left: 105px; top: 60px; width: 19px; height: 19px; border-radius: 50%; background: #9da891; display: grid; place-items: center; }
       .receipt-tick svg { width: 19px; height: 19px; overflow: visible; }
       .receipt-tick path { fill: none; stroke: white; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
       main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: receipt-tick-reveal .5s .2s ease forwards; }
       @keyframes receipt-tick-reveal { to { stroke-dashoffset: 0; } }
       @media (prefers-reduced-motion: reduce) { main[data-screen="protected"] .receipt-tick path, main[data-screen="duplicate"] .receipt-tick path { animation: none; stroke-dashoffset: 0; } }
 
-      /* Purchase-detected layout: compact receipt hero and useful order summary. */
-      main[data-screen="detected"] { overflow:hidden; }
+      /* Purchase-detected layout: give the receipt, summary, and actions room. */
+      main[data-screen="detected"] { min-height:550px; overflow:hidden; }
       main[data-screen="detected"] .detected-screen {
         align-content:start;
-        gap:14px;
+        gap:16px;
+        grid-template-rows:auto minmax(106px,1fr) auto;
         justify-content:stretch;
-        min-height:0;
-        padding:0 2px 10px;
+        min-height:470px;
+        padding:0 10px 10px;
       }
       main[data-screen="detected"] .detected-copy { gap:0; }
       main[data-screen="detected"] .purchase-receipt {
@@ -1738,26 +1792,26 @@
       main[data-screen="detected"] .detected-copy .purchase-intro {
         color:#85857f;
         font:350 14px/1.45 Arial,sans-serif;
-        margin:12px auto 0;
+        margin:13px auto 0;
       }
       main[data-screen="detected"] .purchase-card {
         align-items:center;
         display:grid;
         grid-template-columns:minmax(0,1fr) auto;
-        min-height:96px;
-        padding:17px 18px;
+        min-height:106px;
+        padding:18px;
       }
       main[data-screen="detected"] .product-head { grid-column:1; min-width:0; padding:0; transform:translateY(4px); }
       main[data-screen="detected"] .product-title h2 {
         color:#22231f;
-        font:650 14px/1.3 Arial,sans-serif;
+        font:650 15px/1.35 Arial,sans-serif;
         margin:0;
       }
       main[data-screen="detected"] .purchase-date-line {
         color:#999994;
         display:block;
         font:350 12px/1.35 Arial,sans-serif;
-        margin:7px 0 0;
+        margin:8px 0 0;
       }
       main[data-screen="detected"] :is(.item-subtitle,.match,.divider) { display:none; }
       main[data-screen="detected"] .details {
@@ -1784,7 +1838,7 @@
         font:650 18px/1.2 Arial,sans-serif;
         white-space:nowrap;
       }
-      main[data-screen="detected"] .actions { display:grid; gap:8px; margin:2px 0 0; }
+      main[data-screen="detected"] .actions { display:grid; gap:8px; margin:0; }
       main[data-screen="detected"] .protect { min-height:48px; position:relative; }
       main[data-screen="detected"] .protect::after { content:'→'; font-size:19px; margin-left:18px; }
       main[data-screen="detected"] #maybeLater {
@@ -1795,6 +1849,113 @@
         text-decoration:underline;
         text-underline-offset:3px;
       }
+
+      /* Give the already-protected confirmation the same balanced spacing. */
+      main[data-screen="duplicate"] { min-height:550px; }
+      main[data-screen="duplicate"] .success-screen {
+        align-content:start;
+        gap:16px;
+        grid-template-rows:auto minmax(94px,1fr) auto auto;
+        justify-content:stretch;
+        min-height:470px;
+        padding:0 10px 10px;
+      }
+      main[data-screen="duplicate"] .success-copy .purchase-intro { margin-top:12px; }
+      main[data-screen="duplicate"] .success-summary {
+        align-content:center;
+        min-height:94px;
+        padding:18px;
+      }
+      main[data-screen="duplicate"] .success-summary .product-title h2 {
+        font-size:15px;
+        line-height:1.35;
+      }
+      main[data-screen="duplicate"] .ready-copy {
+        line-height:1.45;
+        margin:0 auto;
+        max-width:270px;
+      }
+      main[data-screen="duplicate"] .summary-actions { margin:0; }
+      main[data-screen="duplicate"] .dashboard-cta { min-height:46px; }
+      .success-screen .summary-actions { gap:16px; }
+      .success-continue-browsing {
+        background:transparent;
+        border:0;
+        border-radius:0;
+        color:#999994;
+        font:400 12px/1.2 Arial,sans-serif;
+        justify-self:center;
+        min-height:28px;
+        padding:0;
+        text-decoration:underline;
+        text-underline-offset:3px;
+        width:auto;
+      }
+      .success-continue-browsing:hover { color:#33352f; }
+
+      /* Open purchase layout, with natural row heights and warm neutral surfaces. */
+      main[data-screen="detail"] { display:flex; flex-direction:column; gap:0; padding:20px 26px 24px; background:#faf8f3; }
+      main[data-screen="detail"] .topbar { flex:none; margin-bottom:18px; padding:0; }
+      main[data-screen="detail"] :is(.menu-toggle,.popup-back) { border-color:#e5e2dc; background:#fffdf9; color:#353630; box-shadow:none; }
+      main[data-screen="detail"] :is(button,a):focus-visible { outline-color:#353630; }
+      main[data-screen="detail"] .item-detail-screen {
+        flex:1; min-height:0; overflow-y:auto; padding:2px 4px 6px;
+        align-content:stretch; gap:16px; grid-template-rows:auto auto minmax(180px,1fr);
+      }
+      .detail-hero { display:grid; grid-template-columns:1fr; gap:10px; min-width:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+      .detail-hero-main { display:flex; align-items:center; gap:14px; min-width:0; }
+      .detail-hero-main { justify-content:flex-start; }
+      .detail-image-wrap { flex:none; width:60px; height:66px; border:1px solid #e9e5dc; border-radius:12px; background:#fff; }
+      .detail-copy { gap:5px; }
+      .item-detail-screen h1 { color:#24251f; font:400 22px/1.16 Georgia,serif; letter-spacing:-.025em; }
+      .detail-retailer { color:#85857c; font-size:11px; }
+      .detail-meta { min-height:0; padding:0; }
+      .detail-status { display:inline-flex; width:fit-content; min-height:18px; padding:0; border:0; border-radius:0; background:transparent; color:#6f7e60; font-size:11px; font-weight:600; }
+      .detail-status[data-alert="true"] { color:#536e45; }
+      .detail-status[data-error="true"] { color:#9b3a32; }
+      .detail-status[data-paused="true"] { color:#8a8a80; }
+      .detail-hero .delete-item { width:28px; height:28px; flex:0 0 28px; border:0; border-radius:50%; background:transparent; color:#95958c; box-shadow:none; }
+      .detail-hero .delete-item:hover { background:#f1eae3; color:#9b3a32; }
+      .detail-price-card { display:flex; flex-direction:column; gap:0; padding:14px 0; border:0; border-block:1px solid #e2dfd6; border-radius:0; background:transparent; box-shadow:none; }
+      .detail-price-card::after { display:none; }
+      .detail-price { min-width:0; min-height:0; gap:3px; padding:0; border:0; border-radius:0; background:transparent; }
+      .detail-price-label { color:#85857c; font-size:11px; font-weight:500; }
+      .detail-price strong { color:#24251f; font-weight:500; letter-spacing:-.04em; }
+      .detail-price small { color:#85857c; font-size:10px; line-height:1.4; }
+      .detail-price--current { padding:0 0 12px; }
+      .detail-price--current strong { font:400 36px/1.1 Georgia,serif; white-space:normal; overflow-wrap:anywhere; }
+      #detailCurrentPrice[data-checking="true"] {
+        font-size:26px; color:#353630;
+        background:linear-gradient(100deg,#353630 30%,#b6b3a9 48%,#353630 66%);
+        background-size:250% 100%; background-clip:text; -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent; animation:loading-text-shimmer 2.6s ease-in-out infinite;
+      }
+      .detail-price-card[data-error="true"] .detail-price--current strong { color:#9b3a32; font-size:24px; }
+      .detail-price-card[data-alert="true"] .detail-price--current strong { color:#536e45; }
+      .detail-price--paid { display:grid; grid-template-columns:1fr auto; align-items:center; padding-top:11px; border-top:1px dashed #e2dfd6; }
+      .detail-price--paid strong { grid-column:2; grid-row:1/3; font-size:18px; letter-spacing:-.02em; }
+      .detail-price--paid small { grid-column:1; }
+      .detail-actions-card { display:flex; flex-direction:column; justify-content:space-between; gap:0; min-height:180px; overflow:visible; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+      .detail-action-row,.detail-insight-row { flex-shrink:0; min-height:54px; gap:12px; padding:9px 0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+      .detail-action-row { order:1; border-bottom:1px solid #e9e5dc; }
+      .detail-insight-row { order:2; }
+      .detail-action-row > svg,.detail-insight-row > svg { width:18px; height:18px; flex-basis:18px; color:#878b7c; }
+      .detail-action-copy { gap:3px; }
+      .detail-action-copy strong { color:#34352e; font-size:12px; font-weight:600; }
+      .detail-action-copy small { overflow:visible; color:#929188; font-size:10px; line-height:1.4; white-space:normal; }
+      .detail-action-switch { width:38px; height:23px; flex-basis:38px; background:#deded6; }
+      .detail-action-switch > span { width:19px; height:19px; }
+      .detail-action-switch[aria-checked="true"] { background:#8b977c; }
+      .detail-action-switch[aria-checked="true"] > span { transform:translateX(15px); }
+      .detail-insight-row .detail-action-copy strong { color:#77796e; font-size:11px; font-weight:500; }
+      .detail-insight-row .detail-action-copy small { font-size:10px; }
+      .detail-insight-state { color:#88897e; font-size:10px; font-weight:500; }
+      .detail-product-link { order:3; flex-shrink:0; min-height:50px; margin-top:10px; padding:11px 18px; gap:12px; border:0; border-radius:999px; background:#24251f; color:#fffdf9; box-shadow:none; }
+      .detail-product-link > svg { display:none; }
+      .detail-product-link .detail-action-copy strong,.detail-product-link:hover .detail-action-copy strong { color:#fffdf9; font-size:12px; }
+      .detail-product-link .detail-action-copy small { color:#c5c5b9; font-size:10px; }
+      .detail-product-link:hover { background:#3b3d32; }
+      .detail-action-link { width:22px; height:22px; flex-basis:22px; border:0; border-radius:0; background:transparent; color:#fffdf9; }
     </style>
   </head>
   <body>
@@ -1841,16 +2002,58 @@
       </section>
 
       <section class="screen item-detail-screen" aria-label="Purchase details">
-        <h1 id="detailName">Purchase details</h1>
-        <div class="detail-meta">
-          <div class="detail-status" id="detailStatus">● Watching</div>
-          <button class="delete-item" id="deleteItem" type="button" aria-label="Stop watching this item" title="Stop watching this item">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
+        <div class="detail-hero">
+          <div class="detail-hero-main">
+            <div class="detail-image-wrap" id="detailImageWrap" hidden>
+              <img id="detailImage" alt="" decoding="async" referrerpolicy="no-referrer">
+            </div>
+            <div class="detail-copy">
+              <h1 id="detailName">Purchase details</h1>
+              <span class="detail-retailer" id="detailRetailerText" hidden></span>
+            </div>
+          </div>
+          <div class="detail-meta">
+            <div class="detail-status" id="detailStatus">● Watching</div>
+            <button class="delete-item" id="deleteItem" type="button" aria-label="Stop watching this item" title="Stop watching this item">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <dl class="item-facts" id="itemFacts"></dl>
+        <section class="detail-price-card" id="detailPriceCard" aria-label="Purchase price">
+          <div class="detail-price detail-price--current">
+            <span class="detail-price-label">Current price</span>
+            <strong id="detailCurrentPrice" aria-live="polite">—</strong>
+            <small id="detailPriceNote">Tracer checks this item automatically.</small>
+          </div>
+          <div class="detail-price detail-price--paid">
+            <span class="detail-price-label">You paid</span>
+            <strong id="detailPaid">—</strong>
+            <small id="detailPaidDate"></small>
+          </div>
+        </section>
+        <section class="detail-actions-card" aria-label="Item actions">
+          <div class="detail-action-row">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="detail-action-copy"><strong>Price alerts</strong><small id="detailAlertCopy">Get notified when Tracer finds a lower price.</small></span>
+            <button class="detail-action-switch" id="detailAlertsSwitch" type="button" role="switch" aria-checked="true" aria-label="Price drop alerts">
+              <span aria-hidden="true"></span>
+            </button>
+          </div>
+          <a class="detail-product-link" id="detailProductAction" target="_blank" rel="noopener noreferrer" aria-label="Open product page" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM8 7V5a4 4 0 0 1 8 0v2M9 13h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="detail-action-copy"><strong>View product</strong><small id="detailProductCopy">Open the original store page</small></span>
+            <span class="detail-action-link" aria-hidden="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4 11 13M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </a>
+          <div class="detail-insight-row">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span class="detail-action-copy"><strong>Monitoring</strong><small id="detailMonitoringInsight">Waiting for first price check</small></span>
+            <span class="detail-insight-state" id="detailMonitoringState">Automatic</span>
+          </div>
+        </section>
       </section>
 
       <nav class="popup-menu" id="popupMenu" hidden>
@@ -2012,6 +2215,7 @@
         <p class="ready-copy" id="successCopy">We’re now watching for price drops.<br />We’ll let you know when it changes.</p>
         <section class="summary-actions">
           <button class="dashboard-cta" id="dashboardCta" type="button">View protected items</button>
+          <button class="success-continue-browsing" id="successContinueBrowsing" type="button">Continue browsing</button>
         </section>
 
         <p class="privacy-note">

@@ -14,7 +14,7 @@ John Lewis says eligible purchases made in its shops, website, or app can be pri
 
 The policy includes John Lewis's own price reductions within 7 days and lower prices from its listed competitors, subject to terms.
 
-For AfterBuy V1, we only monitor John Lewis's own product price for the exact product the user bought. We do not perform competitor-wide comparison yet.
+For Tracer V1, we only monitor John Lewis's own product price for the exact product the user bought. We do not perform competitor-wide comparison yet.
 
 ## Eligibility Facts Stored In Code
 
@@ -24,19 +24,19 @@ For AfterBuy V1, we only monitor John Lewis's own product price for the exact pr
 - Window: 7 days
 - Window starts: order placed
 - Own-retailer price reductions: supported
-- Competitor reductions: policy supports them, but AfterBuy V1 does not monitor competitor prices
+- Competitor reductions: policy supports them, but Tracer V1 does not monitor competitor prices
 - Claim route: https://www.johnlewis.com/customer-services/prices-and-payment/price-promise/request
 
 ## Consumer Copy Guardrails
 
-AfterBuy should say:
+Tracer should say:
 
 - "potentially claimable"
 - "may be eligible"
 - "John Lewis will decide eligibility"
 - "check the item is identical, in stock, and not excluded"
 
-AfterBuy should not say:
+Tracer should not say:
 
 - "John Lewis owes you"
 - "guaranteed refund"

@@ -3,7 +3,7 @@ import {
   gbp,
   type PriceFetcher,
   type ProductPriceSnapshot,
-} from "@afterbuy/core";
+} from "@tracer/core";
 
 type DevFixturePriceVariant = "paid" | "dropped";
 

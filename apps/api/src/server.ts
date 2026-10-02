@@ -12,18 +12,18 @@ import {
   runPriceMonitoringCycle,
   updateOpportunityStatus,
   validatePurchaseDraft,
-  type AfterBuyRepository,
+  type TracerRepository,
   type ActivityEventRecord,
   type PriceFetcher,
   type PurchaseDraft,
   type PurchaseLineItemDraft,
   type PurchaseRecord,
-} from "@afterbuy/core";
+} from "@tracer/core";
 import { requireAuthenticatedUser } from "./auth";
 import { type ApiConfig, loadConfig } from "./config";
 import { createDevFixturePriceFetcher } from "./devFixturePriceFetcher";
 import { HttpPriceFetcher } from "./httpPriceFetcher";
-import { FileAfterBuyRepository } from "./repositories/fileAfterBuyRepository";
+import { FileTracerRepository } from "./repositories/fileTracerRepository";
 import {
   devMonitoringQuerySchema,
   lineItemSchema,
@@ -43,7 +43,7 @@ import {
 
 export interface CreateServerOptions {
   config?: ApiConfig;
-  repository?: AfterBuyRepository;
+  repository?: TracerRepository;
   priceFetcher?: PriceFetcher;
 }
 
@@ -53,12 +53,12 @@ type OpportunityRouteRequest = FastifyRequest<{
   };
 }>;
 
-export async function createAfterBuyServer(
+export async function createTracerServer(
   options: CreateServerOptions = {},
 ): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
   const repository =
-    options.repository ?? new FileAfterBuyRepository(config.dataFile);
+    options.repository ?? new FileTracerRepository(config.dataFile);
   const configuredPriceFetcher = options.priceFetcher;
   const livePriceFetcher = configuredPriceFetcher ?? new HttpPriceFetcher();
   const app = Fastify({
@@ -93,7 +93,7 @@ export async function createAfterBuyServer(
 
   app.get("/health", async () => ({
     ok: true,
-    service: "afterbuy-api",
+    service: "tracer-api",
   }));
 
   app.post("/api/purchases/protect", async (request, reply) => {
@@ -271,6 +271,30 @@ export async function createAfterBuyServer(
       opportunities: opportunities.map(serializeOpportunity),
     };
   });
+
+  app.get<{ Params: { purchaseId: string } }>(
+    "/api/purchases/:purchaseId/price-history",
+    async (request, reply) => {
+      const user = requireAuthenticatedUser(request, config);
+      const { purchaseId } = purchaseParamsSchema.parse(request.params);
+      const purchase = (await repository.listPurchasesForUser(user.id))
+        .find((candidate) => candidate.id === purchaseId);
+      if (!purchase) {
+        return reply.code(404).send({ error: "Protected purchase not found" });
+      }
+      const observations = await repository.listPriceObservationsByProductIds(
+        [purchase.productId],
+        5_000,
+      );
+      return {
+        observations: observations.map((observation) => ({
+          observedAt: observation.observedAt,
+          price: observation.price,
+          availability: observation.availability,
+        })),
+      };
+    },
+  );
 
   app.delete<{ Params: { purchaseId: string } }>(
     "/api/purchases/:purchaseId",

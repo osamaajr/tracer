@@ -1,4 +1,4 @@
-import { firstUsableProductImage } from "@afterbuy/core";
+import { firstUsableProductImage } from "@tracer/core";
 import { z } from "zod";
 
 export const moneySchema = z.object({

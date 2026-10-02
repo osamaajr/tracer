@@ -1,5 +1,5 @@
 {
-  "name": "afterbuy",
+  "name": "tracer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "dev": "concurrently -n api,web \"npm run dev:api\" \"npm run dev:web\"",
-    "dev:api": "npm run dev -w @afterbuy/api",
-    "dev:web": "npm run dev -w @afterbuy/web",
+    "dev:api": "npm run dev -w @tracer/api",
+    "dev:web": "npm run dev -w @tracer/web",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",

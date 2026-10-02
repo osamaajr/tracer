@@ -41,6 +41,10 @@ export function extractShopifyAccountPurchaseFromDocument(
     ? candidateRows
     : Array.from(document.querySelectorAll("a[href*='/products/']"));
   const extracted = rows.flatMap((row) => extractLineItem(row, sourceUrl));
+  // The product row is the authoritative price for the purchased item. Keep
+  // order-level coupons, shipping, and tax out of the line-item price: Shopify
+  // renders those as separate totals and folding them back into each product
+  // makes the extension disagree with the price the shopper sees beside it.
   const lineItems = dedupeLineItems(extracted);
 
   if (lineItems.length === 0) {
@@ -145,7 +149,7 @@ function extractLineItem(root: Element, sourceUrl: string): PurchaseLineItemDraf
 
 function extractLineItemPrice(root: Element, quantity: number): ReturnType<typeof parsePrice> {
   const elements = Array.from(root.querySelectorAll([
-    "[data-afterbuy-price-paid]",
+    "[data-tracer-price-paid]",
     "[data-line-item-price]",
     "[data-line-price]",
     "[data-line-total]",

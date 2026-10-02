@@ -11,7 +11,7 @@ import {
   type PriceFetcher,
   type ProductPriceSnapshot,
   type ProductRecord,
-} from "@afterbuy/core";
+} from "@tracer/core";
 
 const maxHtmlBytes = 2_000_000;
 const requestTimeoutMs = 10_000;
@@ -65,8 +65,8 @@ export class HttpPriceFetcher implements PriceFetcher {
         const document = parseHTML(html).document;
         const observedAt = new Date().toISOString();
         const extractedSnapshot = product.retailerId === "john-lewis"
-          ? extractJohnLewisProductFromDocument(document, product.canonicalUrl, observedAt)
-          : extractGenericProductFromDocument(document, product.canonicalUrl, observedAt);
+          ? extractJohnLewisProductFromDocument(document, product.canonicalUrl, observedAt, product.name)
+          : extractGenericProductFromDocument(document, product.canonicalUrl, observedAt, product.name);
         const savedProduct = !extractedSnapshot && product.retailerId !== "john-lewis"
           ? extractSavedProduct(document, product.canonicalUrl)
           : null;

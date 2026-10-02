@@ -1,5 +1,5 @@
 {
-  "name": "@afterbuy/extension",
+  "name": "@tracer/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@afterbuy/core": "*"
+    "@tracer/core": "*"
   },
   "devDependencies": {
     "vite": "^8.2.2"

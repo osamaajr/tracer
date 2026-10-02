@@ -42,7 +42,7 @@ Generic stores can be tracked when they expose reliable order and product data, 
 ## Production Readiness Gaps
 
 - Replace dev header auth with a real extension/web auth flow.
-- Wire the Postgres repository implementation behind the existing `AfterBuyRepository` interface.
+- Wire the Postgres repository implementation behind the existing `TracerRepository` interface.
 - Add a scheduled backend worker for monitoring instead of relying on manual API triggers.
 - Add rate limits, retry/backoff, and per-store monitoring cadence.
 - Add policy admin tooling for verifying and retiring retailer policies.

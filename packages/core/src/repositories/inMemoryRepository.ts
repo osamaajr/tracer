@@ -3,7 +3,7 @@ import type {
   ActivityEventCreateInput,
   ActivityEventRecord,
   ActivityEventWriteResult,
-  AfterBuyRepository,
+  TracerRepository,
   LatestObservation,
   OpportunityCreateInput,
   OpportunityRecord,
@@ -20,7 +20,7 @@ import type {
   UserMonitoringPreference,
 } from "../domain/types";
 
-export class InMemoryAfterBuyRepository implements AfterBuyRepository {
+export class InMemoryTracerRepository implements TracerRepository {
   private readonly products: ProductRecord[] = [];
   private readonly purchases: PurchaseRecord[] = [];
   private readonly observations: PriceObservationRecord[] = [];
@@ -350,6 +350,25 @@ export class InMemoryAfterBuyRepository implements AfterBuyRepository {
 
       return latest ? [{ productId, observation: latest }] : [];
     });
+  }
+
+  async listPriceObservationsByProductIds(
+    productIds: string[],
+    limitPerProduct = 60,
+  ): Promise<PriceObservationRecord[]> {
+    const requested = new Set(productIds);
+    const byProduct = new Map<string, PriceObservationRecord[]>();
+    for (const observation of this.observations) {
+      if (!requested.has(observation.productId)) continue;
+      const history = byProduct.get(observation.productId) ?? [];
+      history.push(observation);
+      byProduct.set(observation.productId, history);
+    }
+    return [...byProduct.values()].flatMap((history) =>
+      history
+        .sort((left, right) => left.observedAt.localeCompare(right.observedAt))
+        .slice(-Math.max(1, limitPerProduct)),
+    );
   }
 
   async recordActivityEvent(

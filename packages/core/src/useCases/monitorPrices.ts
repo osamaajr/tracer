@@ -1,5 +1,5 @@
 import type {
-  AfterBuyRepository,
+  TracerRepository,
   Money,
   PriceFetcher,
   PriceObservationRecord,
@@ -27,13 +27,29 @@ export interface MonitoringSummary {
 }
 
 export interface RunPriceMonitoringOptions {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   priceFetcher: PriceFetcher;
   now?: string;
   policyRegistry?: RetailerPolicyRegistry;
 }
 
-export async function runPriceMonitoringCycle(
+// The API can run a scheduled check at the same time as a user-triggered
+// check. Serialize work per repository so both runs cannot race on the same
+// previous observation and emit duplicate drop events.
+const monitoringQueues = new WeakMap<TracerRepository, Promise<void>>();
+
+export function runPriceMonitoringCycle(
+  options: RunPriceMonitoringOptions,
+): Promise<MonitoringSummary> {
+  const previous = monitoringQueues.get(options.repository) ?? Promise.resolve();
+  const cycle = previous
+    .catch(() => undefined)
+    .then(() => runPriceMonitoringCycleUnlocked(options));
+  monitoringQueues.set(options.repository, cycle.then(() => undefined, () => undefined));
+  return cycle;
+}
+
+async function runPriceMonitoringCycleUnlocked(
   options: RunPriceMonitoringOptions,
 ): Promise<MonitoringSummary> {
   const now = options.now ?? new Date().toISOString();
@@ -157,7 +173,7 @@ interface OpportunitySyncResult {
 }
 
 async function syncOpportunity(input: {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   purchase: PurchaseRecord;
   policy: RetailerPolicy | null;
   observation: PriceObservationRecord;
@@ -305,7 +321,7 @@ async function syncOpportunity(input: {
 }
 
 async function recordObservationActivity(input: {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   purchase: PurchaseRecord;
   observation: PriceObservationRecord;
   previousObservation: PriceObservationRecord | null;
@@ -401,7 +417,7 @@ async function recordObservationActivity(input: {
 }
 
 async function recordPriceMoveActivity(input: {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   purchase: PurchaseRecord;
   observation: PriceObservationRecord;
   previousPrice: Money;
@@ -435,18 +451,18 @@ async function recordPriceMoveActivity(input: {
 }
 
 async function recordActivity(
-  repository: AfterBuyRepository,
+  repository: TracerRepository,
   input: {
     purchase: PurchaseRecord;
     opportunityId?: string;
-    type: Parameters<AfterBuyRepository["recordActivityEvent"]>[0]["type"];
+    type: Parameters<TracerRepository["recordActivityEvent"]>[0]["type"];
     occurredAt: string;
     createdAt: string;
     metadata?: Record<string, unknown>;
     dedupeKey?: string;
   },
 ): Promise<number> {
-  const eventInput: Parameters<AfterBuyRepository["recordActivityEvent"]>[0] = {
+  const eventInput: Parameters<TracerRepository["recordActivityEvent"]>[0] = {
     userId: input.purchase.userId,
     purchaseId: input.purchase.id,
     productId: input.purchase.productId,

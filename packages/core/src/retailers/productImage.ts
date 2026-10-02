@@ -1,3 +1,5 @@
+import { asRecord, extractJsonLdObjects, flattenJsonLd, jsonLdHasType } from "./jsonLd";
+
 export type ProductImageSource =
   | "order_confirmation"
   | "json_ld"
@@ -24,6 +26,7 @@ export interface ProductImageCandidateInput {
 export interface ProductPageImageOptions {
   structuredImage?: unknown;
   productName?: string | undefined;
+  productIdentifiers?: Array<string | null | undefined> | undefined;
   retailerSelectors?: string[] | undefined;
 }
 
@@ -36,7 +39,13 @@ interface RankedImageCandidate extends ProductImageCandidate {
   ordinal: number;
 }
 
-const MAX_CANDIDATES = 48;
+const MAX_CANDIDATES = 192;
+const MAX_PRODUCT_IMAGES = 24;
+const IMAGE_PRESENTATION_PARAMS = new Set([
+  "auto", "bg", "background", "cache", "cb", "crop", "dpr", "fit", "fm", "fmt", "format",
+  "h", "height", "hei", "imheight", "imwidth", "ixlib", "maxheight", "maxwidth", "q", "quality",
+  "rect", "sh", "sw", "tr", "transformation", "v", "ver", "version", "w", "wid", "width",
+]);
 const SOURCE_SCORE: Record<ProductImageSource, number> = {
   retailer_adapter: 130,
   order_confirmation: 125,
@@ -60,6 +69,10 @@ const GALLERY_SELECTORS = [
   "[class*='product-images' i] img",
   "[class*='product__media' i] img",
   "[class*='product-media' i] img",
+  "[class*='image-gallery' i] img",
+  "[class*='media-gallery' i] img",
+  "[aria-label*='product image' i] img",
+  "[aria-label*='product photo' i] img",
   "main [itemprop='image']",
   "main img[data-zoom-image]",
   "main img[data-large-image]",
@@ -92,9 +105,10 @@ export function selectProductImages(
 
   const grouped = new Map<string, RankedImageCandidate[]>();
   for (const candidate of expanded) {
-    const group = grouped.get(candidate.url) ?? [];
+    const identity = productImageIdentity(candidate.url);
+    const group = grouped.get(identity) ?? [];
     group.push(candidate);
-    grouped.set(candidate.url, group);
+    grouped.set(identity, group);
   }
 
   const ranked: Array<{ candidate: RankedImageCandidate; score: number }> = [];
@@ -131,11 +145,29 @@ export function findProductPageImages(
   options: ProductPageImageOptions = {},
 ): ProductImageCandidate[] {
   const candidates: ProductImageCandidateInput[] = [];
+  const structuredImages = findStructuredProductImages(document, options.productName);
+  const openGraph = document.querySelector<HTMLMetaElement>(
+    'meta[property="og:image"], meta[property="og:image:url"], meta[name="og:image"]',
+  );
+  const trustedPrimaryValues = [options.structuredImage, ...structuredImages, openGraph?.content];
+  const hasTrustedPrimary = Boolean(selectProductImage(
+    [{ value: trustedPrimaryValues, source: "json_ld" }],
+    baseUrl,
+    options.productName,
+  ));
   if (options.retailerSelectors?.length) {
     collectElementCandidates(document, options.retailerSelectors, "retailer_adapter", candidates);
   }
-  candidates.push({ value: options.structuredImage, source: "json_ld" });
-  collectElementCandidates(document, GALLERY_SELECTORS, "gallery", candidates);
+  candidates.push({
+    value: [options.structuredImage, ...structuredImages],
+    source: "json_ld",
+  });
+  // When the page identifies its primary product image, use it to anchor the
+  // gallery instead of sweeping every gallery-like block. Retailers often use
+  // the same carousel markup for recommendations lower on the page.
+  if (!hasTrustedPrimary) {
+    collectElementCandidates(document, GALLERY_SELECTORS, "gallery", candidates);
+  }
 
   const metadata = document.querySelectorAll<HTMLElement>(
     "meta[itemprop='image'], link[itemprop='image'], [itemprop='image'][content]",
@@ -147,9 +179,6 @@ export function findProductPageImages(
     });
   }
 
-  const openGraph = document.querySelector<HTMLMetaElement>(
-    'meta[property="og:image"], meta[property="og:image:url"], meta[name="og:image"]',
-  );
   candidates.push({
     value: openGraph?.content,
     source: "open_graph",
@@ -157,12 +186,325 @@ export function findProductPageImages(
     height: metaNumber(document, "og:image:height"),
     alt: document.querySelector<HTMLMetaElement>('meta[property="og:image:alt"]')?.content,
   });
+  collectGalleryAroundPrimaryImage(
+    document,
+    baseUrl,
+    trustedPrimaryValues,
+    candidates,
+  );
+  collectImagesMatchingProductIdentity(
+    document,
+    baseUrl,
+    options.productIdentifiers ?? [],
+    candidates,
+  );
+  collectEmbeddedProductImages(
+    document,
+    baseUrl,
+    options.productName,
+    options.productIdentifiers ?? [],
+    candidates,
+  );
 
-  return selectProductImages(candidates, baseUrl, options.productName).slice(0, 8);
+  const ranked = selectProductImages(candidates, baseUrl, options.productName);
+  const identityTokens = productIdentityTokens(baseUrl, options.productIdentifiers ?? []);
+  const identityMatches = ranked.filter((candidate) =>
+    identityTokens.some((identifier) => normalizeIdentityText(candidate.url).includes(identifier)),
+  );
+  // Two matching assets are strong evidence of the current product's own
+  // gallery. Prefer that set so an incorrect OG/JSON-LD image from a related
+  // product cannot become the initially selected image or a picker option.
+  const scoped = identityMatches.length >= 2 ? identityMatches : ranked;
+  return scoped.slice(0, MAX_PRODUCT_IMAGES);
+}
+
+function findStructuredProductImages(document: Document, productName: string | undefined): unknown[] {
+  const products = flattenJsonLd(extractJsonLdObjects(document))
+    .filter((value) => jsonLdHasType(value, "Product") || jsonLdHasType(value, "ProductGroup"))
+    .map(asRecord)
+    .filter((value): value is Record<string, unknown> => value !== null);
+  if (products.length === 0) return [];
+
+  const normalizedName = normalizeComparableText(productName);
+  const product = normalizedName
+    ? products.find((candidate) => normalizeComparableText(candidate.name) === normalizedName)
+    : products.length === 1 ? products[0] : undefined;
+  if (!product) return [];
+
+  const variants = Array.isArray(product.hasVariant)
+    ? product.hasVariant.map(asRecord).filter((value): value is Record<string, unknown> => value !== null)
+    : [];
+  return [product.image, ...variants.map((variant) => variant.image)];
+}
+
+function normalizeComparableText(value: unknown): string {
+  return typeof value === "string" ? value.toLowerCase().replace(/\s+/g, " ").trim() : "";
+}
+
+function collectGalleryAroundPrimaryImage(
+  document: Document,
+  baseUrl: string,
+  trustedPrimaryValues: unknown[],
+  output: ProductImageCandidateInput[],
+): void {
+  const trustedPrimary = selectProductImage(
+    [{ value: trustedPrimaryValues, source: "json_ld" }],
+    baseUrl,
+  )?.url;
+  const root = document.querySelector("main") ?? document.body;
+  if (!trustedPrimary || !root) return;
+
+  const anchor = Array.from(root.querySelectorAll<HTMLImageElement>("img")).slice(0, 160).find((image) =>
+    imageCandidateUrls(image, baseUrl).some((candidate) => sameImageResource(candidate, trustedPrimary)),
+  );
+  if (!anchor) return;
+
+  let scope: Element | null = anchor.parentElement;
+  for (let depth = 0; scope && depth < 7; depth += 1, scope = scope.parentElement) {
+    const images = Array.from(scope.querySelectorAll<HTMLImageElement>("img"));
+    if (images.length < 2) continue;
+    if (images.length > 48 || NEGATIVE_CONTEXT.test(elementContext(scope))) break;
+    for (const image of images) output.push(...imageCandidates(image, "gallery"));
+    return;
+  }
+}
+
+function collectImagesMatchingProductIdentity(
+  document: Document,
+  baseUrl: string,
+  providedIdentifiers: Array<string | null | undefined>,
+  output: ProductImageCandidateInput[],
+): void {
+  const identifiers = productIdentityTokens(baseUrl, providedIdentifiers);
+  const root = document.querySelector("main") ?? document.body;
+  if (!root || identifiers.length === 0) return;
+
+  for (const image of Array.from(root.querySelectorAll<HTMLImageElement>("img")).slice(0, 1_000)) {
+    const urls = imageCandidateUrls(image, baseUrl);
+    const haystack = normalizeIdentityText([
+      ...urls,
+      image.alt,
+      image.getAttribute("aria-label"),
+      elementContext(image),
+    ].filter(Boolean).join(" "));
+    if (!identifiers.some((identifier) => haystack.includes(identifier))) continue;
+    if (NEGATIVE_CONTEXT.test(elementContext(image))) continue;
+    output.push(...imageCandidates(image, "gallery"));
+  }
+}
+
+function collectEmbeddedProductImages(
+  document: Document,
+  baseUrl: string,
+  productName: string | undefined,
+  providedIdentifiers: Array<string | null | undefined>,
+  output: ProductImageCandidateInput[],
+): void {
+  const identifiers = productIdentityTokens(baseUrl, providedIdentifiers);
+  const normalizedName = normalizeComparableText(productName);
+  const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>(
+    'script[type="application/json"], script#__NEXT_DATA__',
+  )).slice(0, 24);
+
+  for (const script of scripts) {
+    const text = script.textContent?.trim();
+    if (!text || text.length > 3_000_000) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      continue;
+    }
+
+    let visited = 0;
+    const walk = (value: unknown, depth: number): void => {
+      if (depth > 12 || visited >= 20_000 || !value || typeof value !== "object") return;
+      visited += 1;
+      if (Array.isArray(value)) {
+        for (const item of value) walk(item, depth + 1);
+        return;
+      }
+      const record = value as Record<string, unknown>;
+      if (embeddedRecordMatchesProduct(record, normalizedName, identifiers)) {
+        const images: string[] = [];
+        collectEmbeddedImageValues(record, images, 0);
+        if (images.length) {
+          output.push({ value: images, source: "gallery" });
+        }
+      }
+      for (const [key, child] of Object.entries(record)) {
+        if (NEGATIVE_CONTEXT.test(key)) continue;
+        walk(child, depth + 1);
+      }
+    };
+    walk(parsed, 0);
+  }
+}
+
+function embeddedRecordMatchesProduct(
+  record: Record<string, unknown>,
+  normalizedName: string,
+  identifiers: string[],
+): boolean {
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value !== "string" && typeof value !== "number") continue;
+    const raw = String(value);
+    if (/^(?:name|title|productName)$/i.test(key) && normalizedName && normalizeComparableText(raw) === normalizedName) {
+      return true;
+    }
+    if (!/(?:id|sku|code|product|article|style|variant)/i.test(key)) continue;
+    const normalized = normalizeIdentityText(raw);
+    if (identifiers.some((identifier) => normalized.includes(identifier))) return true;
+  }
+  return false;
+}
+
+function collectEmbeddedImageValues(value: unknown, output: string[], depth: number): void {
+  if (depth > 10 || output.length >= MAX_PRODUCT_IMAGES * 2 || value === null || value === undefined) return;
+  if (typeof value === "string") return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectEmbeddedImageValues(item, output, depth + 1);
+    return;
+  }
+  if (typeof value !== "object") return;
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (NEGATIVE_CONTEXT.test(key)) continue;
+    const imageField = /(?:image|media|gallery|picture|photo|asset)/i.test(key);
+    if (imageField) {
+      collectImageReferences(child, output, depth + 1);
+      continue;
+    }
+    if (typeof child === "object" && child !== null) {
+      collectEmbeddedImageValues(child, output, depth + 1);
+    }
+  }
+}
+
+function collectImageReferences(value: unknown, output: string[], depth: number): void {
+  if (depth > 12 || output.length >= MAX_PRODUCT_IMAGES * 2 || value === null || value === undefined) return;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^(?:https?:)?\/\//i.test(trimmed) || trimmed.startsWith("/")) output.push(trimmed);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectImageReferences(item, output, depth + 1);
+    return;
+  }
+  if (typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (NEGATIVE_CONTEXT.test(key)) continue;
+    collectImageReferences(child, output, depth + 1);
+  }
+}
+
+function productIdentityTokens(
+  baseUrl: string,
+  providedIdentifiers: Array<string | null | undefined>,
+): string[] {
+  const values = providedIdentifiers.flatMap((value) => value ? [value] : []);
+  try {
+    const url = new URL(baseUrl);
+    values.push(...decodeSafe(url.pathname).match(/[a-z0-9_-]{6,}/gi) ?? []);
+    for (const key of ["id", "pid", "product", "productId", "sku", "style", "variant"]) {
+      const value = url.searchParams.get(key);
+      if (value) values.push(value);
+    }
+  } catch {
+    // Invalid base URLs are rejected elsewhere; no identity fallback is used.
+  }
+  return [...new Set(values.map(normalizeIdentityText).filter((value) =>
+    value.length >= 6 && /\d/.test(value),
+  ))];
+}
+
+function normalizeIdentityText(value: string): string {
+  return decodeSafe(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function imageCandidateUrls(image: HTMLImageElement, baseUrl: string): string[] {
+  return imageCandidates(image, "gallery").flatMap((candidate) => {
+    const values = Array.isArray(candidate.value) ? candidate.value : [candidate.value];
+    return values.flatMap((value) => {
+      if (typeof value !== "string") return [];
+      const normalized = normalizeProductImageUrl(bestFromSrcset(value) ?? value, baseUrl);
+      return normalized ? [normalized] : [];
+    });
+  });
+}
+
+function sameImageResource(left: string, right: string): boolean {
+  if (left === right) return true;
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    if (leftUrl.hostname.toLowerCase() !== rightUrl.hostname.toLowerCase() || leftUrl.pathname !== rightUrl.pathname) {
+      return false;
+    }
+    return stripPresentationSearch(leftUrl) === stripPresentationSearch(rightUrl);
+  } catch {
+    return false;
+  }
+}
+
+function stripPresentationSearch(url: URL): string {
+  const copy = new URL(url);
+  for (const key of [...copy.searchParams.keys()]) {
+    if (/^(?:w|width|h|height|q|quality|fit|crop|format|fm|dpr)$/i.test(key)) {
+      copy.searchParams.delete(key);
+    }
+  }
+  copy.searchParams.sort();
+  return copy.search;
 }
 
 export function firstUsableProductImage(value: unknown, baseUrl?: string): string | null {
   return selectProductImage([{ value, source: "product_metadata" }], baseUrl)?.url ?? null;
+}
+
+/** Stable identity for gallery photos served through different size/format URLs. */
+export function productImageIdentity(value: string, depth = 0): string {
+  if (depth > 4) return value;
+  try {
+    const url = new URL(value);
+    // H&M wraps the original photo path inside `set` and changes `call` for
+    // each crop/size. The source path identifies the actual photograph.
+    if (/^(?:www2\.)?hm\.com$|^lp2\.hm\.com$/i.test(url.hostname)) {
+      const sourcePath = url.searchParams.get("set")?.match(/source\[([^\]]+)\]/i)?.[1];
+      if (sourcePath) return `hm:${decodeSafe(sourcePath).toLowerCase()}`;
+    }
+    // Some storefronts proxy one image URL through another. Collapse it when
+    // the wrapped value is recognisably an image URL.
+    for (const key of ["url", "src", "image", "asset"]) {
+      const nested = url.searchParams.get(key);
+      if (!nested) continue;
+      try {
+        const nestedUrl = new URL(nested, url);
+        if (/\.(?:avif|gif|jpe?g|png|webp)(?:$|\?)/i.test(nestedUrl.href)) {
+          return productImageIdentity(nestedUrl.href, depth + 1);
+        }
+      } catch { /* Ignore non-URL transformation values. */ }
+    }
+    url.hash = "";
+    for (const key of [...url.searchParams.keys()]) {
+      const normalizedKey = key.toLowerCase();
+      if (
+        IMAGE_PRESENTATION_PARAMS.has(normalizedKey) ||
+        normalizedKey.startsWith("utm_") ||
+        /^\$.*\$$/.test(normalizedKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+    url.searchParams.sort();
+    const port = url.port && !((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80"))
+      ? `:${url.port}`
+      : "";
+    return `${url.hostname.toLowerCase()}${port}${url.pathname}${url.search}`;
+  } catch {
+    return value;
+  }
 }
 
 export function findOrderConfirmationImage(
@@ -172,7 +514,7 @@ export function findOrderConfirmationImage(
   baseUrl: string,
 ): string | null {
   const elements = Array.from(document.querySelectorAll<HTMLElement>(
-    "[data-afterbuy-line-item], [data-test='order-line-item'], .order-line-item, .order-item",
+    "[data-tracer-line-item], [data-test='order-line-item'], .order-line-item, .order-item",
   )).slice(0, 20);
   const matchingElement = elements.find((element) => {
     const textMatches = (element.textContent ?? "").toLowerCase().includes(productName.toLowerCase());
@@ -210,7 +552,7 @@ function collectElementCandidates(
 ): void {
   let elements: Element[];
   try {
-    elements = Array.from(document.querySelectorAll(selectors.join(","))).slice(0, 24);
+    elements = Array.from(document.querySelectorAll(selectors.join(","))).slice(0, 96);
   } catch {
     return;
   }
@@ -240,9 +582,19 @@ function imageCandidates(image: HTMLImageElement, source: ProductImageSource): P
   const value = [
     bestFromSrcset(image.getAttribute("srcset")),
     bestFromSrcset(image.getAttribute("data-srcset")),
+    ...Array.from(image.closest("picture")?.querySelectorAll("source") ?? []).flatMap((source) => [
+      bestFromSrcset(source.getAttribute("srcset")),
+      bestFromSrcset(source.getAttribute("data-srcset")),
+    ]),
     image.getAttribute("data-zoom-image"),
     image.getAttribute("data-large-image"),
     image.getAttribute("data-original"),
+    image.getAttribute("data-original-src"),
+    image.getAttribute("data-image"),
+    image.getAttribute("data-image-url"),
+    image.getAttribute("data-src-large"),
+    image.getAttribute("data-hi-res"),
+    image.getAttribute("data-master"),
     image.currentSrc,
     image.getAttribute("data-lazy-src"),
     image.getAttribute("data-src"),

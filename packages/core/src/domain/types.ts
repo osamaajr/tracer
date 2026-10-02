@@ -291,7 +291,7 @@ export interface UserMonitoringPreference {
   updatedAt: string;
 }
 
-export interface AfterBuyRepository {
+export interface TracerRepository {
   upsertProduct(input: ProductUpsertInput): Promise<ProductRecord>;
   createPurchase(input: PurchaseCreateInput): Promise<PurchaseRecord>;
   findPurchaseByFingerprint(
@@ -336,6 +336,10 @@ export interface AfterBuyRepository {
   listLatestObservationsByProductIds(
     productIds: string[],
   ): Promise<LatestObservation[]>;
+  listPriceObservationsByProductIds(
+    productIds: string[],
+    limitPerProduct?: number,
+  ): Promise<PriceObservationRecord[]>;
   recordActivityEvent(
     input: ActivityEventCreateInput,
   ): Promise<ActivityEventWriteResult>;

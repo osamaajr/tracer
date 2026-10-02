@@ -5,7 +5,7 @@ import type {
   ProductRecord,
   PurchaseRecord,
   UserMonitoringPreference,
-} from "@afterbuy/core";
+} from "@tracer/core";
 
 export interface StoreState {
   products: ProductRecord[];

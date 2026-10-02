@@ -7,7 +7,7 @@ import {
   type OpportunityRecord,
   type PriceObservationRecord,
   type PurchaseRecord,
-} from "@afterbuy/core";
+} from "@tracer/core";
 
 export function serializeOpportunity(opportunity: OpportunityRecord) {
   return {

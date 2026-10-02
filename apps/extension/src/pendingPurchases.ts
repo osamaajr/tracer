@@ -1,4 +1,4 @@
-import type { PurchaseDraft } from "@afterbuy/core";
+import type { PurchaseDraft } from "@tracer/core";
 
 export const pendingPurchasesStorageKey = "tracerPendingPurchases";
 

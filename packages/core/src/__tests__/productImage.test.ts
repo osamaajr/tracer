@@ -65,6 +65,49 @@ describe("smart product image selection", () => {
       ]);
   });
 
+  it("collapses duplicate photo URLs that differ only by image size or format transforms", () => {
+    const { document } = parseHTML(`
+      <script type="application/ld+json">${JSON.stringify({
+        "@type": "Product",
+        name: "Aurora Glass Lamp",
+        image: [
+          "/images/aurora-front.jpg?width=1200&quality=90",
+          "/images/aurora-front.jpg?width=640&format=webp",
+          "/images/aurora-side.jpg?width=1200",
+        ],
+      })}</script>
+      <main><h1>Aurora Glass Lamp</h1></main>
+    `);
+
+    expect(findProductPageImages(document, baseUrl, { productName: "Aurora Glass Lamp" }).map(({ url }) => url))
+      .toEqual([
+        "https://shop.example.com/images/aurora-front.jpg?width=1200&quality=90",
+        "https://shop.example.com/images/aurora-side.jpg?width=1200",
+      ]);
+  });
+
+  it("collapses H&M image transforms by their stable source photo path", () => {
+    const { document } = parseHTML(`
+      <script type="application/ld+json">${JSON.stringify({
+        "@type": "Product",
+        name: "Relaxed Fit Printed T-shirt",
+        image: [
+          "https://lp2.hm.com/hmgoepprod?set=source[/model/0967955204/front.jpg]&call=url[file:/product/main]",
+          "https://lp2.hm.com/hmgoepprod?set=source[/model/0967955204/front.jpg]&call=url[file:/product/zoom]",
+          "https://lp2.hm.com/hmgoepprod?set=source[/model/0967955204/back.jpg]&call=url[file:/product/main]",
+        ],
+      })}</script>
+      <main><h1>Relaxed Fit Printed T-shirt</h1></main>
+    `);
+
+    expect(findProductPageImages(document, "https://www2.hm.com/en_gb/productpage.0967955204.html", {
+      productName: "Relaxed Fit Printed T-shirt",
+    }).map(({ url }) => url)).toEqual([
+      "https://lp2.hm.com/hmgoepprod?set=source[/model/0967955204/front.jpg]&call=url[file:/product/main]",
+      "https://lp2.hm.com/hmgoepprod?set=source[/model/0967955204/back.jpg]&call=url[file:/product/main]",
+    ]);
+  });
+
   it("offers one best-quality URL for each gallery image element", () => {
     const { document } = parseHTML(`
       <main>
@@ -81,6 +124,47 @@ describe("smart product image selection", () => {
 
     expect(findProductPageImages(document, baseUrl, { productName: "Aurora Glass Lamp" }).map(({ url }) => url))
       .toEqual(["https://shop.example.com/images/aurora-lamp-front.jpg?width=1200"]);
+  });
+
+  it("finds the full current-product gallery before below-fold images are rendered", () => {
+    const productId = "0967955204";
+    const embeddedImages = Array.from({ length: 12 }, (_, index) =>
+      `https://image.shop.example.com/${productId}/view-${index + 1}.jpg?width=1200`,
+    );
+    const { document } = parseHTML(`
+      <head>
+        <meta property="og:image" content="https://image.shop.example.com/9999999999/recommended.jpg">
+        <script type="application/json">${JSON.stringify({
+          page: {
+            product: {
+              productId,
+              name: "Relaxed Fit Printed T-shirt",
+              mediaGallery: embeddedImages.map((src) => ({ src })),
+              recommendations: [{ image: "https://image.shop.example.com/9999999999/other.jpg" }],
+            },
+          },
+        })}</script>
+      </head>
+      <body><main>
+        <section class="product-media">
+          <img data-image-url="${embeddedImages[0]}" alt="Relaxed Fit Printed T-shirt front">
+          <img data-src-large="${embeddedImages[1]}" alt="Relaxed Fit Printed T-shirt side">
+        </section>
+        <section class="recommendations">
+          <img src="https://image.shop.example.com/9999999999/other.jpg" alt="Another shirt">
+        </section>
+      </main></body>
+    `);
+
+    const images = findProductPageImages(
+      document,
+      `https://shop.example.com/productpage.${productId}.html`,
+      { productName: "Relaxed Fit Printed T-shirt", productIdentifiers: [productId] },
+    ).map(({ url }) => url);
+
+    expect(images).toHaveLength(12);
+    expect(images).toEqual(expect.arrayContaining(embeddedImages));
+    expect(images.some((image) => image.includes("9999999999"))).toBe(false);
   });
 
   it("prefers a product-only catalogue shot over the first lifestyle image", () => {

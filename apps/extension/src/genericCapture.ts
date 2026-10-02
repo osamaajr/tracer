@@ -4,7 +4,7 @@ import type {
   Money,
   PurchaseDraft,
   PurchaseLineItemDraft,
-} from "@afterbuy/core";
+} from "@tracer/core";
 import {
   extractPurchaseFromDocument,
   extractShopifyAccountPurchaseFromDocument,
@@ -12,11 +12,12 @@ import {
   findOrderConfirmationImage,
   isShopifyAccountOrderUrl,
   selectProductImage,
-} from "@afterbuy/core";
+} from "@tracer/core";
+const traceEnabled = import.meta.env.MODE !== "production" || import.meta.env.VITE_TRACER_STARTUP_TRACE === true;
 
 declare global {
   interface Window {
-    __afterbuyGenericCaptureListener?: (
+    __tracerGenericCaptureListener?: (
       message: ScanRequest,
       sender: chrome.runtime.MessageSender,
       sendResponse: (response: ScanResponse) => void,
@@ -25,7 +26,7 @@ declare global {
 }
 
 interface ScanRequest {
-  type: "AFTERBUY_SCAN_PAGE";
+  type: "TRACER_SCAN_PAGE";
 }
 
 interface ScanResponse {
@@ -48,7 +49,7 @@ interface Storefront {
   host: string;
 }
 
-const previousCaptureListener = window.__afterbuyGenericCaptureListener;
+const previousCaptureListener = window.__tracerGenericCaptureListener;
 if (previousCaptureListener) {
   chrome.runtime.onMessage.removeListener(previousCaptureListener);
 }
@@ -58,14 +59,18 @@ const genericCaptureListener = (
   _sender: chrome.runtime.MessageSender,
   sendResponse: (response: ScanResponse) => void,
 ): boolean => {
-  if (message.type !== "AFTERBUY_SCAN_PAGE") {
+  if (message.type !== "TRACER_SCAN_PAGE") {
     return false;
   }
 
   let draft: PurchaseDraft | null;
 
   try {
+    const extractionStartedAt = performance.now();
     draft = extractPurchaseFromPage(document, window.location.href);
+    if (traceEnabled) {
+      console.debug(`[Tracer startup] purchase extraction: ${(performance.now() - extractionStartedAt).toFixed(1)}ms`);
+    }
   } catch {
     sendResponse({
       ok: false,
@@ -112,7 +117,7 @@ const genericCaptureListener = (
   return false;
 };
 
-window.__afterbuyGenericCaptureListener = genericCaptureListener;
+window.__tracerGenericCaptureListener = genericCaptureListener;
 chrome.runtime.onMessage.addListener(genericCaptureListener);
 
 export function extractPurchaseFromPage(page: Document, sourceUrl: string): PurchaseDraft | null {
@@ -163,12 +168,12 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
     storefront,
     sourceUrl,
     purchasedAt: firstText(page, [
-      "[data-afterbuy-purchased-at]",
+      "[data-tracer-purchased-at]",
       "[data-order-date]",
       "time[datetime]",
     ]) ?? new Date().toISOString(),
     orderReference: firstText(page, [
-      "[data-afterbuy-order-reference]",
+      "[data-tracer-order-reference]",
       "[data-order-number]",
       "[data-order-id]",
     ]),
@@ -285,7 +290,7 @@ function extractDomItems(
   const nodes = deepestLineItemNodes(Array.from(
     page.querySelectorAll(
       [
-        "[data-afterbuy-line-item]",
+        "[data-tracer-line-item]",
         "[data-test*='order'][data-test*='item']",
         "[class*='order'][class*='item']",
         "[class*='line'][class*='item']",
@@ -296,20 +301,20 @@ function extractDomItems(
   return nodes.flatMap((node) => {
     const productName =
       firstText(node, [
-        "[data-afterbuy-product-name]",
+        "[data-tracer-product-name]",
         "[data-product-name]",
         "[class*='product'][class*='name']",
         "h2",
         "h3",
       ]) ?? "";
     const quantity = numberFromUnknown(firstText(node, [
-      "[data-afterbuy-quantity]",
+      "[data-tracer-quantity]",
       "[data-quantity]",
       "[class*='quantity']",
     ])) ?? 1;
     const productUrl = normalizeSameHostUrl(
       firstHref(node, [
-        "[data-afterbuy-product-url]",
+        "[data-tracer-product-url]",
         "a[href*='/products/']",
         "a[href*='/product/']",
         "a[href]",
@@ -362,7 +367,7 @@ function deepestLineItemNodes(nodes: Element[]): Element[] {
     candidate !== node &&
     node.contains(candidate) &&
     Boolean(
-      candidate.querySelector("a[href*='/products/'], a[href*='/product/'], [data-afterbuy-product-url]") &&
+      candidate.querySelector("a[href*='/products/'], a[href*='/product/'], [data-tracer-product-url]") &&
       currencyAmounts(candidate.textContent ?? "").length,
     ),
   ));
@@ -370,7 +375,7 @@ function deepestLineItemNodes(nodes: Element[]): Element[] {
 
 function extractLineItemPrice(root: Element, quantity: number, fallbackCurrency: string): Money | null {
   const elements = Array.from(root.querySelectorAll([
-    "[data-afterbuy-price-paid]",
+    "[data-tracer-price-paid]",
     "[data-line-item-price]",
     "[data-line-price]",
     "[data-line-total]",

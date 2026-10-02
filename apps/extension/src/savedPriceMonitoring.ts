@@ -1,4 +1,4 @@
-import type { Money, SavedItem } from "@afterbuy/core";
+import type { Money, SavedItem } from "@tracer/core";
 
 const internalMonitorHash = "tracer-internal-price-monitor";
 

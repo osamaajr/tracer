@@ -1,12 +1,12 @@
 import { HttpPriceFetcher } from "./httpPriceFetcher";
 import { loadConfig } from "./config";
-import { FileAfterBuyRepository } from "./repositories/fileAfterBuyRepository";
+import { FileTracerRepository } from "./repositories/fileTracerRepository";
 import { startMonitoringScheduler } from "./monitoringScheduler";
 
 const config = loadConfig();
-const repository = new FileAfterBuyRepository(config.dataFile);
+const repository = new FileTracerRepository(config.dataFile);
 const priceFetcher = new HttpPriceFetcher();
-const intervalHours = positiveNumber(process.env.AFTERBUY_MONITOR_INTERVAL_HOURS, 12);
+const intervalHours = positiveNumber(process.env.TRACER_MONITOR_INTERVAL_HOURS, 12);
 startMonitoringScheduler({ repository, priceFetcher, intervalHours });
 
 function positiveNumber(value: string | undefined, fallback: number): number {

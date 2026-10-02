@@ -1,5 +1,5 @@
 {
-  "name": "@afterbuy/api",
+  "name": "@tracer/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@afterbuy/core": "*",
-    "@afterbuy/db": "*",
+    "@tracer/core": "*",
+    "@tracer/db": "*",
     "@fastify/cors": "^11.3.0",
     "fastify": "^5.12.1",
     "linkedom": "^0.18.13",

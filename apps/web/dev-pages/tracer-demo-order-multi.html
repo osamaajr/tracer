@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="tracer-demo-order" content="true" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi-item order confirmation - Northstar Supply</title>
+    <style>
+      :root { color: #25231f; font-family: Inter, system-ui, sans-serif; background: #f4f0e8; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; padding: 40px 20px; display: grid; place-items: center; }
+      main { width: min(780px, 100%); padding: 44px; background: #fffdf9; border: 1px solid #e6ded1; border-radius: 18px; box-shadow: 0 24px 60px rgb(47 40 31 / 10%); }
+      h1 { margin: 0 0 8px; font: 500 42px Georgia, serif; }
+      .muted { color: #756e64; }
+      .order-meta { line-height: 1.55; }
+      .items { margin-top: 28px; border-top: 1px solid #e6ded1; }
+      .item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center; padding: 24px 0; border-bottom: 1px solid #ece5da; }
+      h2 { margin: 0 0 7px; font-size: 20px; }
+      .price { font-size: 20px; font-weight: 750; }
+      .quantity { margin-top: 5px; color: #756e64; font-size: 14px; }
+      .retailer { margin-top: 5px; font-weight: 650; color: #315e48; }
+      .total { display: flex; justify-content: space-between; gap: 20px; padding-top: 24px; font-size: 21px; font-weight: 750; }
+      #tracer-protect-root { display: none !important; }
+      @media (max-width: 600px) { main { padding: 26px; } h1 { font-size: 34px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Thank you for your order.</h1>
+      <div class="order-meta muted">Order number NS-739184 has been confirmed.</div>
+      <div class="order-meta muted">16 September 2026</div>
+
+      <div class="items">
+        <section class="item" data-tracer-line-item>
+          <div>
+            <h2 data-tracer-product-name>Solar-Powered Rainbow Maker</h2>
+            <div class="retailer">Northstar Supply</div>
+            <div class="quantity" data-tracer-quantity>Quantity 1</div>
+            <a href="https://northstar.example/products/solar-rainbow-maker" data-tracer-product-url>View product</a>
+          </div>
+          <div class="price" data-tracer-price-paid>£28.95</div>
+        </section>
+
+        <section class="item" data-tracer-line-item>
+          <div>
+            <h2 data-tracer-product-name>Miniature Mushroom Desk Lamp</h2>
+            <div class="retailer">Northstar Supply</div>
+            <div class="quantity" data-tracer-quantity>Quantity 2</div>
+            <a href="https://northstar.example/products/mushroom-desk-lamp" data-tracer-product-url>View product</a>
+          </div>
+          <div class="price" data-tracer-price-paid>£19.50 each</div>
+        </section>
+
+        <section class="item" data-tracer-line-item>
+          <div>
+            <h2 data-tracer-product-name>Cloud-Shaped Magnetic Key Holder</h2>
+            <div class="retailer">Northstar Supply</div>
+            <div class="quantity" data-tracer-quantity>Quantity 1</div>
+            <a href="https://northstar.example/products/cloud-key-holder" data-tracer-product-url>View product</a>
+          </div>
+          <div class="price" data-tracer-price-paid>£14.25</div>
+        </section>
+      </div>
+
+      <div class="total"><span>Order total</span><span>£82.20</span></div>
+    </main>
+
+    <script id="tracer-demo-purchase" type="application/json">
+      {
+        "retailerId": "store_northstar-example",
+        "retailerName": "Northstar Supply",
+        "storeHost": "northstar.example",
+        "sourceUrl": "https://northstar.example/checkout/confirmation/NS-739184",
+        "orderReference": "NS-739184",
+        "purchasedAt": "2026-09-16T18:30:00.000Z",
+        "lineItems": [
+          {
+            "productName": "Solar-Powered Rainbow Maker",
+            "quantity": 1,
+            "pricePaid": { "amountMinor": 2895, "currency": "GBP" },
+            "productUrl": "https://northstar.example/products/solar-rainbow-maker",
+            "productUrlConfidence": "high",
+            "externalProductId": "northstar-rainbow-maker",
+            "sku": "NS-RM-01"
+          },
+          {
+            "productName": "Miniature Mushroom Desk Lamp",
+            "quantity": 2,
+            "pricePaid": { "amountMinor": 1950, "currency": "GBP" },
+            "productUrl": "https://northstar.example/products/mushroom-desk-lamp",
+            "productUrlConfidence": "high",
+            "externalProductId": "northstar-mushroom-lamp",
+            "sku": "NS-ML-02"
+          },
+          {
+            "productName": "Cloud-Shaped Magnetic Key Holder",
+            "quantity": 1,
+            "pricePaid": { "amountMinor": 1425, "currency": "GBP" },
+            "productUrl": "https://northstar.example/products/cloud-key-holder",
+            "productUrlConfidence": "high",
+            "externalProductId": "northstar-cloud-key-holder",
+            "sku": "NS-CK-03"
+          }
+        ]
+      }
+    </script>
+  </body>
+</html>

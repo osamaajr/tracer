@@ -1,5 +1,5 @@
 {
-  "name": "@afterbuy/web",
+  "name": "@tracer/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "@afterbuy/core": "*",
+    "@tracer/core": "*",
     "lucide-react": "^1.37.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

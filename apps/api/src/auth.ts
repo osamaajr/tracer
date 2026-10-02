@@ -9,7 +9,7 @@ export function requireAuthenticatedUser(
   request: FastifyRequest,
   config: ApiConfig,
 ): AuthenticatedUser {
-  const header = request.headers["x-afterbuy-user-id"];
+  const header = request.headers["x-tracer-user-id"];
   const requestedUserId = Array.isArray(header) ? header[0] : header;
 
   if (requestedUserId && isSafeUserId(requestedUserId)) {

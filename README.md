@@ -26,12 +26,12 @@ npm install
 cp .env.example .env
 ```
 
-Local development works with the file-backed dev store in `.afterbuy-data/dev-store.json`. PostgreSQL is represented by the schema and migration in `packages/db`; wire a real repository once `DATABASE_URL` is available.
+Local development works with the file-backed dev store in `.tracer-data/dev-store.json`. PostgreSQL is represented by the schema and migration in `packages/db`; wire a real repository once `DATABASE_URL` is available.
 
 To apply the initial PostgreSQL migration:
 
 ```sh
-npm run migrate -w @afterbuy/db
+npm run migrate -w @tracer/db
 ```
 
 ## Development
@@ -47,8 +47,8 @@ Useful individual commands:
 ```sh
 npm run dev:api
 npm run dev:web
-npm run dev -w @afterbuy/extension
-npm run monitor -w @afterbuy/api
+npm run dev -w @tracer/extension
+npm run monitor -w @tracer/api
 npm run verify:monitoring
 ```
 
@@ -56,7 +56,7 @@ The API defaults to `http://localhost:4000`. The web app defaults to `http://loc
 
 To load the extension locally:
 
-1. Build it with `npm run build -w @afterbuy/extension`.
+1. Build it with `npm run build -w @tracer/extension`.
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
 4. Load `apps/extension/dist` as an unpacked extension.
@@ -72,25 +72,25 @@ The deterministic monitoring fixture represents a Trail Pack bought for `£84.50
 ```sh
 curl -X POST http://localhost:4000/api/purchases/protect \
   -H "content-type: application/json" \
-  -H "x-afterbuy-user-id: dev-user-afterbuy" \
+  -H "x-tracer-user-id: dev-user-tracer" \
   --data @packages/core/fixtures/generic-store/protect-purchase-request.json
 
 curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=paid' \
-  -H "x-afterbuy-user-id: dev-user-afterbuy"
+  -H "x-tracer-user-id: dev-user-tracer"
 
 curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=dropped' \
-  -H "x-afterbuy-user-id: dev-user-afterbuy"
+  -H "x-tracer-user-id: dev-user-tracer"
 
 curl http://localhost:4000/api/dashboard \
-  -H "x-afterbuy-user-id: dev-user-afterbuy"
+  -H "x-tracer-user-id: dev-user-tracer"
 
 curl http://localhost:4000/api/extension/sync \
-  -H "x-afterbuy-user-id: dev-user-afterbuy"
+  -H "x-tracer-user-id: dev-user-tracer"
 ```
 
 The generic fixture also proves that price tracking is independent of retailer refund-policy support. Policy opportunities remain a separate optional capability.
 
-The API scheduler checks immediately and then every 12 hours by default. Set `AFTERBUY_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
+The API scheduler checks immediately and then every 12 hours by default. Set `TRACER_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
 
 Product images are optional. Tracer prefers an order-confirmation image, then JSON-LD or Open Graph metadata, and ignores unusable candidates without rejecting the purchase. The dashboard and extension use intentional fallback visuals when an image is missing or later becomes unavailable.
 
@@ -99,11 +99,13 @@ Product images are optional. Tracer prefers an order-confirmation image, then JS
 To test the experience from a shopper's perspective, start the app with a fresh data file and build the unpacked extension:
 
 ```sh
-AFTERBUY_DATA_FILE=/tmp/tracer-consumer-flow.json npm run dev
-npm run build -w @afterbuy/extension
+TRACER_DATA_FILE=/tmp/tracer-consumer-flow.json npm run dev
+npm run build -w @tracer/extension
 ```
 
 Load `apps/extension/dist` from `chrome://extensions`, then open `http://127.0.0.1:5173/tracer-demo-order.html`. Click the Tracer toolbar icon. The popup scans the completed demo order and shows `Purchase detected`; `Protect this purchase` persists it. Open `Your items` from the three-dot menu. Run the paid and dropped fixture commands above to see that item move from Watching at £84.50 to Price dropped at £69.50 with a £15 saving.
+
+The order examples, price-drop demo, and generated `/extension-states/` gallery are development-only pages served by Vite. They live under `apps/web/dev-pages`, so production web builds contain only the public site and its actual assets.
 
 ## Quality Checks
 

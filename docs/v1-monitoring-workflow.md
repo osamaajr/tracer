@@ -17,12 +17,12 @@ In development, the API exposes an authenticated immediate live check at `POST /
 The API starts the scheduler automatically. A standalone worker is also available for deployments that run scheduled work separately:
 
 ```sh
-npm run monitor -w @afterbuy/api
+npm run monitor -w @tracer/api
 ```
 
 Use the standalone worker instead of the API-owned scheduler in such a deployment; do not run both against the same file-backed store.
 
-The scheduler checks immediately and then every `AFTERBUY_MONITOR_INTERVAL_HOURS` hours, defaulting to 12. The popup only reads saved state and never performs a retailer scan.
+The scheduler checks immediately and then every `TRACER_MONITOR_INTERVAL_HOURS` hours, defaulting to 12. The popup only reads saved state and never performs a retailer scan.
 
 ## Deterministic fixture flow
 
@@ -37,7 +37,7 @@ This protects the £84.50 fixture, observes £84.50 then £69.50, verifies the �
 Use a clean data file for a repeatable local run:
 
 ```sh
-AFTERBUY_DATA_FILE=/tmp/tracer-v1.json npm run dev:api
+TRACER_DATA_FILE=/tmp/tracer-v1.json npm run dev:api
 ```
 
 Then protect `packages/core/fixtures/generic-store/protect-purchase-request.json`, run the paid fixture once, and run the dropped fixture once:
@@ -45,17 +45,17 @@ Then protect `packages/core/fixtures/generic-store/protect-purchase-request.json
 ```sh
 curl -X POST http://localhost:4000/api/purchases/protect \
   -H 'content-type: application/json' \
-  -H 'x-afterbuy-user-id: dev-user-afterbuy' \
+  -H 'x-tracer-user-id: dev-user-tracer' \
   --data @packages/core/fixtures/generic-store/protect-purchase-request.json
 
 curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=paid' \
-  -H 'x-afterbuy-user-id: dev-user-afterbuy'
+  -H 'x-tracer-user-id: dev-user-tracer'
 
 curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=dropped' \
-  -H 'x-afterbuy-user-id: dev-user-afterbuy'
+  -H 'x-tracer-user-id: dev-user-tracer'
 
 curl http://localhost:4000/api/dashboard \
-  -H 'x-afterbuy-user-id: dev-user-afterbuy'
+  -H 'x-tracer-user-id: dev-user-tracer'
 ```
 
 The paid run stores `£84.50`. The dropped run stores `£69.50`, calculates a `£15` saving (17.75%), and persists one real price-drop event. The protected item becomes `price_dropped`, extension sync exposes the event for one-time Chrome notification delivery, and repeating the dropped run creates no duplicate observation, event, or alert.

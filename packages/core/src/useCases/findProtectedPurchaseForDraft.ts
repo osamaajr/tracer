@@ -1,5 +1,5 @@
 import type {
-  AfterBuyRepository,
+  TracerRepository,
   PurchaseDraft,
   PurchaseLineItemDraft,
   PurchaseRecord,
@@ -16,7 +16,7 @@ export interface FindProtectedPurchaseForDraftResult {
 }
 
 export async function findProtectedPurchaseForDraft(
-  repository: AfterBuyRepository,
+  repository: TracerRepository,
   command: FindProtectedPurchaseForDraftCommand,
 ): Promise<FindProtectedPurchaseForDraftResult> {
   const purchases = await repository.listPurchasesForUser(command.userId);

@@ -1,7 +1,7 @@
-import { runPriceMonitoringCycle, type AfterBuyRepository, type PriceFetcher } from "@afterbuy/core";
+import { runPriceMonitoringCycle, type TracerRepository, type PriceFetcher } from "@tracer/core";
 
 export interface MonitoringSchedulerOptions {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   priceFetcher: PriceFetcher;
   intervalHours?: number;
   runImmediately?: boolean;

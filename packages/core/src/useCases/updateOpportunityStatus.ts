@@ -1,5 +1,5 @@
 import type {
-  AfterBuyRepository,
+  TracerRepository,
   OpportunityRecord,
   OpportunityStatus,
 } from "../domain/types";
@@ -7,7 +7,7 @@ import type {
 export type OpportunityUserAction = "viewed" | "claim_clicked" | "dismissed";
 
 export interface UpdateOpportunityStatusCommand {
-  repository: AfterBuyRepository;
+  repository: TracerRepository;
   userId: string;
   opportunityId: string;
   status: OpportunityUserAction;

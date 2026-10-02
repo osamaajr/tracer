@@ -1,12 +1,27 @@
 import { stdout } from 'node:process';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const out = resolve(root, 'apps/web/public/extension-states');
+const out = resolve(root, 'apps/web/dev-pages/extension-states');
+const extensionAssets = resolve(root, 'apps/extension/public/assets');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-cpSync(resolve(root, 'apps/extension/public/assets'), `${out}/assets`, { recursive: true });
+const previewAssets = [
+  'logo-panels/tracer-panel-center.png',
+  'logo-panels/tracer-panel-left.png',
+  'logo-panels/tracer-panel-right.png',
+  'product-headphones.png',
+  'purchase-receipt-detected.png',
+  'tracer-empty-box.webp',
+  'tracer-loading.webp',
+  'tracer-outline.webp',
+];
+for (const asset of previewAssets) {
+  const target = resolve(out, 'assets', asset);
+  mkdirSync(dirname(target), { recursive: true });
+  cpSync(resolve(extensionAssets, asset), target);
+}
 const states = ['detecting', 'empty', 'incomplete', 'detected', 'review', 'protected', 'offline-saved', 'duplicate', 'items', 'items-paused', 'items-empty', 'detail', 'settings', 'clear-confirmation', 'watchlist', 'watchlist-saved', 'watchlist-duplicate', 'saved-items', 'saved-empty'];
 const source = readFileSync(resolve(root, 'apps/extension/popup.html'), 'utf8');
 const preview = `
@@ -20,13 +35,34 @@ const set = (id,text) => {const el=document.getElementById(id);if(el)el.textCont
 set('productName','Sony WH-1000XM5');set('summaryProductName','Sony WH-1000XM5');set('totalPaid','£349.99');set('summaryPaid','£349.99');set('retailer','John Lewis');set('windowValue','Known retailer eligibility');
 set('detailName','Sony WH-1000XM5');
 if(state==='incomplete'){set('stateTitle','A few details are missing.');set('stateCopy','Review the purchase details before protecting this item.');}
-if(state==='offline-saved'){set('successTitle','Purchase saved');set('successCopy','Saved on this device. Monitoring starts automatically when Tracer reconnects.');set('summaryStatus','Watching');}
+if(state==='offline-saved'){set('successTitle','Purchase saved');set('successCopy','Saved on this device. Monitoring will start automatically when it’s back online.');set('summaryStatus','Watching');}
 if(state==='duplicate'){document.querySelectorAll('.success-hero h1').forEach(el=>el.textContent='Already protected.');}
 if(state==='review'){document.getElementById('reviewPanel').dataset.visible='true';document.getElementById('reviewProductName').value='Sony WH-1000XM5';document.getElementById('reviewPrice').value='349.99';document.getElementById('reviewDate').value='2026-09-11T10:00';document.getElementById('reviewUrl').value='https://www.johnlewis.com/';}
 if(state==='items'){set('itemsCount','1 item');document.getElementById('itemsList').innerHTML='<button class="item-row" data-alert="true" data-paused="false"><span><strong>Sony WH-1000XM5</strong><span>● Price dropped</span></span><em>£30</em><i>›</i></button>';}
 if(state==='items-paused'){set('itemsCount','1 item');document.getElementById('itemsList').innerHTML='<button class="item-row" data-alert="false" data-paused="true"><span><strong>Sony WH-1000XM5</strong><span>● Paused</span></span><em></em><i>›</i></button>';}
 if(state==='items-empty'){set('itemsCount','0 items');document.getElementById('itemsList').innerHTML='<div class="items-message"><strong>No protected purchases yet</strong><span>Protect a purchase after checkout to see it here.</span></div>';}
-if(state==='detail'){document.getElementById('itemFacts').innerHTML='<div class="detail-row"><dt>Retailer</dt><dd>John Lewis</dd></div><div class="detail-row"><dt>Paid</dt><dd>£349.99</dd></div><div class="detail-row"><dt>Current price</dt><dd>£319.99</dd></div>';}
+if(state==='detail'){
+  const imageWrap=document.getElementById('detailImageWrap'), image=document.getElementById('detailImage');
+  if(imageWrap&&image){imageWrap.hidden=false;image.src='/extension-states/assets/product-headphones.png';image.alt='Sony WH-1000XM5 product image';}
+  const retailer=document.getElementById('detailRetailer');
+  if(retailer){retailer.hidden=false;retailer.href='https://www.johnlewis.com';retailer.textContent='John Lewis · View store';}
+  const retailerText=document.getElementById('detailRetailerText');if(retailerText)retailerText.hidden=true;
+  document.getElementById('detailPaid').textContent='£349.99';
+  document.getElementById('detailPaidDate').textContent='Ordered 22 Sep';
+  document.getElementById('detailCurrentPrice').textContent='£319.99';
+  document.getElementById('detailPriceNote').textContent='£30.00 less than you paid';
+  document.getElementById('detailPriceCard').dataset.alert='true';
+  document.getElementById('detailChartSummary').textContent='Last checked 22 Sep';
+  document.getElementById('detailMonitoringInsight').textContent='Last checked 22 Sep';
+  document.getElementById('detailMonitoringState').textContent='Automatic';
+  document.getElementById('detailProductAction').href='https://www.johnlewis.com';
+  document.getElementById('detailProductAction').hidden=false;
+  document.getElementById('detailProductSummary').textContent='John Lewis';
+  document.getElementById('detailAlertsSwitch').setAttribute('aria-checked','true');
+  document.getElementById('detailAlertsSummary').textContent='On';
+  const chart=document.getElementById('detailPriceChart');
+  chart.innerHTML='<line class="chart-grid" x1="52" x2="310" y1="18" y2="18"/><line class="chart-grid" x1="52" x2="310" y1="60" y2="60"/><line class="chart-grid" x1="52" x2="310" y1="102" y2="102"/><text class="chart-axis-label" x="0" y="21">£360</text><text class="chart-axis-label" x="0" y="63">£340</text><text class="chart-axis-label" x="0" y="105">£320</text><path class="chart-area" d="M54 35 L110 42 L168 58 L222 79 L265 91 L307 96 L307 101 L54 101Z"/><path class="chart-line" d="M54 35 L110 42 L168 58 L222 79 L265 91 L307 96"/><circle class="chart-point chart-point--purchase" cx="54" cy="35" r="3.3"/><circle class="chart-point" cx="307" cy="96" r="2.8"/><text class="chart-axis-label" x="54" y="132">Mar</text><text class="chart-axis-label" x="180" y="132" text-anchor="middle">Jun</text><text class="chart-axis-label" x="307" y="132" text-anchor="end">Sep</text>';
+}
 if(state==='clear-confirmation'){document.getElementById('clearPurchasesPill').dataset.confirming='true';document.getElementById('clearConfirmation').hidden=false;}
 const wireClearAction=(pillId,buttonId,confirmationId,cancelId,confirmId,messageId,onConfirm)=>{const pill=document.getElementById(pillId),button=document.getElementById(buttonId),confirmation=document.getElementById(confirmationId),cancel=document.getElementById(cancelId),confirm=document.getElementById(confirmId),message=document.getElementById(messageId);if(!pill||!button||!confirmation||!cancel||!confirm||!message)return;const hide=()=>{pill.dataset.confirming='false';button.setAttribute('aria-expanded','false');button.inert=false;confirmation.inert=true;confirm.disabled=false;cancel.disabled=false;button.disabled=false;message.dataset.error='false';};const show=()=>{message.textContent='This can’t be undone.';message.dataset.error='false';pill.dataset.confirming='true';button.setAttribute('aria-expanded','true');button.inert=true;confirmation.inert=false;confirm.focus();};button.addEventListener('click',show);cancel.addEventListener('click',hide);confirm.addEventListener('click',()=>{if(confirm.disabled)return;confirm.disabled=true;onConfirm();hide();});if(pill.dataset.confirming==='true'){confirmation.inert=false;button.inert=true;}};
 wireClearAction('clearPurchasesPill','clearProtectedPurchases','clearConfirmation','cancelClearPurchases','confirmClearPurchases','clearConfirmationMessage',()=>{set('itemsCount','0 items');set('menuItemsCount','(0)');const list=document.getElementById('itemsList');if(list)list.innerHTML='<div class="items-message"><strong>No protected purchases</strong><span>Items you protect will appear here.</span></div>';});
@@ -79,13 +115,12 @@ writeFileSync(`${out}/index.html`, `<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tracer extension · all states</title>
   <style>
-    @font-face{font-family:"Tracer Serif";src:url("/extension-states/assets/TracerSerif.woff2") format("woff2");font-display:swap}
     *{box-sizing:border-box}
     :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#141716;background:#faf8f3}
     body{margin:0;min-width:320px;background:#faf8f3}
     header{max-width:1540px;margin:0 auto;padding:54px 34px 34px;display:flex;align-items:end;justify-content:space-between;gap:24px}
     header img{display:block;width:122px;height:auto}
-    h1{font:500 clamp(38px,5vw,72px)/.95 "Tracer Serif",Georgia,serif;letter-spacing:-.045em;margin:28px 0 12px}
+    h1{font:500 clamp(38px,5vw,72px)/.95 Georgia,serif;letter-spacing:-.045em;margin:28px 0 12px}
     header p{color:#34495c;margin:0;font-size:15px}
     .count{border:1px solid #ffffff80;background:#ffffff8f;border-radius:999px;padding:10px 15px;white-space:nowrap;box-shadow:0 8px 30px #264b7012}
     main{max-width:1540px;margin:0 auto;padding:0 34px 80px;display:grid;grid-template-columns:repeat(auto-fit,minmax(286px,1fr));gap:30px 22px;align-items:start}
@@ -101,7 +136,7 @@ writeFileSync(`${out}/index.html`, `<!doctype html>
 </head>
 <body>
   <header>
-    <div><img src="/extension-states/assets/tracer-outline.png" alt="Tracer" /><h1>Extension states</h1><p>Every popup state, using the refreshed Landing B visual language.</p></div>
+    <div><img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" /><h1>Extension states</h1><p>Every popup state, using the refreshed Landing B visual language.</p></div>
     <div class="count">${states.length} states</div>
   </header>
   <main>${cards}</main>

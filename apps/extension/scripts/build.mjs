@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -9,9 +9,10 @@ const sourceDir = resolve(extensionRoot, "src");
 const esbuild = resolve(extensionRoot, "..", "..", "node_modules", ".bin", "esbuild");
 const definitions = [
   `--define:import.meta.env.MODE=${JSON.stringify("production")}`,
-  `--define:import.meta.env.VITE_AFTERBUY_API_BASE_URL=${JSON.stringify(process.env.VITE_AFTERBUY_API_BASE_URL ?? "http://127.0.0.1:4000")}`,
-  `--define:import.meta.env.VITE_AFTERBUY_DASHBOARD_BASE_URL=${JSON.stringify(process.env.VITE_AFTERBUY_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173")}`,
-  `--define:import.meta.env.VITE_AFTERBUY_USER_ID=${JSON.stringify(process.env.VITE_AFTERBUY_USER_ID ?? "dev-user-afterbuy")}`,
+  `--define:import.meta.env.VITE_TRACER_STARTUP_TRACE=${JSON.stringify(process.env.VITE_TRACER_STARTUP_TRACE === "1")}`,
+  `--define:import.meta.env.VITE_TRACER_API_BASE_URL=${JSON.stringify(process.env.VITE_TRACER_API_BASE_URL ?? "http://127.0.0.1:4000")}`,
+  `--define:import.meta.env.VITE_TRACER_DASHBOARD_BASE_URL=${JSON.stringify(process.env.VITE_TRACER_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173")}`,
+  `--define:import.meta.env.VITE_TRACER_USER_ID=${JSON.stringify(process.env.VITE_TRACER_USER_ID ?? "dev-user-tracer")}`,
 ];
 
 function bundle(entry, output, format, globalName) {
@@ -39,6 +40,7 @@ async function copyDirectory(source, destination) {
   }
 }
 
+await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 await copyDirectory(resolve(extensionRoot, "public"), outDir);
 

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { setTimeout as wait } from "node:timers/promises";
 import { parseHTML } from "linkedom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gbp, type PurchaseDraft, type SavedProduct } from "@afterbuy/core";
+import { gbp, type PurchaseDraft, type SavedProduct } from "@tracer/core";
 
 const popupPath = new URL("../popup.html", import.meta.url);
 const originalFetch = globalThis.fetch;
@@ -36,6 +36,7 @@ interface PopupHarnessOptions {
 
   cachedScanResponse?: unknown;
   protected?: boolean;
+  savedProducts?: Array<SavedProduct | null>;
   protectResponse?: unknown;
   dashboardBaseUrl?: string;
   dashboardResponse?: {
@@ -47,6 +48,7 @@ interface PopupHarnessOptions {
   monitoringSettingsStatus?: number;
   deleteStatus?: number;
   scanResponse?: unknown;
+  scanResponses?: unknown[];
   tabUrl?: string;
 }
 
@@ -263,6 +265,54 @@ describe("extension popup", () => {
     expect(harness.scanMessages()).toHaveLength(1);
   });
 
+  it("retries detection when the order details arrive just after the popup opens", async () => {
+    const harness = await setupPopup({
+      cachedScanResponse: null,
+      scanResponses: [
+        { ok: false, failureReason: "incomplete" },
+        {
+          ok: true,
+          draft: purchaseDraft,
+          summary: {
+            retailerName: purchaseDraft.retailerName,
+            productName: purchaseDraft.lineItems[0]?.productName,
+            itemCount: 1,
+            totalDisplay: "£349.99",
+            confidence: "high",
+          },
+        },
+      ],
+      tabUrl: "https://shopify.com/83196445016/account/orders/example",
+    });
+
+    await wait(400);
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("detected");
+    expect(harness.scanMessages()).toHaveLength(2);
+  });
+
+  it("retries product extraction when the storefront is still rendering", async () => {
+    const product: SavedProduct = {
+      name: "Desk lamp",
+      retailer: "Shop",
+      retailerId: "store_shop-example-com",
+      canonicalUrl: "https://shop.example.com/products/lamp",
+    };
+    const harness = await setupPopup({
+      scanResponse: { ok: false, failureReason: "not_purchase_page" },
+      savedProducts: [null, product],
+      tabUrl: "https://shop.example.com/products/lamp",
+    });
+
+    await wait(400);
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("watchlist");
+    expect(text("watchProduct")).toContain("Desk lamp");
+    expect(harness.productMessages()).toHaveLength(2);
+  });
+
   it("keeps manual opens save-focused when the page is not a purchase", async () => {
     const harness = await setupPopup({
       scanResponse: {
@@ -382,10 +432,20 @@ describe("extension popup", () => {
     expect(protectedImage?.getAttribute("src")).toBe("https://store.example.com/headphones.png");
     expect(protectedImage?.getAttribute("loading")).toBe("lazy");
     harness.firstItem().click();
+    await flushPopup();
 
     expect(harness.app.dataset.screen).toBe("detail");
     expect(text("detailStatus")).toBe("● Price dropped by £30");
     expect(element("detailStatus").dataset.alert).toBe("true");
+    expect(text("detailPaid")).toBe("£349.00");
+    expect(text("detailCurrentPrice")).toBe("£319");
+    expect(element<HTMLImageElement>("detailImage").getAttribute("src")).toBe("https://store.example.com/headphones.png");
+    expect(text("detailMonitoringInsight")).toContain("Last checked");
+    expect(element<HTMLAnchorElement>("detailProductAction").href).toBe("https://store.example.com/sony-wh-1000xm5");
+    expect(element<HTMLAnchorElement>("detailProductAction").target).toBe("_blank");
+    expect(element<HTMLAnchorElement>("detailProductAction").hidden).toBe(false);
+    element<HTMLButtonElement>("detailAlertsSwitch").click();
+    expect(element<HTMLButtonElement>("detailAlertsSwitch").getAttribute("aria-checked")).toBe("false");
 
     harness.popupBack.click();
     await flushPopup();
@@ -693,7 +753,7 @@ async function setupPopup(
     },
   };
   const cachedScanResponse = options.cachedScanResponse ?? (
-    options.scanResponse === undefined && options.savedProduct === undefined
+    options.scanResponse === undefined && options.scanResponses === undefined && options.savedProduct === undefined
       ? defaultPurchaseScan
       : null
   );
@@ -741,7 +801,7 @@ async function setupPopup(
       return;
     }
 
-    if (message.type === "AFTERBUY_PROTECT_PURCHASE") {
+    if (message.type === "TRACER_PROTECT_PURCHASE") {
       if (options.protectResponse === "defer") {
         options.onProtectCallback?.(callback);
         return;
@@ -765,16 +825,21 @@ async function setupPopup(
   });
   const watchlist = new WatchlistRepository({get:async key => ({[key]:localStore[key]}),set:localStorageSet});
   const executeScript = vi.fn().mockResolvedValue([]);
+  let scanResponseIndex = 0;
+  let savedProductIndex = 0;
   const tabSendMessage = vi.fn((_tabId: number, _message: unknown, callback: (response: unknown) => void) => {
     if ((_message as {type:string}).type === 'TRACER_EXTRACT_SAVED_PRODUCT') {
       return Promise.resolve({
-        product: options.savedProduct ?? null,
+        product: options.savedProducts
+          ? options.savedProducts[Math.min(savedProductIndex++, options.savedProducts.length - 1)] ?? null
+          : options.savedProduct ?? null,
         imageCandidates: options.imageCandidates ?? [],
       });
     }
-    callback(
-      options.scanResponse ?? defaultPurchaseScan,
-    );
+    const sequenceResponse = options.scanResponses
+      ? options.scanResponses[Math.min(scanResponseIndex++, options.scanResponses.length - 1)]
+      : undefined;
+    callback(sequenceResponse ?? options.scanResponse ?? defaultPurchaseScan);
   });
   const dashboard = structuredClone(options.dashboardResponse ?? {
     purchases: [],
@@ -883,13 +948,13 @@ async function setupPopup(
     tabsCreate,
     protectMessages: () =>
       runtimeSendMessage.mock.calls.filter(([message]) => {
-        return (message as { type: string }).type === "AFTERBUY_PROTECT_PURCHASE";
+        return (message as { type: string }).type === "TRACER_PROTECT_PURCHASE";
       }),
     deleteRequests: () => fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE"),
     dashboardRequests: () => fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/dashboard")),
     watchlistClearMessages: () => runtimeSendMessage.mock.calls.filter(([message]) => (message as {type:string}).type === 'TRACER_WATCHLIST_CLEAR'),
     scanMessages: () => tabSendMessage.mock.calls.filter(([, message]) => {
-      return (message as { type: string }).type === "AFTERBUY_SCAN_PAGE";
+      return (message as { type: string }).type === "TRACER_SCAN_PAGE";
     }),
     productMessages: () => tabSendMessage.mock.calls.filter(([, message]) => {
       return (message as { type: string }).type === "TRACER_EXTRACT_SAVED_PRODUCT";
@@ -903,11 +968,23 @@ function droppedDashboard() {
     purchases: [{
       id: "pur_existing",
       productName: "Sony WH-1000XM5",
+      retailerName: "Example Store",
+      storeHost: "store.example.com",
+      productUrl: "https://store.example.com/sony-wh-1000xm5",
+      purchasedAt: "2026-08-30T09:15:00.000Z",
+      createdAt: "2026-08-30T09:15:00.000Z",
       imageUrl: "https://store.example.com/headphones.png",
       pricePaid: gbp(34_900),
       currentPriceDisplay: "£319",
+      lastCheckedAt: "2026-09-22T09:00:00.000Z",
       monitoringStatus: "price_dropped",
       savingDisplay: "£30",
+      recentActivity: [{
+        type: "price_dropped",
+        title: "Price dropped",
+        description: "Price is down £30.",
+        occurredAt: "2026-09-22T09:00:00.000Z",
+      }],
     }],
     opportunities: [{
       purchaseId: "pur_existing",

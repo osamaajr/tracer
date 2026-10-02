@@ -1,5 +1,5 @@
 import type {
-  AfterBuyRepository,
+  TracerRepository,
   ProductRecord,
   ProductUpsertInput,
   PurchaseDraft,
@@ -34,7 +34,7 @@ export interface ProtectPurchaseResult {
 }
 
 export async function protectPurchase(
-  repository: AfterBuyRepository,
+  repository: TracerRepository,
   command: ProtectPurchaseCommand,
 ): Promise<ProtectPurchaseResult> {
   const now = command.now ?? new Date().toISOString();

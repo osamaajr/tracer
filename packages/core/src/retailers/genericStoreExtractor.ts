@@ -3,8 +3,10 @@ import type { PurchaseDraft, PurchaseLineItemDraft, ProductPriceSnapshot } from 
 import {
   asRecord,
   extractJsonLdObjects,
+  flattenJsonLd,
   findJsonLdByType,
   firstString,
+  jsonLdHasType,
   readString,
 } from "./jsonLd";
 import {
@@ -78,6 +80,7 @@ export function extractGenericProductFromDocument(
   document: Document,
   productUrl: string,
   observedAt: string = new Date().toISOString(),
+  expectedProductName?: string,
 ): ProductPriceSnapshot | null {
   const storefront = getStorefront(productUrl);
 
@@ -85,16 +88,31 @@ export function extractGenericProductFromDocument(
     return null;
   }
 
-  const product = findJsonLdByType(extractJsonLdObjects(document), "Product");
+  const productNodes = flattenJsonLd(extractJsonLdObjects(document))
+    .filter((value) => jsonLdHasType(value, "Product"));
+  const product = findProductForPage(
+    productNodes,
+    document,
+    productUrl,
+    storefront.host,
+    expectedProductName,
+  );
+  if (productNodes.length > 0 && !product) return null;
   const offer = getOffer(product);
   const productName =
     firstString(product?.name) ??
     document.querySelector("h1")?.textContent?.trim() ??
     document.title.trim();
-  const priceCurrency = firstString(offer?.priceCurrency) ?? "GBP";
-  const fallbackPriceText = document
+  const priceCurrency = firstString(offer?.priceCurrency) ??
+    document.querySelector<HTMLMetaElement>("meta[property='product:price:currency'], meta[itemprop='priceCurrency']")?.content ??
+    "GBP";
+  const heading = document.querySelector("h1");
+  const priceRoot = heading?.closest<HTMLElement>(
+    '[itemtype*="Product"], [data-product], [data-testid*="product" i], main, article',
+  ) ?? document;
+  const fallbackPriceText = priceRoot
     .querySelector<HTMLElement>(
-      "[data-afterbuy-current-price], [data-test='product-price'], [itemprop='price']",
+      "[data-tracer-current-price], [data-test='product-price'], [itemprop='price']",
     )
     ?.textContent?.trim();
   const price =
@@ -120,6 +138,7 @@ export function extractGenericProductFromDocument(
   };
 
   const sku = firstString(product?.sku);
+  const externalProductId = firstString(product?.productID);
   const image = findProductPageImage(document, productUrl, {
     structuredImage: product?.image,
     productName,
@@ -128,11 +147,73 @@ export function extractGenericProductFromDocument(
   if (sku) {
     snapshot.sku = sku;
   }
+  if (externalProductId) {
+    snapshot.externalProductId = externalProductId;
+  }
   if (image) {
     snapshot.imageUrl = image.url;
   }
 
   return snapshot;
+}
+
+function findProductForPage(
+  productNodes: unknown[],
+  document: Document,
+  productUrl: string,
+  expectedHost: string,
+  expectedProductName?: string,
+): Record<string, unknown> | null {
+  const products = productNodes
+    .map(asRecord)
+    .filter((value): value is Record<string, unknown> => value !== null);
+
+  if (products.length === 0) return null;
+
+  const requested = normalizeItemUrl(productUrl, productUrl, expectedHost)?.url;
+  const urlMatches = products.filter((candidate) =>
+    productJsonLdUrls(candidate).some((url) =>
+      normalizeItemUrl(url, productUrl, expectedHost)?.url === requested,
+    ),
+  );
+  if (urlMatches.length === 1) return urlMatches[0] ?? null;
+
+  const names = [expectedProductName, document.querySelector("h1")?.textContent]
+    .map(normalizeProductName)
+    .filter(Boolean);
+  const nameMatches = products.filter((candidate) => {
+    const candidateName = normalizeProductName(candidate.name);
+    return candidateName && names.some((name) => candidateName === name);
+  });
+  if (nameMatches.length === 1) return nameMatches[0] ?? null;
+
+  if (products.length === 1) {
+    const onlyProduct = products[0];
+    return onlyProduct && productJsonLdUrls(onlyProduct).length === 0 ? onlyProduct : null;
+  }
+
+  // Multiple product nodes with no unambiguous identity are common on pages
+  // containing recommendations. Fail closed instead of monitoring a neighbor.
+  return null;
+}
+
+function productJsonLdUrls(product: Record<string, unknown>): string[] {
+  const output: string[] = [];
+  for (const value of [product.url, product["@id"], product.mainEntityOfPage]) {
+    if (typeof value === "string") output.push(value);
+    else {
+      const record = asRecord(value);
+      const id = firstString(record?.["@id"]) ?? firstString(record?.url);
+      if (id) output.push(id);
+    }
+  }
+  return output;
+}
+
+function normalizeProductName(value: unknown): string {
+  return typeof value === "string"
+    ? value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
+    : "";
 }
 
 function isInstallmentPrice(value: string | undefined): boolean {
@@ -262,7 +343,7 @@ function extractLineItemsFromDom(
   const explicitCandidates = Array.from(
     document.querySelectorAll<HTMLElement>(
       [
-        "[data-afterbuy-line-item]",
+        "[data-tracer-line-item]",
         "[data-test*='order'][data-test*='item']",
         "[data-testid*='order'][data-testid*='item']",
         "[class*='order'][class*='item']",
@@ -288,9 +369,9 @@ function extractLineItemFromDomElement(
   expectedHost: string,
 ): PurchaseLineItemDraft | null {
   const name =
-    element.dataset.afterbuyProductName ??
+    element.dataset.tracerProductName ??
     textFromSelectors(element, [
-      "[data-afterbuy-product-name]",
+      "[data-tracer-product-name]",
       "[data-product-name]",
       "[data-test*='name']",
       "[data-testid*='name']",
@@ -308,7 +389,7 @@ function extractLineItemFromDomElement(
   const quantity = extractLineItemQuantity(element);
   const sku = extractLineItemSku(element);
   const rawUrl =
-    element.dataset.afterbuyProductUrl ??
+    element.dataset.tracerProductUrl ??
     element.querySelector<HTMLAnchorElement>("a[href]")?.href;
 
   if (!name) {
@@ -459,9 +540,9 @@ function inferProductName(element: HTMLElement): string | null {
 
 function extractLineItemQuantity(element: HTMLElement): number {
   const explicit =
-    element.dataset.afterbuyQuantity ??
+    element.dataset.tracerQuantity ??
     textFromSelectors(element, [
-      "[data-afterbuy-quantity]",
+      "[data-tracer-quantity]",
       "[data-quantity]",
       "[data-label*='qty' i]",
       "[data-label*='quantity' i]",
@@ -487,9 +568,9 @@ function extractLineItemQuantity(element: HTMLElement): number {
 
 function extractLineItemSku(element: HTMLElement): string | null {
   const explicit =
-    element.dataset.afterbuySku ??
+    element.dataset.tracerSku ??
     textFromSelectors(element, [
-      "[data-afterbuy-sku]",
+      "[data-tracer-sku]",
       "[data-sku]",
       "[data-test*='sku']",
       "[data-testid*='sku']",
@@ -579,7 +660,7 @@ function deepestLineItemElements(elements: HTMLElement[]): HTMLElement[] {
     candidate !== element &&
     element.contains(candidate) &&
     Boolean(
-      candidate.querySelector("a[href], [data-afterbuy-product-url]") &&
+      candidate.querySelector("a[href], [data-tracer-product-url]") &&
       currencyAmounts(candidate.textContent ?? "").length,
     ),
   ));
@@ -615,7 +696,7 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
   if (explicitUnitPrice) return explicitUnitPrice;
 
   const priceElements = Array.from(element.querySelectorAll<HTMLElement>([
-    "[data-afterbuy-price-paid]",
+    "[data-tracer-price-paid]",
     "[data-line-item-price]",
     "[data-line-price]",
     "[data-line-total]",
@@ -647,8 +728,8 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
 
 function extractPurchaseDate(document: Document, fallbackNow: Date): string {
   const explicit =
-    attrFromSelectors(document, ["time[datetime]", "[data-afterbuy-purchased-at]", "[data-order-date]"], "datetime") ??
-    textFromSelectors(document, ["[data-afterbuy-purchased-at]", "[data-order-date]", "[data-purchase-date]", "[class*='order-date' i]"]);
+    attrFromSelectors(document, ["time[datetime]", "[data-tracer-purchased-at]", "[data-order-date]"], "datetime") ??
+    textFromSelectors(document, ["[data-tracer-purchased-at]", "[data-order-date]", "[data-purchase-date]", "[class*='order-date' i]"]);
   const bodyMatch = normalizedText(document.body).match(
     /\border\s*date\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/i,
   )?.[1];

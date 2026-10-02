@@ -1,4 +1,4 @@
-import { normalizeSavedUrl, savedMatchesPurchase, type SavedItem, type SavedProduct, type PurchaseDraft, type PurchaseRecord, type ProductRecord } from '@afterbuy/core';
+import { normalizeSavedUrl, savedMatchesPurchase, type SavedItem, type SavedProduct, type PurchaseDraft, type PurchaseRecord, type ProductRecord } from '@tracer/core';
 
 export const watchlistKey = 'tracerWatchlistV1';
 type MonitoringUpdate = {

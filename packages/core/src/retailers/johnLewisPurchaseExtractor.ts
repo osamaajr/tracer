@@ -54,22 +54,22 @@ export function extractJohnLewisPurchaseFromDocument(
 
   const orderReference =
     textFromSelectors(document, [
-      "[data-afterbuy-order-reference]",
+      "[data-tracer-order-reference]",
       "[data-order-number]",
       "[data-test='order-number']",
     ]) ?? extractOrderReference(document.body?.textContent ?? "");
 
   const purchasedAt =
     attrFromSelectors(document, [
-      "[data-afterbuy-purchased-at]",
+      "[data-tracer-purchased-at]",
       "time[datetime]",
     ], "datetime") ??
-    textFromSelectors(document, ["[data-afterbuy-purchased-at]"]) ??
+    textFromSelectors(document, ["[data-tracer-purchased-at]"]) ??
     fallbackNow.toISOString();
 
   const lineItems = Array.from(
     document.querySelectorAll<HTMLElement>(
-      "[data-afterbuy-line-item], [data-test='order-line-item'], .order-line-item, .order-item",
+      "[data-tracer-line-item], [data-test='order-line-item'], .order-line-item, .order-item",
     ),
   )
     .map(extractLineItemFromElement)
@@ -204,24 +204,24 @@ function extractLineItemFromOffer(
 
 function extractLineItemFromElement(element: HTMLElement): PurchaseLineItemDraft | null {
   const productName =
-    element.dataset.afterbuyProductName ??
-    textFromSelectors(element, ["[data-afterbuy-product-name]", "h1", "h2", "h3", "a"]);
+    element.dataset.tracerProductName ??
+    textFromSelectors(element, ["[data-tracer-product-name]", "h1", "h2", "h3", "a"]);
   const productHref =
-    element.dataset.afterbuyProductUrl ??
+    element.dataset.tracerProductUrl ??
     element.querySelector<HTMLAnchorElement>("a[href*='/p']")?.href;
   const priceText =
-    element.dataset.afterbuyPricePaid ??
+    element.dataset.tracerPricePaid ??
     textFromSelectors(element, [
-      "[data-afterbuy-price-paid]",
+      "[data-tracer-price-paid]",
       "[data-test='line-price']",
       ".price",
     ]);
   const quantityText =
-    element.dataset.afterbuyQuantity ??
-    textFromSelectors(element, ["[data-afterbuy-quantity]", "[data-test='quantity']"]);
+    element.dataset.tracerQuantity ??
+    textFromSelectors(element, ["[data-tracer-quantity]", "[data-test='quantity']"]);
   const sku =
-    element.dataset.afterbuySku ??
-    textFromSelectors(element, ["[data-afterbuy-sku]", "[data-test='sku']"]);
+    element.dataset.tracerSku ??
+    textFromSelectors(element, ["[data-tracer-sku]", "[data-test='sku']"]);
 
   if (!productName || !productHref || !priceText) {
     return null;

@@ -23,12 +23,13 @@ if (!window.__tracerPurchaseCandidateWatcher) {
   let lastSentUrl = "";
   let retryCount = 0;
   let detectionComplete = false;
+  let candidateCheckInFlight = false;
   const maxRetries = 6;
 
   const checkPage = (force = false): void => {
     scheduled = undefined;
     scheduledForceCheck = false;
-    if (detectionComplete || !isLikelyPurchasePage(document, window.location.href)) {
+    if (candidateCheckInFlight || detectionComplete || !isLikelyPurchasePage(document, window.location.href)) {
       return;
     }
 
@@ -38,6 +39,7 @@ if (!window.__tracerPurchaseCandidateWatcher) {
 
     lastSentRevision = documentRevision;
     lastSentUrl = window.location.href;
+    candidateCheckInFlight = true;
     const message: PurchasePageCandidateMessage = {
       type: "TRACER_PURCHASE_PAGE_CANDIDATE",
       url: window.location.href,
@@ -61,6 +63,17 @@ if (!window.__tracerPurchaseCandidateWatcher) {
       if (retryCount < maxRetries) {
         retryCount += 1;
         scheduleCheck(Math.min(2_000, 300 * 2 ** retryCount), true);
+      }
+    }).finally(() => {
+      candidateCheckInFlight = false;
+      // Keep one fresh attempt queued if the storefront changed while the
+      // previous extraction was running; those mutations may have been
+      // coalesced while the background worker was busy.
+      if (
+        !detectionComplete &&
+        (documentRevision !== lastSentRevision || window.location.href !== lastSentUrl)
+      ) {
+        scheduleCheck(180, true);
       }
     });
   };

@@ -1,4 +1,10 @@
 import "./landing-b.css";
+import landingWordmark from "./assets/landing-b/tracer-wordmark-outline-transparent.webp";
+import productHeadphones from "./assets/product-headphones.webp";
+import productDeskLamp from "./assets/products/desk-lamp.png";
+import productDaypack from "./assets/products/daypack.png";
+import tracerLogo from "./assets/tracer-logo.png";
+import tracerWordmark from "./assets/tracer-wordmark.png";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
@@ -16,7 +22,7 @@ import {
 } from "lucide-react";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
-const demoUserId = "dev-user-afterbuy";
+const demoUserId = "dev-user-tracer";
 
 interface DashboardPurchase {
   id: string;
@@ -116,7 +122,7 @@ function LandingPageB() {
       </div>
       <LandingBValueStatement />
       <LandingBFeatures />
-      <Footer />
+      <Footer landingB />
     </main>
   );
 }
@@ -166,7 +172,7 @@ function HeroMonitoringVisual() {
     <div className="landing-b-card-scene">
       <article className="landing-b-watch-card landing-b-hover-card" tabIndex={0}>
         <header>
-          <img src="/assets/landing-b/tracer-wordmark-outline-transparent.png" alt="Tracer" />
+          <img src={landingWordmark} alt="Tracer" width={592} height={195} />
           <MoreHorizontal aria-hidden="true" size={20} />
         </header>
         <div className="landing-b-watch-body">
@@ -241,13 +247,27 @@ function LandingBFeatures() {
             <p>Save products from any shop and pick up where you left off.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-save-visual" aria-label="Tracer saved items example">
-            <div className="landing-b-save-card landing-b-update-card">
+            <div className="landing-b-save-card">
               <header>
-                <span><Globe2 aria-hidden="true" size={20} /></span>
-                <div><strong>Saved items</strong><p>Products you want, all together.</p></div>
-                <Bookmark aria-hidden="true" size={18} />
+                <span className="landing-b-save-mark"><Bookmark aria-hidden="true" size={20} /></span>
+                <div><strong>Saved items</strong><p>Your finds. One happy place.</p></div>
+                <span className="landing-b-save-count">12 items</span>
               </header>
-              <div className="landing-b-save-detail"><Bookmark aria-hidden="true" size={18} /><span>Items ready when you are</span><strong>12</strong></div>
+              <div className="landing-b-save-products">
+                <div className="landing-b-save-product">
+                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-blue"><img src={productHeadphones} alt="Black wireless headphones" width={400} height={400} loading="lazy" decoding="async" /></div>
+                  <strong>Headphones</strong><span>£349.99</span>
+                </div>
+                <div className="landing-b-save-product">
+                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-sand"><img src={productDeskLamp} alt="Ivory adjustable desk lamp" width={1254} height={1254} loading="lazy" decoding="async" /></div>
+                  <strong>Desk lamp</strong><span>£48.00</span>
+                </div>
+                <div className="landing-b-save-product">
+                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-green"><img src={productDaypack} alt="Sage green canvas daypack" width={1254} height={1254} loading="lazy" decoding="async" /></div>
+                  <strong>Daypack</strong><span>£84.50</span>
+                </div>
+              </div>
+              <footer><span className="landing-b-save-watching"><i aria-hidden="true" />Watching for price drops</span><span>From any shop <Globe2 aria-hidden="true" size={13} /></span></footer>
             </div>
           </div>
         </article>
@@ -258,16 +278,22 @@ function LandingBFeatures() {
             <p>Tracer keeps checking saved and purchased items, then lets you know when the price drops.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-drop-visual" aria-label="Tracer price-drop notification example">
-            <div className="landing-b-feature-alert landing-b-feature-alert-combined">
-              <span className="landing-b-feature-alert-icon"><ArrowDown aria-hidden="true" size={25} /></span>
-              <div><strong>Price drop detected</strong><p>Your headphones are now £319.99.</p></div>
-              <time>Just now</time>
-              <div className="landing-b-feature-price-row">
-                <span><small>You paid</small><strong>£349.99</strong></span>
-                <ArrowRight aria-hidden="true" size={20} />
-                <span><small>Now</small><strong>£319.99</strong></span>
-                <em>£30 back</em>
+            <div className="landing-b-feature-alert">
+              <header className="landing-b-drop-header">
+                <span className="landing-b-feature-alert-icon"><ArrowDown aria-hidden="true" size={18} /></span>
+                <strong>Price drop detected</strong>
+                <time>Just now</time>
+              </header>
+              <div className="landing-b-drop-product">
+                <img src={productHeadphones} alt="Black Sony wireless headphones" width={400} height={400} loading="lazy" decoding="async" />
+                <div><span>John Lewis</span><strong>Sony WH-1000XM5</strong><p>Wireless headphones · Black</p></div>
               </div>
+              <div className="landing-b-feature-price-row">
+                <span><small>Previous price</small><s>£349.99</s></span>
+                <ArrowRight aria-hidden="true" size={18} />
+                <span><small>Now</small><strong>£319.99</strong></span>
+              </div>
+              <footer className="landing-b-drop-footer"><span><CheckCircle2 aria-hidden="true" size={13} />Still watching the price</span><em>£30 less</em></footer>
             </div>
           </div>
         </article>
@@ -301,7 +327,7 @@ function LandingBFeatures() {
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
             <div className="landing-b-monitor-card">
               <div className="landing-b-monitor-product">
-                <img className="landing-b-monitor-product-image" src="/assets/product-headphones.png" alt="Sony WH-1000XM5 headphones" />
+                <img className="landing-b-monitor-product-image" src={productHeadphones} alt="Sony WH-1000XM5 headphones" width={400} height={400} loading="lazy" decoding="async" />
                 <div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div>
               </div>
               <dl>
@@ -342,8 +368,6 @@ function LandingHeader({ homeHref = "/", installHref = "#install" }: { homeHref?
     <div className="landing-header-space">
       <header className="site-header landing-header" data-floating={floating}>
         <a className="brand" href={homeHref} aria-label="Tracer home">
-          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
-          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
         </a>
         <a className="header-cta" href={installHref}>
           <ChromeMark />
@@ -363,15 +387,17 @@ function ChromeMark() {
   );
 }
 
-function Footer() {
+function Footer({ landingB = false }: { landingB?: boolean }) {
   return (
     <footer className="site-footer" id="faq">
       <div className="footer-clouds" aria-hidden="true"><span /><span /></div>
       <div className="footer-row">
-        <div className="brand" aria-label="Tracer">
-          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
-          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
-        </div>
+        <a className="brand" href="/" aria-label="Tracer home">
+          {!landingB && <>
+            <img className="brand-logo" src={tracerLogo} alt="" width={120} height={120} />
+            <img className="brand-wordmark" src={tracerWordmark} alt="Tracer" width={320} height={80} />
+          </>}
+        </a>
         <nav className="footer-links" aria-label="Footer navigation">
           <a href="mailto:osama.alnajar.26@gmail.com">Contact</a>
           <a href="/privacy">Privacy</a>
@@ -437,58 +463,65 @@ function ContactPage() {
 
 function PrivacyPage() {
   return (
-    <SitePage title="Privacy Policy" description="How Tracer handles your data.">
+    <SitePage title="Privacy Policy" description="How Tracer handles product, purchase, and settings data.">
       <article className="policy-document">
-        <PolicySection title="Introduction">
-          <p>Tracer helps you monitor purchases you choose to protect after checkout. Privacy and minimal data collection are part of how the product is designed: Tracer aims to use only the information needed to provide its core features.</p>
+        <PolicySection title="About this policy">
+          <p>Last updated 22 September 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified through <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a> (“Tracer”, “we”, “us”).</p>
+          <p>Where data-protection law applies, we act as the controller for the personal data described here. This policy reflects the current product and will be updated if that changes.</p>
         </PolicySection>
 
-        <PolicySection title="What Tracer stores">
-          <p>Tracer may store the details needed to protect and monitor a purchase, including:</p>
+        <PolicySection title="Information the extension reads">
+          <p>When the extension runs on a supported shopping or order page, it reads the page details needed for the feature you request. Depending on what the page exposes, this can include product name, retailer, URLs, product image, price, currency, quantity, purchase date, order reference, product identifier, or SKU.</p>
+          <p>It may also read a current price and availability from a public product page for an item being watched. It does not read your email inbox, payment-card numbers, or passwords. It uses matching shopping and order pages to identify a product or purchase, rather than collecting unrelated browsing content.</p>
+        </PolicySection>
+
+        <PolicySection title="What is stored locally" emphasis>
+          <p>Saved items are stored in Chrome extension storage on your device. This can include the item name, retailer, canonical product URL, saved price, image URL, product identifiers, save time, current price, last-check time, monitoring status, and notification state. The extension also stores settings such as whether monitoring and price-drop alerts are enabled, plus a local pseudonymous Tracer identifier used to associate protected purchases with the API.</p>
+          <p>You can remove saved items, clear protected purchases, and turn monitoring or alerts off through the extension. Chrome controls extension storage and may remove it when you uninstall the extension.</p>
+        </PolicySection>
+
+        <PolicySection title="What is sent to the API">
+          <p>When you choose to protect a purchase, the extension sends the captured purchase and product information needed to create and monitor that protection. The API stores purchase records, product details, price observations, monitoring preferences, opportunities, and activity events so Tracer can show protected items and notify you about relevant price changes.</p>
+          <p>Saved watchlist items are primarily managed locally. The extension may visit a saved product page in a background tab to read a current price; the resulting price and monitoring status stay in extension storage unless you later protect that purchase.</p>
+        </PolicySection>
+
+        <PolicySection title="How we use information">
           <ul>
-            <li>Product and retailer names.</li>
-            <li>Purchase date and purchase price, when available.</li>
-            <li>Monitoring status and price-related information.</li>
-            <li>Your notification and monitoring preferences.</li>
+            <li>To save products, protect purchases, check prices, and show monitoring results.</li>
+            <li>To send browser notifications about relevant price drops when alerts are enabled.</li>
+            <li>To connect a saved item to a protected purchase when details match.</li>
+            <li>To secure, troubleshoot, maintain, and improve Tracer and prevent misuse.</li>
           </ul>
+          <p>We do not sell Tracer data, build advertising profiles, or use it to provide personalised ads.</p>
         </PolicySection>
 
-        <PolicySection title="What Tracer does not aim to collect" emphasis>
-          <p>Tracer is designed to avoid unnecessary data collection.</p>
-          <ul>
-            <li>Tracer does not require access to your email inbox.</li>
-            <li>Tracer does not ask for your payment-card details.</li>
-            <li>Tracer saves only the purchases you choose to protect.</li>
-            <li>Tracer is intended to use only the information needed for its core functionality.</li>
-          </ul>
+        <PolicySection title="Lawful bases">
+          <p>Where the UK GDPR or similar law applies, we generally process information because it is necessary to provide a feature you ask us to use, because we have a legitimate interest in operating and securing Tracer, or because you have given consent where consent is required.</p>
         </PolicySection>
 
-        <PolicySection title="How data is used">
-          <p>Stored information is used to monitor protected purchases, surface relevant price changes or purchase updates, power your saved-purchase list, and remember your settings.</p>
+        <PolicySection title="Retailers and service providers">
+          <p>Tracer checks public product pages and information displayed by the retailer whose order page you use. Retailers remain responsible for their own sites and privacy practices. Hosting, storage, monitoring, and notification providers may process information needed to operate Tracer. We do not sell personal information or share it for advertising; disclosures may occur when required by law, for security, or as part of a business transfer.</p>
         </PolicySection>
 
-        <PolicySection title="Browser and extension storage">
-          <p>Tracer may store relevant purchase and settings data locally in your browser or extension storage in order to power the product experience.</p>
+        <PolicySection title="International transfers and security">
+          <p>Service providers may process information outside the UK or European Economic Area. Where applicable, we will use a lawful transfer mechanism and appropriate safeguards. Tracer uses HTTPS for network requests and access controls in the API, but no browser or internet service can guarantee absolute security.</p>
         </PolicySection>
 
-        <PolicySection title="Third-party services">
-          <p>Tracer may rely on third-party services or infrastructure to operate certain parts of the product. Where applicable, those services may process limited data needed to provide the service.</p>
+        <PolicySection title="Retention and deletion">
+          <p>Local saved-item and settings data remains until you remove it, clear it through the extension, uninstall the extension, or it is overwritten by Chrome. Protected-purchase records, observations, and related activity remain in the API while needed to provide monitoring and maintain service records. Deleting a protected purchase removes it and its related opportunities and activity, subject to backups, security records, legal obligations, and technical limits.</p>
+          <p>Server logs and operational records are kept only as long as reasonably necessary for security, reliability, and legal purposes.</p>
         </PolicySection>
 
-        <PolicySection title="Your controls">
-          <p>You can turn monitoring on or off, turn price-drop alerts on or off, and clear protected purchases from your device through the extension settings.</p>
-        </PolicySection>
-
-        <PolicySection title="Data retention">
-          <p>Tracer keeps relevant data only as needed to support its functionality, or until you clear it where that control is available.</p>
+        <PolicySection title="Your rights">
+          <p>Depending on where you live and the applicable law, you may have rights to access, correct, delete, restrict, or object to processing of your personal data, and to receive portable data. You may also complain to your local data-protection authority. To make a request, email <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>; we may need enough information to verify and locate the relevant data.</p>
         </PolicySection>
 
         <PolicySection title="Changes to this policy">
-          <p>We may update this policy from time to time as Tracer evolves. The latest version will be published on this page.</p>
+          <p>We may update this policy as Tracer evolves. The latest version and update date will be published on this page.</p>
         </PolicySection>
 
         <PolicySection title="Contact">
-          <p>If you have privacy-related questions, contact <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
+          <p>Privacy questions and requests can be sent to <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
         </PolicySection>
       </article>
     </SitePage>
@@ -497,47 +530,54 @@ function PrivacyPage() {
 
 function TermsPage() {
   return (
-    <SitePage title="Terms of Service" description="The basic terms for using Tracer.">
+    <SitePage title="Terms of Service" description="The terms that apply when you use Tracer.">
       <article className="policy-document">
-        <PolicySection title="Acceptance of terms">
-          <p>By using Tracer, you agree to these terms. If you do not agree, please do not use the service.</p>
+        <PolicySection title="Agreement">
+          <p>Last updated 22 September 2026. By visiting the Tracer website or installing or using the extension, you agree to these terms. If you do not agree, do not use Tracer.</p>
         </PolicySection>
 
-        <PolicySection title="What Tracer is">
-          <p>Tracer is a tool designed to help users monitor selected purchases after checkout and surface information that may be useful.</p>
+        <PolicySection title="What Tracer does">
+          <p>Tracer lets you save products from shopping sites, protect selected purchases after checkout, monitor available product prices, and receive alerts about relevant price changes or purchase opportunities. The extension reads information shown on supported shopping and order pages and may check public product pages in the background for saved or protected items.</p>
+          <p>Tracer does not buy products, submit retailer claims, change retailer orders, guarantee refunds, or act as your agent. Any action with a retailer is your responsibility.</p>
         </PolicySection>
 
-        <PolicySection title="Use of the service">
-          <p>You agree to use Tracer lawfully and responsibly, and not to misuse, disrupt, or attempt to interfere with the service.</p>
+        <PolicySection title="Your data and access">
+          <p>The current version does not require a user account or email sign-in. The extension uses a local pseudonymous identifier to associate protected purchases with the API. You are responsible for keeping access to your browser and extension profile secure and for checking captured information before protecting a purchase.</p>
         </PolicySection>
 
-        <PolicySection title="Service availability">
-          <p>Tracer is provided on an “as is” and “as available” basis. Features, monitoring coverage, and availability may change over time, and uninterrupted service is not guaranteed.</p>
+        <PolicySection title="Acceptable use">
+          <p>You must use Tracer lawfully and must not misuse, probe, disrupt, overload, reverse engineer, or attempt to gain unauthorised access to Tracer, its API, or another user’s data. You must not use automated requests or captured information to violate a retailer’s terms, access controls, or applicable law.</p>
         </PolicySection>
 
-        <PolicySection title="Accuracy and limitations" emphasis>
-          <p>Tracer aims to surface useful information, but it does not guarantee perfect retailer coverage, uninterrupted monitoring, or completely accurate and up-to-date price or policy information at all times.</p>
+        <PolicySection title="Accuracy and retailer limitations" emphasis>
+          <p>Tracer depends on retailer pages, public information, network access, page structure, and monitoring rules that can change without notice. Prices, availability, images, order details, dates, and policy information may be missing, delayed, incorrect, or unavailable. Monitoring may fail or pause, and a notification is not proof that a refund, price adjustment, or other retailer remedy is available.</p>
+          <p>Always verify current details and the retailer’s terms before making a purchase, contacting a retailer, or relying on an alert.</p>
         </PolicySection>
 
-        <PolicySection title="Your responsibility">
-          <p>You remain responsible for your purchase decisions, claims, retailer interactions, and for checking relevant details before acting on an alert or update from Tracer.</p>
+        <PolicySection title="Third-party sites and services">
+          <p>Tracer links to or reads third-party retailer sites but does not control them. Your use of those sites is governed by their terms and privacy notices. Tracer is not responsible for their content, availability, security, prices, policies, or decisions.</p>
         </PolicySection>
 
         <PolicySection title="Intellectual property">
-          <p>The Tracer product, brand, and site content belong to Tracer unless otherwise stated. These terms do not transfer ownership of that material to you.</p>
+          <p>Tracer, its name, logo, software, website, design, and original content belong to Tracer or its licensors. We grant you a limited, revocable, non-transferable licence to use the extension and website for their intended purpose. Retailer names, product images, and other third-party material remain owned by their respective owners.</p>
         </PolicySection>
 
-        <PolicySection title="Changes to the service">
-          <p>Tracer may update, modify, suspend, or discontinue features as the product develops.</p>
+        <PolicySection title="Availability and changes">
+          <p>Tracer is provided on an “as available” basis. We may update, modify, suspend, or discontinue the website, extension, monitoring coverage, or any feature, including to maintain security or comply with law. We do not promise uninterrupted or error-free service. We will not reduce your rights under mandatory consumer law.</p>
+        </PolicySection>
+
+        <PolicySection title="Disclaimers and liability">
+          <p>To the extent permitted by law, Tracer is not responsible for indirect or consequential loss, missed savings, retailer decisions, unavailable pages, or information you choose to rely on. Nothing in these terms excludes or limits liability that cannot legally be excluded, including liability for fraud or for death or personal injury caused by negligence. If Tracer is supplied to a consumer, your statutory consumer rights remain unaffected.</p>
+        </PolicySection>
+
+        <PolicySection title="Suspension and termination">
+          <p>We may suspend or terminate access where reasonably necessary to protect the service, investigate misuse, comply with law, or respond to a security risk. You can stop using Tracer and uninstall the extension at any time. Ending use does not remove data automatically; use the available deletion controls or contact us.</p>
         </PolicySection>
 
         <PolicySection title="Changes to these terms">
-          <p>We may update these terms from time to time. The latest version will be published on this page.</p>
+          <p>We may update these terms as Tracer changes. We will publish the latest version and update the date above. If a change materially affects your rights, we will take reasonable steps to draw it to your attention.</p>
         </PolicySection>
 
-        <PolicySection title="Contact">
-          <p>If you have questions about these terms, contact <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
-        </PolicySection>
       </article>
     </SitePage>
   );
@@ -570,7 +610,7 @@ function _Dashboard() {
     setStatus("loading");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/dashboard`, { headers: { "x-afterbuy-user-id": demoUserId } });
+      const response = await fetch(`${apiBaseUrl}/api/dashboard`, { headers: { "x-tracer-user-id": demoUserId } });
       if (!response.ok) {
         throw new Error("Dashboard API unavailable");
       }
@@ -611,8 +651,8 @@ function _Dashboard() {
     <main className="dashboard-shell">
       <header className="dashboard-logo-row">
         <a className="brand" href="/" aria-label="Tracer home">
-          <img className="brand-logo" src="/assets/tracer-logo.png" alt="" />
-          <img className="brand-wordmark" src="/assets/tracer-wordmark.png" alt="Tracer" />
+          <img className="brand-logo" src={tracerLogo} alt="" width={120} height={120} />
+          <img className="brand-wordmark" src={tracerWordmark} alt="Tracer" width={1126} height={283} />
         </a>
       </header>
 
