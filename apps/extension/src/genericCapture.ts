@@ -7,6 +7,7 @@ import type {
 } from "@tracer/core";
 import {
   extractPurchaseFromDocument,
+  extractOrderTotalPaid,
   extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
@@ -109,7 +110,9 @@ const genericCaptureListener = (
       retailerName: draft.retailerName,
       productName: firstItem?.productName ?? "Detected purchase",
       itemCount: draft.lineItems.length,
-      totalDisplay: currency ? formatMoney({ amountMinor: total, currency }) : "Captured",
+      totalDisplay: draft.orderTotalPaid
+        ? formatMoney(draft.orderTotalPaid)
+        : currency ? formatMoney({ amountMinor: total, currency }) : "Captured",
       confidence: draft.captureConfidence,
     },
   });
@@ -135,12 +138,12 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
   // as Skechers' Each / QTY / Total confirmation page.
   const sharedDraft = extractPurchaseFromDocument(page, sourceUrl);
   if (sharedDraft) {
-    return sharedDraft;
+    return withFinalOrderTotal(sharedDraft, page);
   }
 
   const shopifyDraft = extractShopifyAccountPurchaseFromDocument(page, sourceUrl);
   if (shopifyDraft) {
-    return shopifyDraft;
+    return withFinalOrderTotal(shopifyDraft, page);
   }
 
   const storefront = storefrontFromUrl(sourceUrl);
@@ -151,7 +154,7 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
 
   const schemaDraft = extractFromJsonLd(page, sourceUrl, storefront);
   if (schemaDraft) {
-    return schemaDraft;
+    return withFinalOrderTotal(schemaDraft, page);
   }
 
   if (!looksLikeOrderConfirmation(page, sourceUrl)) {
@@ -164,7 +167,7 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
     return null;
   }
 
-  return buildDraft({
+  return withFinalOrderTotal(buildDraft({
     storefront,
     sourceUrl,
     purchasedAt: firstText(page, [
@@ -180,7 +183,13 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
     lineItems: items,
     captureMethod: "generic_dom",
     captureConfidence: "medium",
-  });
+  }), page);
+}
+
+function withFinalOrderTotal(draft: PurchaseDraft, page: Document): PurchaseDraft {
+  if (draft.orderTotalPaid || !draft.lineItems[0]) return draft;
+  const total = extractOrderTotalPaid(page, draft.lineItems[0].pricePaid.currency);
+  return total ? { ...draft, orderTotalPaid: total } : draft;
 }
 
 function extractFromJsonLd(

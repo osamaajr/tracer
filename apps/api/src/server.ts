@@ -159,7 +159,7 @@ export async function createTracerServer(
       purchase: result.purchase
         ? {
             ...result.purchase,
-            pricePaidDisplay: formatMoney(result.purchase.pricePaid),
+            pricePaidDisplay: formatMoney(result.purchase.orderTotalPaid ?? result.purchase.pricePaid),
           }
         : null,
     };
@@ -255,6 +255,7 @@ export async function createTracerServer(
           imageUrl: product?.imageUrl ?? null,
           retailerName: purchase.retailerName || purchase.retailerId,
           pricePaidDisplay: formatMoney(purchase.pricePaid),
+          orderTotalPaidDisplay: purchase.orderTotalPaid ? formatMoney(purchase.orderTotalPaid) : null,
           currentPrice: latest?.price ?? null,
           currentPriceDisplay: latest ? formatMoney(latest.price) : null,
           lastCheckedAt: latest?.observedAt ?? null,
@@ -378,6 +379,27 @@ export async function createTracerServer(
     },
   );
 
+  const activePriceChecks = new Map<string, ReturnType<typeof runPriceMonitoringCycle>>();
+  app.post<{ Params: { purchaseId: string } }>("/api/purchases/:purchaseId/check-price", async (request, reply) => {
+    const user = requireAuthenticatedUser(request, config);
+    const { purchaseId } = purchaseParamsSchema.parse(request.params);
+    const purchase = (await repository.listPurchasesForUser(user.id)).find((item) => item.id === purchaseId);
+    if (!purchase) return reply.code(404).send({ error: "Protected purchase not found" });
+    const preference = await repository.getMonitoringPreference(user.id);
+    if (!preference.enabled) return reply.code(409).send({ error: "monitoring_paused" });
+    let check = activePriceChecks.get(purchase.productId);
+    if (!check) {
+      check = runPriceMonitoringCycle({ repository, priceFetcher: livePriceFetcher, productIds: [purchase.productId] })
+        .finally(() => activePriceChecks.delete(purchase.productId));
+      activePriceChecks.set(purchase.productId, check);
+    }
+    const summary = await check;
+    if (!summary.checkedProducts || summary.failures.length) {
+      return reply.code(502).send({ error: "price_check_unavailable" });
+    }
+    return { ok: true };
+  });
+
   app.post("/api/monitoring/run", async (request, reply) => {
     if (!config.enableDevEndpoints) {
       return reply.code(404).send({ error: "not_found" });
@@ -473,6 +495,9 @@ function toPurchaseDraft(input: z.infer<typeof purchaseDraftSchema>): PurchaseDr
 
   if (input.orderReference) {
     draft.orderReference = input.orderReference;
+  }
+  if (input.orderTotalPaid) {
+    draft.orderTotalPaid = input.orderTotalPaid;
   }
 
   return draft;

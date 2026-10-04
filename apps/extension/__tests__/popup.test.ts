@@ -44,6 +44,8 @@ interface PopupHarnessOptions {
     opportunities: Array<Record<string, unknown>>;
   };
   dashboardFailures?: number;
+  priceCheckGate?: Promise<void>;
+  priceCheckFails?: boolean;
   pendingPurchases?: Array<Record<string, unknown>>;
   monitoringSettingsStatus?: number;
   deleteStatus?: number;
@@ -456,6 +458,42 @@ describe("extension popup", () => {
     expect(harness.app.dataset.screen).toBe("duplicate");
   });
 
+  it("shows the smaller shimmer only while a real price check is running", async () => {
+    let releaseCheck!: () => void;
+    const priceCheckGate = new Promise<void>((resolve) => { releaseCheck = resolve; });
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.currentPriceDisplay = null as unknown as string;
+    dashboard.purchases[0]!.monitoringStatus = "watching";
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard, priceCheckGate });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await flushPopup();
+    expect(harness.priceCheckRequests()).toHaveLength(1);
+    expect(text("detailCurrentPrice")).toBe("Checking");
+    expect(element("detailCurrentPrice").dataset.checking).toBe("true");
+    releaseCheck();
+    await flushPopup();
+    expect(text("detailCurrentPrice")).toBe("£319.99");
+    expect(element("detailCurrentPrice").dataset.checking).toBe("false");
+  });
+
+  it("stops the checking shimmer and reports an unavailable price after failure", async () => {
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.currentPriceDisplay = null as unknown as string;
+    dashboard.purchases[0]!.monitoringStatus = "watching";
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard, priceCheckFails: true });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await flushPopup();
+    expect(harness.priceCheckRequests()).toHaveLength(1);
+    expect(text("detailCurrentPrice")).toBe("Unable to check");
+    expect(element("detailCurrentPrice").dataset.checking).toBe("false");
+  });
+
   it("reuses the automatic background scan when the popup opens", async () => {
     const harness = await setupPopup({
       cachedScanResponse: {
@@ -848,6 +886,12 @@ async function setupPopup(
   let remainingDashboardFailures = options.dashboardFailures ?? 0;
   const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith("/check-price") && init?.method === "POST") {
+      await options.priceCheckGate;
+      if (options.priceCheckFails) return { ok: false, status: 502 };
+      dashboard.purchases[0]!.currentPriceDisplay = "£319.99";
+      return { ok: true, status: 200 };
+    }
     if (url.endsWith("/api/dashboard")) {
       if (remainingDashboardFailures > 0) {
         remainingDashboardFailures -= 1;
@@ -952,6 +996,7 @@ async function setupPopup(
       }),
     deleteRequests: () => fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE"),
     dashboardRequests: () => fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/api/dashboard")),
+    priceCheckRequests: () => fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/check-price")),
     watchlistClearMessages: () => runtimeSendMessage.mock.calls.filter(([message]) => (message as {type:string}).type === 'TRACER_WATCHLIST_CLEAR'),
     scanMessages: () => tabSendMessage.mock.calls.filter(([, message]) => {
       return (message as { type: string }).type === "TRACER_SCAN_PAGE";

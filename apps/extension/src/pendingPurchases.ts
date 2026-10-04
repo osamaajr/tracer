@@ -19,7 +19,16 @@ export async function queuePendingPurchase(
 ): Promise<{ purchase: PendingProtectedPurchase; created: boolean }> {
   const pending = await getPendingPurchases();
   const existing = pending.find((purchase) => samePurchaseDraft(purchase.draft, draft));
-  if (existing) return { purchase: existing, created: false };
+  if (existing) {
+    if (draft.orderTotalPaid && (
+      existing.draft.orderTotalPaid?.amountMinor !== draft.orderTotalPaid.amountMinor ||
+      existing.draft.orderTotalPaid?.currency !== draft.orderTotalPaid.currency
+    )) {
+      existing.draft = { ...existing.draft, orderTotalPaid: draft.orderTotalPaid };
+      await setPendingPurchases(pending);
+    }
+    return { purchase: existing, created: false };
+  }
 
   const purchase: PendingProtectedPurchase = {
     id: buildPendingPurchaseId(draft),

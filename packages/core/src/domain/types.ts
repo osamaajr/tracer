@@ -32,6 +32,8 @@ export interface PurchaseDraft {
   sourceUrl: string;
   purchasedAt: string;
   lineItems: PurchaseLineItemDraft[];
+  /** Final amount charged for the complete order, including discounts and delivery. */
+  orderTotalPaid?: Money;
   captureMethod: CaptureMethod;
   captureConfidence: CaptureConfidence;
   orderReference?: string;
@@ -62,6 +64,7 @@ export interface PurchaseRecord {
   productName: string;
   productUrl: string;
   pricePaid: Money;
+  orderTotalPaid?: Money;
   quantity: number;
   purchasedAt: string;
   sourceUrl: string;
@@ -214,6 +217,7 @@ export interface PurchaseCreateInput {
   productName: string;
   productUrl: string;
   pricePaid: Money;
+  orderTotalPaid?: Money;
   quantity: number;
   purchasedAt: string;
   sourceUrl: string;
@@ -226,6 +230,7 @@ export interface PurchaseCreateInput {
 
 export interface PurchaseDetailsUpdateInput {
   pricePaid: Money;
+  orderTotalPaid?: Money;
   quantity: number;
   productName: string;
   productUrl: string;

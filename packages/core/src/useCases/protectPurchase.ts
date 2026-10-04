@@ -80,10 +80,11 @@ export async function protectPurchase(
       const duplicate = await repository.findPurchaseByFingerprint(fingerprint);
 
       if (duplicate) {
-        const correctedPurchase = purchaseDetailsMatch(duplicate, lineItem)
+        const correctedPurchase = purchaseDetailsMatch(duplicate, lineItem, command.draft.orderTotalPaid)
           ? duplicate
           : await repository.updatePurchaseDetailsForUser(duplicate.id, command.userId, {
               pricePaid: lineItem.pricePaid,
+              ...(command.draft.orderTotalPaid ? { orderTotalPaid: command.draft.orderTotalPaid } : {}),
               quantity: lineItem.quantity,
               productName: lineItem.productName,
               productUrl: product.canonicalUrl,
@@ -108,6 +109,7 @@ export async function protectPurchase(
         productName: lineItem.productName,
         productUrl: product.canonicalUrl,
         pricePaid: lineItem.pricePaid,
+        ...(command.draft.orderTotalPaid ? { orderTotalPaid: command.draft.orderTotalPaid } : {}),
         quantity: lineItem.quantity,
         purchasedAt: command.draft.purchasedAt,
         sourceUrl: command.draft.sourceUrl,
@@ -155,12 +157,15 @@ export async function protectPurchase(
 function purchaseDetailsMatch(
   purchase: PurchaseRecord,
   lineItem: PurchaseLineItemDraft,
+  orderTotalPaid?: PurchaseDraft["orderTotalPaid"],
 ): boolean {
   return (
     purchase.productName === lineItem.productName &&
     purchase.pricePaid.currency === lineItem.pricePaid.currency &&
     purchase.pricePaid.amountMinor === lineItem.pricePaid.amountMinor &&
-    purchase.quantity === lineItem.quantity
+    purchase.quantity === lineItem.quantity &&
+    (!orderTotalPaid || (purchase.orderTotalPaid?.currency === orderTotalPaid.currency &&
+      purchase.orderTotalPaid.amountMinor === orderTotalPaid.amountMinor))
   );
 }
 
@@ -201,6 +206,13 @@ export function validatePurchaseDraft(draft: PurchaseDraft): string[] {
 
   if (draft.lineItems.length === 0) {
     errors.push("At least one line item is required");
+  }
+  if (draft.orderTotalPaid && (
+    !Number.isInteger(draft.orderTotalPaid.amountMinor) ||
+    draft.orderTotalPaid.amountMinor < 0 ||
+    draft.lineItems.some((item) => item.pricePaid.currency !== draft.orderTotalPaid?.currency)
+  )) {
+    errors.push("Final order total must be non-negative and use the item currency");
   }
 
   for (const item of draft.lineItems) {

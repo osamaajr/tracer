@@ -1,6 +1,7 @@
 import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { parsePrice } from "../domain/money";
 import { selectProductImage } from "./productImage";
+import { extractOrderTotalPaid } from "./orderTotal";
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -41,10 +42,8 @@ export function extractShopifyAccountPurchaseFromDocument(
     ? candidateRows
     : Array.from(document.querySelectorAll("a[href*='/products/']"));
   const extracted = rows.flatMap((row) => extractLineItem(row, sourceUrl));
-  // The product row is the authoritative price for the purchased item. Keep
-  // order-level coupons, shipping, and tax out of the line-item price: Shopify
-  // renders those as separate totals and folding them back into each product
-  // makes the extension disagree with the price the shopper sees beside it.
+  // Keep the product's unit price separate from the final order charge. The
+  // latter includes order discounts, shipping and fees, and is shown as paid.
   const lineItems = dedupeLineItems(extracted);
 
   if (lineItems.length === 0) {
@@ -76,6 +75,8 @@ export function extractShopifyAccountPurchaseFromDocument(
     captureMethod: "generic_dom",
     captureConfidence: "high",
   };
+  const orderTotalPaid = extractOrderTotalPaid(document, lineItems[0]!.pricePaid.currency);
+  if (orderTotalPaid) draft.orderTotalPaid = orderTotalPaid;
 
   if (orderReference) {
     draft.orderReference = orderReference;

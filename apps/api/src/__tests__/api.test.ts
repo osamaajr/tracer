@@ -67,6 +67,34 @@ const droppedSnapshot: ProductPriceSnapshot = {
 };
 
 describe("Tracer API", () => {
+  it("checks only the requested owned purchase and respects paused monitoring", async () => {
+    const repository = new InMemoryTracerRepository();
+    const checked: string[] = [];
+    const app = await createTracerServer({
+      config: { port: 0, dataFile: ":memory:", devUserId: "user_1", enableDevAuth: true, enableDevEndpoints: false },
+      repository,
+      priceFetcher: { fetchCurrentPrice: async (product) => { checked.push(product.id); return droppedSnapshot; } },
+    });
+    const headers = { "x-tracer-user-id": "user_1" };
+    try {
+      for (const draft of [purchaseDraft, genericPurchaseDraft]) {
+        await app.inject({ method: "POST", url: "/api/purchases/protect", headers, payload: { purchaseDraft: draft } });
+      }
+      const purchase = (await repository.listPurchasesForUser("user_1"))[0]!;
+      const url = `/api/purchases/${purchase.id}/check-price`;
+      const denied = await app.inject({ method: "POST", url, headers: { "x-tracer-user-id": "another_user" } });
+      expect(denied.statusCode).toBe(404);
+      expect(checked).toEqual([]);
+      expect((await app.inject({ method: "POST", url, headers })).statusCode).toBe(200);
+      expect(checked).toEqual([purchase.productId]);
+      const dashboard = (await app.inject({ method: "GET", url: "/api/dashboard", headers })).json();
+      expect(dashboard.purchases.find((item: { id: string }) => item.id === purchase.id).currentPriceDisplay).toBe("£319.99");
+      await app.inject({ method: "PUT", url: "/api/settings/monitoring", headers, payload: { enabled: false } });
+      expect((await app.inject({ method: "POST", url, headers })).statusCode).toBe(409);
+      expect(checked).toHaveLength(1);
+    } finally { await app.close(); }
+  });
+
   it("runs the paid-to-dropped fixture flow through the development endpoint", async () => {
     const app = await createTracerServer({
       config: {

@@ -39,7 +39,24 @@ export async function findProtectedPurchaseForDraft(
     }
 
     const [purchase] = unmatchedPurchases.splice(matchIndex, 1);
-    if (purchase) matchedPurchases.push(purchase);
+    if (purchase) {
+      const total = command.draft.orderTotalPaid;
+      if (total && (purchase.orderTotalPaid?.amountMinor !== total.amountMinor ||
+        purchase.orderTotalPaid?.currency !== total.currency)) {
+        const updated = await repository.updatePurchaseDetailsForUser(purchase.id, command.userId, {
+          pricePaid: purchase.pricePaid,
+          orderTotalPaid: total,
+          quantity: purchase.quantity,
+          productName: purchase.productName,
+          productUrl: purchase.productUrl,
+          captureMethod: purchase.captureMethod,
+          captureConfidence: purchase.captureConfidence,
+        });
+        matchedPurchases.push(updated ?? purchase);
+      } else {
+        matchedPurchases.push(purchase);
+      }
+    }
   }
 
   const purchase = matchedPurchases[0] ?? null;

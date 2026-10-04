@@ -1062,11 +1062,13 @@ describe("Shopify account order extraction", () => {
             <td><a aria-label="Clover Bracelet Full Silver Charms" href="https://sevengatesjewellery.com/products/clover-bracelet?variant=54776061722968"><img src="https://sevengatesjewellery.com/cdn/shop/bracelet.jpg"></a></td>
             <td>£35.00</td>
           </tr></table>
-          <section aria-label="Order totals">
-            <p>Subtotal £35.00</p>
-            <div><span>Order discount</span><span>WELCOME</span><span>-£5.25</span></div>
-            <p>Shipping £2.99</p><p>Total GBP £32.74</p><p>Total savings £5.25</p>
-          </section>
+          <div role="table" aria-label="Order totals"><div role="rowgroup">
+            <div role="row"><div role="rowheader">Subtotal</div><div role="cell">£35.00</div></div>
+            <div role="row"><div role="rowheader">Order discount</div><div role="cell">-£5.25</div></div>
+            <div role="row"><div role="rowheader">Shipping</div><div role="cell">£2.99</div></div>
+            <div role="row"><div role="rowheader"><strong>Total</strong></div><div role="cell"><span>GBP</span><strong>£32.74</strong></div></div>
+            <div>Including £0.00 in taxes</div><div>Total savings £5.25</div>
+          </div></div>
         </main></body>
       </html>
     `).document;
@@ -1076,6 +1078,7 @@ describe("Shopify account order extraction", () => {
     expect(draft?.lineItems).toMatchObject([
       { productName: "Clover Bracelet Full Silver Charms", quantity: 1, pricePaid: gbp(3_500) },
     ]);
+    expect(draft?.orderTotalPaid).toEqual(gbp(3_274));
   });
 
   it("extracts every Shopify order row with its final per-item price", async () => {

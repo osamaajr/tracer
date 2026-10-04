@@ -31,6 +31,7 @@ export interface RunPriceMonitoringOptions {
   priceFetcher: PriceFetcher;
   now?: string;
   policyRegistry?: RetailerPolicyRegistry;
+  productIds?: string[];
 }
 
 // The API can run a scheduled check at the same time as a user-triggered
@@ -66,6 +67,7 @@ async function runPriceMonitoringCycleUnlocked(
   };
 
   for (const product of products) {
+    if (options.productIds && !options.productIds.includes(product.id)) continue;
     summary.checkedProducts += 1;
 
     try {

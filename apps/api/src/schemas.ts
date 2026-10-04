@@ -29,6 +29,7 @@ export const purchaseDraftSchema = z.object({
   captureMethod: z.enum(["retailer_adapter", "generic_schema_org", "generic_dom"]),
   captureConfidence: z.enum(["high", "medium", "low"]),
   orderReference: z.string().min(1).optional(),
+  orderTotalPaid: moneySchema.optional(),
   lineItems: z.array(lineItemSchema).min(1),
 });
 

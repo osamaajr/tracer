@@ -388,7 +388,7 @@
   max-width: none;
   min-height: 540px;
   overflow: hidden;
-  padding: 68px max(38px, calc((100vw - 1216px) / 2 + 38px)) 260px;
+  padding: 68px max(38px, calc((100vw - 1216px) / 2 + 38px)) 24px;
   position: relative;
   isolation: isolate;
   width: 100%;
@@ -460,26 +460,25 @@
 }
 
 .landing-shell-b > .site-footer .footer-giant-wordmark {
-  bottom: -110px;
-  color: rgb(255 255 255 / 62%);
+  color: rgb(255 255 255 / 30%);
   display: block;
-  left: 50%;
+  margin-top: 28px;
   pointer-events: none;
-  position: absolute;
+  position: relative;
   text-align: center;
-  text-shadow: 0 2px 18px rgb(36 77 115 / 10%);
-  transform: translateX(-50%);
-  width: 116vw;
+  text-shadow: 0 2px 18px rgb(36 77 115 / 4%);
+  width: 100%;
   z-index: 3;
 }
 
 .landing-shell-b > .site-footer .footer-giant-wordmark span {
   display: block;
   font-family: Montserrat, "Arial Black", sans-serif;
-  font-size: clamp(15rem, 34vw, 34rem);
+  font-size: clamp(5rem, 26vw, 34rem);
   font-weight: 900;
   letter-spacing: -.095em;
-  line-height: .72;
+  line-height: 1.1;
+  padding-block: .2em;
   white-space: nowrap;
 }
 
@@ -817,12 +816,14 @@
   margin: 22px 0;
 }
 
-.landing-b-drop-product img {
+.landing-b-drop-product-icon {
+  align-items: center;
   background: #eaf0f4;
   border-radius: 14px;
+  color: #517997;
+  display: flex;
   height: 68px;
-  object-fit: contain;
-  padding: 8px;
+  justify-content: center;
   width: 68px;
 }
 
@@ -975,12 +976,14 @@
   padding-bottom: 13px;
 }
 
-.landing-b-monitor-product-image {
+.landing-b-monitor-product-icon {
+  align-items: center;
   background: #f0ece4;
   border-radius: 14px;
+  color: #718774;
+  display: flex;
   height: 58px;
-  object-fit: contain;
-  padding: 6px;
+  justify-content: center;
   width: 58px;
 }
 
@@ -1196,11 +1199,11 @@
 }
 
 .landing-b-save-card {
-  transform: none;
+  transform: rotate(1.25deg);
 }
 
 .landing-b-drop-visual .landing-b-feature-alert {
-  transform: none;
+  transform: rotate(-1.25deg);
 }
 
 .landing-b-update-visual .landing-b-update-card {
@@ -1212,11 +1215,11 @@
 }
 
 .landing-b-save-visual:hover .landing-b-save-card {
-  transform: translateY(-5px);
+  transform: translateY(-5px) rotate(1.25deg);
 }
 
 .landing-b-drop-visual:hover .landing-b-feature-alert {
-  transform: translateY(-5px);
+  transform: translateY(-5px) rotate(-1.25deg);
 }
 
 .landing-b-update-visual:hover .landing-b-update-card {
@@ -1572,7 +1575,7 @@
 
   .landing-shell-b > .site-footer {
     min-height: 420px;
-    padding: 48px 20px 190px;
+    padding: 48px 20px 20px;
   }
 
   .landing-shell-b > .site-footer::before {
@@ -1581,8 +1584,7 @@
   }
 
   .landing-shell-b > .site-footer .footer-giant-wordmark {
-    bottom: -60px;
-    width: 126vw;
+    margin-top: 12px;
   }
 
   .landing-shell-b > .site-footer .footer-clouds span {

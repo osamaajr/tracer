@@ -1,4 +1,6 @@
 import { parsePrice } from "../domain/money";
+import { extractOrderTotalPaid } from "./orderTotal";
+import { isCompletedPurchasePage } from "./purchasePage";
 import type { PurchaseDraft, PurchaseLineItemDraft, ProductPriceSnapshot } from "../domain/types";
 import {
   asRecord,
@@ -28,7 +30,7 @@ export function extractGenericPurchaseFromDocument(
 ): PurchaseDraft | null {
   const storefront = getStorefront(sourceUrl);
 
-  if (!storefront) {
+  if (!storefront || !isCompletedPurchasePage(document, sourceUrl)) {
     return null;
   }
 
@@ -38,7 +40,7 @@ export function extractGenericPurchaseFromDocument(
     : [];
 
   if (jsonLdLineItems.length > 0) {
-    return buildDraft({
+    const draft = buildDraft({
       sourceUrl,
       storefront,
       purchasedAt:
@@ -53,6 +55,9 @@ export function extractGenericPurchaseFromDocument(
       captureMethod: "generic_schema_org",
       captureConfidence: "high",
     });
+    const orderTotalPaid = extractOrderTotalPaid(document, jsonLdLineItems[0]!.pricePaid.currency, jsonLdOrder);
+    if (orderTotalPaid) draft.orderTotalPaid = orderTotalPaid;
+    return draft;
   }
 
   if (!looksLikeOrderConfirmation(document, sourceUrl)) {
@@ -65,7 +70,7 @@ export function extractGenericPurchaseFromDocument(
     return null;
   }
 
-  return buildDraft({
+  const draft = buildDraft({
     sourceUrl,
     storefront,
     purchasedAt: extractPurchaseDate(document, fallbackNow),
@@ -74,6 +79,9 @@ export function extractGenericPurchaseFromDocument(
     captureMethod: "generic_dom",
     captureConfidence: domLineItems.every((item) => Boolean(item.productUrl)) ? "medium" : "low",
   });
+  const orderTotalPaid = extractOrderTotalPaid(document, domLineItems[0]!.pricePaid.currency);
+  if (orderTotalPaid) draft.orderTotalPaid = orderTotalPaid;
+  return draft;
 }
 
 export function extractGenericProductFromDocument(
@@ -221,22 +229,7 @@ function isInstallmentPrice(value: string | undefined): boolean {
 }
 
 export function looksLikeOrderConfirmation(document: Document, sourceUrl: string): boolean {
-  let url: URL;
-
-  try {
-    url = new URL(sourceUrl);
-  } catch {
-    return false;
-  }
-
-  const path = `${url.pathname} ${url.search}`.toLowerCase();
-  const bodyText = (document.body?.textContent ?? "").toLowerCase().replace(/\s+/g, " ");
-
-  return (
-    /order|checkout|confirmation|confirmed|complete|receipt|thank/.test(path) &&
-    /(thank you|thanks|confirmed|complete|order number|order ref|receipt)/.test(bodyText) &&
-    /(order|purchase|receipt)/.test(bodyText)
-  );
+  return isCompletedPurchasePage(document, sourceUrl);
 }
 
 function extractLineItemsFromJsonLdOrder(

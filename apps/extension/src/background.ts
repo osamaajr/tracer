@@ -36,6 +36,10 @@ interface SyncOpportunitiesMessage {
   type: "TRACER_SYNC_OPPORTUNITIES";
 }
 
+interface FlushPendingPurchasesMessage {
+  type: "TRACER_FLUSH_PENDING_PURCHASES";
+}
+
 interface CheckPurchaseProtectionMessage {
   type: "TRACER_CHECK_PURCHASE_PROTECTION";
   purchaseDraft: PurchaseDraft;
@@ -55,6 +59,7 @@ interface GetCachedPageScanMessage {
 type ExtensionMessage =
   | ProtectPurchaseMessage
   | SyncOpportunitiesMessage
+  | FlushPendingPurchasesMessage
   | CheckPurchaseProtectionMessage
   | PurchasePageCandidateMessage
   | GetCachedPageScanMessage;
@@ -245,6 +250,15 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
     return true;
   }
 
+  if (message.type === "TRACER_FLUSH_PENDING_PURCHASES") {
+    if (_sender.tab || !_sender.url?.startsWith(chrome.runtime.getURL(""))) return false;
+    void Promise.all([getApiBaseUrl(), getUserId()])
+      .then(([apiBaseUrl, userId]) => flushPendingPurchases(apiBaseUrl, userId))
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
   if (message.type === "TRACER_CHECK_PURCHASE_PROTECTION") {
     void checkPurchaseProtection(message.purchaseDraft)
       .then((response) => {
@@ -424,14 +438,19 @@ async function protectPurchase(purchaseDraft: PurchaseDraft): Promise<unknown> {
 
 async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<unknown> {
   const pending = (await getPendingPurchases().catch(() => [])).find((purchase) => samePurchaseDraft(purchase.draft, purchaseDraft));
-  const pendingItem = pending?.draft.lineItems[0];
-  if (pending && pendingItem) {
+  const correctedPending = pending && purchaseDraft.orderTotalPaid && (
+    pending.draft.orderTotalPaid?.amountMinor !== purchaseDraft.orderTotalPaid.amountMinor ||
+    pending.draft.orderTotalPaid?.currency !== purchaseDraft.orderTotalPaid.currency
+  ) ? (await queuePendingPurchase(purchaseDraft)).purchase : pending;
+  const pendingItem = correctedPending?.draft.lineItems[0];
+  if (correctedPending && pendingItem) {
     return {
       protected: true,
       purchase: {
-        id: pending.id,
+        id: correctedPending.id,
         productName: pendingItem.productName,
         pricePaid: pendingItem.pricePaid,
+        ...(correctedPending.draft.orderTotalPaid ? { orderTotalPaid: correctedPending.draft.orderTotalPaid } : {}),
       },
       pendingSync: true,
     };

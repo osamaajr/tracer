@@ -1838,7 +1838,7 @@
         font:650 18px/1.2 Arial,sans-serif;
         white-space:nowrap;
       }
-      main[data-screen="detected"] .actions { display:grid; gap:8px; margin:0; }
+      main[data-screen="detected"] .actions { display:grid; gap:10px; margin:0; }
       main[data-screen="detected"] .protect { min-height:48px; position:relative; }
       main[data-screen="detected"] .protect::after { content:'→'; font-size:19px; margin-left:18px; }
       main[data-screen="detected"] #maybeLater {
@@ -1850,21 +1850,21 @@
         text-underline-offset:3px;
       }
 
-      /* Give the already-protected confirmation the same balanced spacing. */
-      main[data-screen="duplicate"] { min-height:550px; }
+      /* Match the detected screen's frame without stretching the name card. */
+      main[data-screen="duplicate"] { min-height:550px; overflow:hidden; }
       main[data-screen="duplicate"] .success-screen {
         align-content:start;
-        gap:16px;
-        grid-template-rows:auto minmax(94px,1fr) auto auto;
+        gap:14px;
+        grid-template-rows:auto 86px auto auto;
         justify-content:stretch;
         min-height:470px;
         padding:0 10px 10px;
       }
-      main[data-screen="duplicate"] .success-copy .purchase-intro { margin-top:12px; }
+      main[data-screen="duplicate"] .success-copy .purchase-intro { margin-top:10px; }
       main[data-screen="duplicate"] .success-summary {
         align-content:center;
-        min-height:94px;
-        padding:18px;
+        min-height:0;
+        padding:14px 18px;
       }
       main[data-screen="duplicate"] .success-summary .product-title h2 {
         font-size:15px;
@@ -1877,7 +1877,8 @@
       }
       main[data-screen="duplicate"] .summary-actions { margin:0; }
       main[data-screen="duplicate"] .dashboard-cta { min-height:46px; }
-      .success-screen .summary-actions { gap:16px; }
+      main[data-screen="duplicate"] .summary-actions { gap:10px; }
+      .success-screen .summary-actions { gap:10px; }
       .success-continue-browsing {
         background:transparent;
         border:0;
@@ -1910,8 +1911,8 @@
       .item-detail-screen h1 { color:#24251f; font:400 22px/1.16 Georgia,serif; letter-spacing:-.025em; }
       .detail-retailer { color:#85857c; font-size:11px; }
       .detail-meta { min-height:0; padding:0; }
-      .detail-status { display:inline-flex; width:fit-content; min-height:18px; padding:0; border:0; border-radius:0; background:transparent; color:#6f7e60; font-size:11px; font-weight:600; }
-      .detail-status[data-alert="true"] { color:#536e45; }
+      .detail-status { display:inline-flex; width:fit-content; min-height:18px; padding:0; border:0; border-radius:0; background:transparent; color:#32813a; font-size:11px; font-weight:600; }
+      .detail-status[data-alert="true"] { color:#32813a; }
       .detail-status[data-error="true"] { color:#9b3a32; }
       .detail-status[data-paused="true"] { color:#8a8a80; }
       .detail-hero .delete-item { width:28px; height:28px; flex:0 0 28px; border:0; border-radius:50%; background:transparent; color:#95958c; box-shadow:none; }
@@ -1925,13 +1926,13 @@
       .detail-price--current { padding:0 0 12px; }
       .detail-price--current strong { font:400 36px/1.1 Georgia,serif; white-space:normal; overflow-wrap:anywhere; }
       #detailCurrentPrice[data-checking="true"] {
-        font-size:26px; color:#353630;
+        font:400 31px/1.12 Georgia,serif; letter-spacing:-.8px; color:#353630;
         background:linear-gradient(100deg,#353630 30%,#b6b3a9 48%,#353630 66%);
         background-size:250% 100%; background-clip:text; -webkit-background-clip:text;
         -webkit-text-fill-color:transparent; animation:loading-text-shimmer 2.6s ease-in-out infinite;
       }
       .detail-price-card[data-error="true"] .detail-price--current strong { color:#9b3a32; font-size:24px; }
-      .detail-price-card[data-alert="true"] .detail-price--current strong { color:#536e45; }
+      .detail-price-card[data-alert="true"] .detail-price--current strong { color:#32813a; }
       .detail-price--paid { display:grid; grid-template-columns:1fr auto; align-items:center; padding-top:11px; border-top:1px dashed #e2dfd6; }
       .detail-price--paid strong { grid-column:2; grid-row:1/3; font-size:18px; letter-spacing:-.02em; }
       .detail-price--paid small { grid-column:1; }
@@ -1945,7 +1946,7 @@
       .detail-action-copy small { overflow:visible; color:#929188; font-size:10px; line-height:1.4; white-space:normal; }
       .detail-action-switch { width:38px; height:23px; flex-basis:38px; background:#deded6; }
       .detail-action-switch > span { width:19px; height:19px; }
-      .detail-action-switch[aria-checked="true"] { background:#8b977c; }
+      .detail-action-switch[aria-checked="true"] { background:#32813a; }
       .detail-action-switch[aria-checked="true"] > span { transform:translateX(15px); }
       .detail-insight-row .detail-action-copy strong { color:#77796e; font-size:11px; font-weight:500; }
       .detail-insight-row .detail-action-copy small { font-size:10px; }
@@ -2028,7 +2029,7 @@
             <small id="detailPriceNote">Tracer checks this item automatically.</small>
           </div>
           <div class="detail-price detail-price--paid">
-            <span class="detail-price-label">You paid</span>
+            <span class="detail-price-label" id="detailPaidLabel">Item price</span>
             <strong id="detailPaid">—</strong>
             <small id="detailPaidDate"></small>
           </div>
@@ -2111,7 +2112,7 @@
           <div class="divider"></div>
           <dl class="details">
             <div class="detail-row">
-              <dt>Paid</dt>
+              <dt id="detectedPaidLabel">Item subtotal</dt>
               <dd id="totalPaid">Captured</dd>
             </div>
             <div class="detail-row">
@@ -2151,8 +2152,12 @@
             <input id="reviewProductName" type="text" autocomplete="off" />
           </label>
           <label>
-            Paid
+            Item price at checkout
             <input id="reviewPrice" type="text" autocomplete="off" inputmode="decimal" />
+          </label>
+          <label>
+            Final order total paid (after discounts and delivery)
+            <input id="reviewTotalPaid" type="text" autocomplete="off" inputmode="decimal" />
           </label>
           <label>
             Purchase date
@@ -2205,7 +2210,7 @@
           </div>
           <dl class="summary-details">
             <div class="detail-row">
-              <dt>Paid</dt>
+              <dt id="summaryPaidLabel">Item subtotal</dt>
               <dd id="summaryPaid">Captured</dd>
             </div>
           </dl>

@@ -305,6 +305,7 @@ export class InMemoryTracerRepository implements TracerRepository {
     }
 
     purchase.pricePaid = input.pricePaid;
+    if (input.orderTotalPaid) purchase.orderTotalPaid = input.orderTotalPaid;
     purchase.quantity = input.quantity;
     purchase.productName = input.productName;
     purchase.productUrl = input.productUrl;

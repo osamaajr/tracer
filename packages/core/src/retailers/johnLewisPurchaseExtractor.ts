@@ -1,4 +1,5 @@
 import { parseGbpPrice } from "../domain/money";
+import { extractOrderTotalPaid } from "./orderTotal";
 import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { extractJsonLdObjects, findJsonLdByType, asRecord, firstString, readString } from "./jsonLd";
 import {
@@ -89,6 +90,8 @@ export function extractJohnLewisPurchaseFromDocument(
     captureMethod: "retailer_adapter",
     captureConfidence: "high",
   };
+  const orderTotalPaid = extractOrderTotalPaid(document, "GBP");
+  if (orderTotalPaid) draft.orderTotalPaid = orderTotalPaid;
 
   if (orderReference) {
     draft.orderReference = orderReference;
@@ -129,6 +132,8 @@ function extractFromJsonLd(document: Document, sourceUrl: string): PurchaseDraft
     captureMethod: "retailer_adapter",
     captureConfidence: "high",
   };
+  const orderTotalPaid = extractOrderTotalPaid(document, "GBP", order);
+  if (orderTotalPaid) draft.orderTotalPaid = orderTotalPaid;
 
   const orderReference = firstString(order.orderNumber) ?? firstString(order.identifier);
   if (orderReference) {

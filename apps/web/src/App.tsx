@@ -1,11 +1,19 @@
 import "./landing-b.css";
 import landingWordmark from "./assets/landing-b/tracer-wordmark-outline-transparent.webp";
-import productHeadphones from "./assets/product-headphones.webp";
-import productDeskLamp from "./assets/products/desk-lamp.png";
-import productDaypack from "./assets/products/daypack.png";
+import productHeadphones from "./assets/product-headphones.webp?inline";
+import productDeskLamp from "./assets/products/desk-lamp.webp?inline";
+import productDaypack from "./assets/products/daypack.webp?inline";
+import storeAmazon from "./assets/retailers/store-amazon.png";
+import storeApple from "./assets/retailers/store-apple.png";
+import storeArgos from "./assets/retailers/store-argos.svg";
+import storeAsos from "./assets/retailers/store-asos.svg";
+import storeCurrys from "./assets/retailers/store-currys.png";
+import storeJohnLewis from "./assets/retailers/store-john-lewis.png";
+import storeNike from "./assets/retailers/store-nike.svg";
 import tracerLogo from "./assets/tracer-logo.png";
 import tracerWordmark from "./assets/tracer-wordmark.png";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { initializeScrollReveal } from "./scroll-reveal";
 import {
   ArrowDown,
   ArrowRight,
@@ -33,6 +41,7 @@ interface DashboardPurchase {
   productUrl?: string;
   imageUrl?: string;
   pricePaidDisplay: string;
+  orderTotalPaidDisplay?: string | null;
   currentPriceDisplay: string | null;
   purchasedAt: string;
   protectionStatus: string;
@@ -90,6 +99,12 @@ function normalisePathname(pathname: string): string {
 
 function LandingPageB() {
   const skyRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const page = document.querySelector<HTMLElement>(".landing-shell-b");
+    if (!page) return;
+    return initializeScrollReveal(page);
+  }, []);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -259,11 +274,11 @@ function LandingBFeatures() {
                   <strong>Headphones</strong><span>£349.99</span>
                 </div>
                 <div className="landing-b-save-product">
-                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-sand"><img src={productDeskLamp} alt="Ivory adjustable desk lamp" width={1254} height={1254} loading="lazy" decoding="async" /></div>
+                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-sand"><img src={productDeskLamp} alt="Ivory adjustable desk lamp" width={400} height={400} loading="lazy" decoding="async" /></div>
                   <strong>Desk lamp</strong><span>£48.00</span>
                 </div>
                 <div className="landing-b-save-product">
-                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-green"><img src={productDaypack} alt="Sage green canvas daypack" width={1254} height={1254} loading="lazy" decoding="async" /></div>
+                  <div className="landing-b-save-thumbnail landing-b-save-thumbnail-green"><img src={productDaypack} alt="Sage green canvas daypack" width={400} height={400} loading="lazy" decoding="async" /></div>
                   <strong>Daypack</strong><span>£84.50</span>
                 </div>
               </div>
@@ -285,7 +300,7 @@ function LandingBFeatures() {
                 <time>Just now</time>
               </header>
               <div className="landing-b-drop-product">
-                <img src={productHeadphones} alt="Black Sony wireless headphones" width={400} height={400} loading="lazy" decoding="async" />
+                <span className="landing-b-drop-product-icon" aria-hidden="true"><TrendingUp size={24} /></span>
                 <div><span>John Lewis</span><strong>Sony WH-1000XM5</strong><p>Wireless headphones · Black</p></div>
               </div>
               <div className="landing-b-feature-price-row">
@@ -327,7 +342,7 @@ function LandingBFeatures() {
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
             <div className="landing-b-monitor-card">
               <div className="landing-b-monitor-product">
-                <img className="landing-b-monitor-product-image" src={productHeadphones} alt="Sony WH-1000XM5 headphones" width={400} height={400} loading="lazy" decoding="async" />
+                <span className="landing-b-monitor-product-icon" aria-hidden="true"><ShieldCheck size={22} /></span>
                 <div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div>
               </div>
               <dl>
@@ -394,8 +409,8 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
       <div className="footer-row">
         <a className="brand" href="/" aria-label="Tracer home">
           {!landingB && <>
-            <img className="brand-logo" src={tracerLogo} alt="" width={120} height={120} />
-            <img className="brand-wordmark" src={tracerWordmark} alt="Tracer" width={320} height={80} />
+            <img className="brand-logo" src={tracerLogo} alt="" width={874} height={755} />
+            <img className="brand-wordmark" src={tracerWordmark} alt="Tracer" width={1126} height={283} />
           </>}
         </a>
         <nav className="footer-links" aria-label="Footer navigation">
@@ -651,7 +666,7 @@ function _Dashboard() {
     <main className="dashboard-shell">
       <header className="dashboard-logo-row">
         <a className="brand" href="/" aria-label="Tracer home">
-          <img className="brand-logo" src={tracerLogo} alt="" width={120} height={120} />
+          <img className="brand-logo" src={tracerLogo} alt="" width={874} height={755} />
           <img className="brand-wordmark" src={tracerWordmark} alt="Tracer" width={1126} height={283} />
         </a>
       </header>
@@ -778,8 +793,8 @@ function PurchaseDetailDrawer({
 
           <dl className="drawer-values">
             <div><dt>Purchase date</dt><dd>{formatDate(purchase.purchasedAt)}</dd></div>
-            <div><dt>Paid price</dt><dd>{purchase.pricePaidDisplay}</dd></div>
-            <div><dt>Current price</dt><dd>{purchase.currentPriceDisplay ?? purchase.pricePaidDisplay}</dd></div>
+            <div><dt>{purchase.orderTotalPaidDisplay ? "Order total paid" : "Item price"}</dt><dd>{purchase.orderTotalPaidDisplay ?? purchase.pricePaidDisplay}</dd></div>
+            <div><dt>Current item price</dt><dd>{purchase.currentPriceDisplay ?? "Not checked yet"}</dd></div>
           </dl>
 
           <section className="protection-summary">
@@ -871,13 +886,13 @@ function retailerName(purchase: DashboardPurchase): string {
 
 function _retailerAsset(retailerId: string): string | null {
   const assets: Record<string, string> = {
-    amazon: "/assets/store-amazon.png",
-    apple: "/assets/store-apple.png",
-    argos: "/assets/store-argos.svg",
-    asos: "/assets/store-asos.svg",
-    currys: "/assets/store-currys.png",
-    "john-lewis": "/assets/store-john-lewis.png",
-    nike: "/assets/store-nike.svg",
+    amazon: storeAmazon,
+    apple: storeApple,
+    argos: storeArgos,
+    asos: storeAsos,
+    currys: storeCurrys,
+    "john-lewis": storeJohnLewis,
+    nike: storeNike,
   };
 
   return assets[retailerId] ?? null;
