@@ -1,7 +1,6 @@
 import {
   extractGenericProductFromDocument,
   extractJohnLewisProductFromDocument,
-  extractSavedProduct,
   isKnownRetailerId,
   normalizePublicStoreUrl,
   normalizeRetailerUrl,
@@ -72,21 +71,9 @@ export async function checkStorePrice(
     const html = await readLimitedHtml(response);
     const page = parseHtml(html);
     const observedAt = new Date().toISOString();
-    const extracted = target.retailerId === "john-lewis"
+    const snapshot = target.retailerId === "john-lewis"
       ? extractJohnLewisProductFromDocument(page, url, observedAt, target.productName)
       : extractGenericProductFromDocument(page, url, observedAt, target.productName);
-    const saved = extracted ? null : extractSavedProduct(page, url, { includeImage: false });
-    const snapshot: ProductPriceSnapshot | null = extracted ?? (saved?.savedPrice ? {
-      retailerId: saved.retailerId,
-      retailerName: saved.retailer,
-      storeHost: new URL(url).hostname,
-      productUrl: saved.canonicalUrl,
-      productName: saved.name,
-      price: saved.savedPrice,
-      observedAt,
-      availability: "unknown",
-      ...(saved.externalProductId ? { externalProductId: saved.externalProductId } : {}),
-    } : null);
     if (!snapshot || normalizeTargetUrl(target, snapshot.productUrl).url !==
       normalizeTargetUrl(target, url).url || !isMatchingProduct(target, snapshot)) {
       throw new Error("Store page did not verify this product and price");
