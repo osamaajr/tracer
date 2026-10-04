@@ -118,16 +118,10 @@ export function extractGenericProductFromDocument(
   const priceRoot = heading?.closest<HTMLElement>(
     '[itemtype*="Product"], [data-product], [data-testid*="product" i], main, article',
   ) ?? document;
-  const fallbackPriceText = priceRoot
-    .querySelector<HTMLElement>(
-      "[data-tracer-current-price], [data-test='product-price'], [itemprop='price']",
-    )
-    ?.textContent?.trim();
+  const visiblePrice = findCurrentProductPrice(priceRoot, priceCurrency);
   const price =
-    parsePrice(firstString(offer?.price) ?? String(offer?.price ?? ""), priceCurrency) ??
-    (isInstallmentPrice(fallbackPriceText)
-      ? null
-      : parsePrice(fallbackPriceText, priceCurrency));
+    visiblePrice ?? parsePrice(firstString(offer?.price) ?? String(offer?.price ?? ""), priceCurrency) ??
+    parsePrice(document.querySelector<HTMLMetaElement>("meta[property='product:price:amount']")?.content, priceCurrency);
 
   if (!productName || !price) {
     return null;
@@ -226,6 +220,35 @@ function normalizeProductName(value: unknown): string {
 
 function isInstallmentPrice(value: string | undefined): boolean {
   return Boolean(value && /(per\s+month|monthly|\/\s*mo\b|finance|instalment|installment)/i.test(value));
+}
+
+function findCurrentProductPrice(root: ParentNode, currency: string): ReturnType<typeof parsePrice> {
+  const selectors = [
+    "[data-tracer-current-price]",
+    "[data-test='product-price']",
+    "[data-testid*='current-price' i]",
+    "[itemprop='price']",
+    "[class*='current-price' i]",
+    "[class*='sale-price' i]",
+    "[class*='price-current' i]",
+  ];
+  for (const selector of selectors) {
+    const prices = Array.from(root.querySelectorAll<HTMLElement>(selector)).flatMap((element) => {
+      if (element.closest("[class*='recommend' i], [class*='related' i], [data-testid*='recommend' i]")) return [];
+      const text = element.getAttribute("content") ?? element.textContent?.replace(/\s+/g, " ").trim();
+      if (!text || isInstallmentPrice(text) || /\b(?:from|starting at|as low as|up to)\b/i.test(text)) return [];
+      const now = text.match(/\bnow\s*((?:£|\$|€|GBP|USD|EUR)\s*\d[\d.,]*)/i)?.[1];
+      const candidate = now ?? text;
+      const amounts = candidate.match(/(?:(?:£|\$|€|GBP|USD|EUR)\s*\d[\d.,]*|\d[\d.,]*\s*(?:GBP|USD|EUR))/gi) ?? [];
+      if (!now && amounts.length > 1) return [];
+      const parsed = parsePrice(amounts[0] ?? candidate, currency);
+      return parsed && parsed.amountMinor > 0 ? [parsed] : [];
+    });
+    const unique = [...new Set(prices.map((price) => `${price.currency}:${price.amountMinor}`))];
+    if (unique.length === 1) return prices[0] ?? null;
+    if (unique.length > 1) return null;
+  }
+  return null;
 }
 
 export function looksLikeOrderConfirmation(document: Document, sourceUrl: string): boolean {

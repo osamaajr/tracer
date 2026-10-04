@@ -1,4 +1,4 @@
-import type { PurchaseDraft } from "@tracer/core";
+import type { Money, PurchaseDraft } from "@tracer/core";
 
 export const pendingPurchasesStorageKey = "tracerPendingPurchases";
 
@@ -6,6 +6,7 @@ export interface PendingProtectedPurchase {
   id: string;
   draft: PurchaseDraft;
   queuedAt: string;
+  priceChecks?: Record<string, { price: Money; observedAt: string; productName: string; productUrl?: string }>;
 }
 
 export async function getPendingPurchases(): Promise<PendingProtectedPurchase[]> {
@@ -43,6 +44,29 @@ export async function setPendingPurchases(
   pending: PendingProtectedPurchase[],
 ): Promise<void> {
   await chrome.storage.local.set({ [pendingPurchasesStorageKey]: pending });
+}
+
+export async function savePendingPriceCheck(
+  pendingId: string,
+  lineIndex: number,
+  price: Money,
+  observedAt: string,
+): Promise<void> {
+  const pending = await getPendingPurchases();
+  const purchase = pending.find((item) => item.id === pendingId);
+  if (!purchase) return;
+  const lineItem = purchase.draft.lineItems[lineIndex];
+  if (!lineItem || lineItem.pricePaid.currency !== price.currency) return;
+  purchase.priceChecks = {
+    ...purchase.priceChecks,
+    [lineIndex]: {
+      price,
+      observedAt,
+      productName: lineItem.productName,
+      ...(lineItem.productUrl ? { productUrl: lineItem.productUrl } : {}),
+    },
+  };
+  await setPendingPurchases(pending);
 }
 
 export function samePurchaseDraft(left: PurchaseDraft, right: PurchaseDraft): boolean {

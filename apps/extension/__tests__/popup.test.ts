@@ -507,6 +507,22 @@ describe("extension popup", () => {
     expect(element("detailCurrentPrice").dataset.checking).toBe("false");
   });
 
+  it("keeps the last verified price visible when a refresh fails", async () => {
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.lastCheckedAt = "2026-09-01T08:00:00.000Z";
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard, priceCheckFails: true });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await flushPopup();
+
+    expect(harness.priceCheckRequests()).toHaveLength(1);
+    expect(text("detailCurrentPrice")).toBe("£319.99");
+    expect(text("detailPriceNote")).toContain("latest check failed");
+    expect(element("detailCurrentPrice").dataset.checking).toBe("false");
+  });
+
   it("reuses the automatic background scan when the popup opens", async () => {
     const harness = await setupPopup({
       cachedScanResponse: {

@@ -46,6 +46,7 @@ await copyDirectory(resolve(extensionRoot, "public"), outDir);
 
 bundle("background", "background.js", "esm");
 bundle("popup", "popup.js", "esm");
+bundle("storePriceCheck", "storePriceCheck.js", "esm");
 for (const name of ["contentScript", "genericCapture", "watchlistCapture"]) {
   bundle(name, `${name}.js`, "iife", `Tracer_${name}`);
 }

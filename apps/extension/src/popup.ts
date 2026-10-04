@@ -14,6 +14,7 @@ import {
 import {
   getPendingPurchases,
   queuePendingPurchase,
+  savePendingPriceCheck,
   samePurchaseDraft,
   setPendingPurchases,
   type PendingProtectedPurchase,
@@ -86,6 +87,8 @@ interface DashboardPurchase extends PurchaseRecord {
   priceDropDetectedAt?: string | null;
   pendingSync?: boolean;
   pendingDraftId?: string;
+  pendingLineIndex?: number;
+  checkedOnStore?: boolean;
 }
 
 interface DashboardOpportunity {
@@ -195,6 +198,7 @@ const detailPaid = getElement<HTMLElement>("detailPaid");
 const detailPaidLabel = getElement<HTMLElement>("detailPaidLabel");
 const detailPaidDate = getElement<HTMLElement>("detailPaidDate");
 const detailCurrentPrice = getElement<HTMLElement>("detailCurrentPrice");
+const detailCurrentPriceLabel = detailCurrentPrice.parentElement?.querySelector<HTMLElement>(".detail-price-label");
 const detailPriceNote = getElement<HTMLElement>("detailPriceNote");
 const detailAlertsSwitch = getElement<HTMLButtonElement>("detailAlertsSwitch");
 const detailProductAction = getElement<HTMLAnchorElement>("detailProductAction");
@@ -256,7 +260,10 @@ let settingsReturnState: PopupState = "empty";
 let settingsReturnSegment: "protected" | "saved" = "protected";
 let selectedPurchaseId: string | null = null;
 let detailRenderId = 0;
-const activePriceChecks = new Map<string, Promise<{ dashboard: DashboardData; purchaseId: string }>>();
+type PriceCheckResult =
+  | { kind: "server"; dashboard: DashboardData; purchaseId: string }
+  | { kind: "store"; price: Money; observedAt: string };
+const activePriceChecks = new Map<string, Promise<PriceCheckResult>>();
 let itemsLoadRunId = 0;
 let activeScanRunId = 0;
 let dashboardCache: DashboardData | null = null;
@@ -1528,6 +1535,13 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
 function mergePendingDashboard(data: DashboardData, pending: PendingProtectedPurchase[]): DashboardData {
   const remoteKeys = new Set(data.purchases.map((purchase) => `${purchase.retailerId}|${purchase.orderReference ?? ""}|${purchase.purchasedAt}|${purchase.productName.trim().toLowerCase()}`));
   const localPurchases = pending.flatMap((pendingPurchase) => pendingPurchase.draft.lineItems.map((item, index) => {
+    const candidateCheck = pendingPurchase.priceChecks?.[index];
+    const savedCheck = candidateCheck && candidateCheck.price?.currency === item.pricePaid.currency &&
+      candidateCheck.productName === item.productName &&
+      candidateCheck.productUrl === item.productUrl &&
+      Number.isInteger(candidateCheck.price.amountMinor) && candidateCheck.price.amountMinor > 0 &&
+      Number.isFinite(new Date(candidateCheck.observedAt).getTime())
+      ? candidateCheck : null;
     const purchase: DashboardPurchase = {
       id: index === 0 ? pendingPurchase.id : `${pendingPurchase.id}_${index}`,
       userId: defaultUserId,
@@ -1546,10 +1560,13 @@ function mergePendingDashboard(data: DashboardData, pending: PendingProtectedPur
       protectionStatus: "active",
       captureMethod: pendingPurchase.draft.captureMethod,
       captureConfidence: pendingPurchase.draft.captureConfidence,
-      currentPriceDisplay: null,
+      currentPriceDisplay: savedCheck ? formatMoney(savedCheck.price) : null,
+      lastCheckedAt: savedCheck?.observedAt ?? null,
       monitoringStatus: "watching",
       pendingSync: true,
       pendingDraftId: pendingPurchase.id,
+      pendingLineIndex: index,
+      checkedOnStore: Boolean(savedCheck),
     };
     if (pendingPurchase.draft.orderReference) purchase.orderReference = pendingPurchase.draft.orderReference;
     if (item.externalProductId) purchase.externalProductId = item.externalProductId;
@@ -1732,32 +1749,46 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
     ? "● Paused"
     : priceDropped
     ? `● Price dropped by ${savingDisplay}`
+    : purchase.checkedOnStore
+    ? "● Price checked"
     : monitoringStatusLabel(purchase.monitoringStatus);
   deleteItem.disabled = false;
   detailPaidLabel.textContent = purchase.orderTotalPaid ? "Order total paid" : "Item price";
   detailPaid.textContent = formatMoney(purchase.orderTotalPaid ?? purchase.pricePaid);
   detailPaidDate.textContent = `Ordered ${formatShortDate(purchase.purchasedAt)}`;
+  const hasCurrentPrice = Boolean(purchase.currentPriceDisplay);
+  const checkedAt = purchase.lastCheckedAt ? new Date(purchase.lastCheckedAt).getTime() : NaN;
+  const stalePrice = !Number.isFinite(checkedAt) || Date.now() - checkedAt > 30 * 60_000;
+  if (detailCurrentPriceLabel) {
+    detailCurrentPriceLabel.textContent = hasCurrentPrice && stalePrice ? "Last checked price" : "Current price";
+  }
   detailPriceCard.dataset.alert = String(priceDropped);
   detailPriceCard.dataset.error = String(
-    !monitoringPaused && (purchase.monitoringStatus === "unable_to_check" || purchase.monitoringStatus === "unavailable"),
+    !hasCurrentPrice && !monitoringPaused &&
+    (purchase.monitoringStatus === "unable_to_check" || purchase.monitoringStatus === "unavailable"),
   );
 
-  const hasCurrentPrice = Boolean(purchase.currentPriceDisplay);
-  detailCurrentPrice.textContent = monitoringPaused
+  detailCurrentPrice.textContent = purchase.currentPriceDisplay ?? (monitoringPaused
     ? "Paused"
     : purchase.monitoringStatus === "unable_to_check"
     ? "Unable to check"
     : purchase.monitoringStatus === "unavailable"
     ? "Unavailable"
-    : purchase.currentPriceDisplay ?? "—";
+    : "—");
   detailPriceNote.textContent = monitoringPaused
     ? "Price monitoring is paused."
     : priceDropped && savingDisplay
     ? `${savingDisplay} less than you paid`
+    : hasCurrentPrice && purchase.monitoringStatus === "unable_to_check"
+    ? `Last verified ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}; latest check failed.`
     : purchase.monitoringStatus === "unable_to_check"
     ? "We’ll try checking again automatically."
     : purchase.monitoringStatus === "unavailable"
     ? "This item is currently unavailable."
+    : purchase.checkedOnStore
+    ? stalePrice
+      ? `Last verified on the store’s product page ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}.`
+      : "Current price verified on the store’s product page."
     : hasCurrentPrice
     ? "No price drop found since purchase."
     : purchase.lastCheckedAt
@@ -1769,6 +1800,8 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
     ? "The store currently reports this item unavailable."
     : purchase.monitoringStatus === "unable_to_check"
     ? `Unable to check${purchase.lastCheckedAt ? ` · Last attempt ${formatShortDate(purchase.lastCheckedAt)}` : ""}; Tracer will retry.`
+    : purchase.checkedOnStore
+    ? "Price from the store’s product page."
     : purchase.lastCheckedAt
     ? `Last checked ${formatShortDate(purchase.lastCheckedAt)}`
     : "Waiting for the first price check";
@@ -1778,9 +1811,11 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
     ? "Unavailable"
     : purchase.monitoringStatus === "unable_to_check"
     ? "Retrying"
+    : purchase.checkedOnStore
+    ? "Checked"
     : "Automatic";
 
-  if (checkMissingPrice && !hasCurrentPrice && !monitoringPaused) {
+  if (checkMissingPrice && !monitoringPaused && (!hasCurrentPrice || stalePrice)) {
     void checkDetailPrice(purchase, renderId);
   }
 }
@@ -1790,15 +1825,21 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
   detailCurrentPrice.dataset.checking = "true";
   detailCurrentPrice.setAttribute("aria-busy", "true");
   detailPriceCard.dataset.error = "false";
-  detailPriceNote.textContent = purchase.pendingSync
-    ? "Syncing this purchase, then checking the store’s latest price…"
-    : "Checking the store’s latest price…";
+  detailPriceNote.textContent = "Checking the store’s latest price…";
   detailMonitoringState.textContent = "Checking";
   const isCurrent = () => currentState === "detail" && selectedPurchaseId === purchase.id && detailRenderId === renderId;
   try {
     let check = activePriceChecks.get(purchase.id);
     if (!check) {
-      check = (async () => {
+      check = (async (): Promise<PriceCheckResult> => {
+        const checkStore = async (): Promise<PriceCheckResult> => {
+          const { checkStorePrice } = await import(
+            /* @vite-ignore */ chrome.runtime.getURL("storePriceCheck.js")
+          ) as typeof import("./storePriceCheck");
+          const snapshot = await checkStorePrice(purchase);
+          return { kind: "store", price: snapshot.price, observedAt: snapshot.observedAt };
+        };
+        const checkServer = async (): Promise<PriceCheckResult> => {
         const userId = await getTracerUserId();
         const headers = { "x-tracer-user-id": userId };
         let target = purchase;
@@ -1828,12 +1869,38 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!dashboard.ok) throw new Error("Price refresh failed");
-        return { dashboard: await dashboard.json() as DashboardData, purchaseId: target.id };
+        return { kind: "server", dashboard: await dashboard.json() as DashboardData, purchaseId: target.id };
+        };
+        if (purchase.pendingSync) {
+          try { return await checkStore(); } catch { return checkServer(); }
+        }
+        try { return await checkServer(); } catch { return checkStore(); }
       })().finally(() => activePriceChecks.delete(purchase.id));
       activePriceChecks.set(purchase.id, check);
     }
-    const { dashboard: data, purchaseId } = await check;
+    const result = await check;
     if (!isCurrent()) return;
+    if (result.kind === "store") {
+      const updated: DashboardPurchase = {
+        ...purchase,
+        currentPriceDisplay: formatMoney(result.price),
+        lastCheckedAt: result.observedAt,
+        monitoringStatus: "watching",
+        checkedOnStore: true,
+      };
+      if (dashboardCache) {
+        dashboardCache.purchases = dashboardCache.purchases.map((item) =>
+          item.id === purchase.id ? updated : item);
+      }
+      showItemDetail(updated, undefined, false);
+      if (purchase.pendingDraftId !== undefined && purchase.pendingLineIndex !== undefined) {
+        void savePendingPriceCheck(
+          purchase.pendingDraftId, purchase.pendingLineIndex, result.price, result.observedAt,
+        ).catch(() => undefined);
+      }
+      return;
+    }
+    const { dashboard: data, purchaseId } = result;
     dashboardCache = data;
     const updated = data.purchases.find((item) => item.id === purchaseId);
     if (!updated) throw new Error("Purchase unavailable");
@@ -1844,11 +1911,11 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
     showItemDetail(updated, data.opportunities.find((item) => item.purchaseId === purchaseId), false);
   } catch {
     if (!isCurrent()) return;
-    detailCurrentPrice.textContent = "Unable to check";
-    detailPriceCard.dataset.error = "true";
-    detailPriceNote.textContent = purchase.pendingSync
-      ? "Connect to sync this purchase, then reopen it to check the price."
-      : "Couldn’t get a price. Reopen this item to retry.";
+    detailCurrentPrice.textContent = purchase.currentPriceDisplay ?? "Unable to check";
+    detailPriceCard.dataset.error = String(!purchase.currentPriceDisplay);
+    detailPriceNote.textContent = purchase.currentPriceDisplay
+      ? `Last verified ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}; latest check failed.`
+      : "Couldn’t verify a current price on the store’s product page. Reopen this item to retry.";
     detailStatus.textContent = "● Unable to check";
     detailStatus.dataset.error = "true";
     detailMonitoringState.textContent = "Unavailable";
