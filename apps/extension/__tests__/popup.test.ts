@@ -241,6 +241,19 @@ describe("extension popup", () => {
     });
   });
 
+  it("does not scan or show a purchase on an Argos delivery step", async () => {
+    const harness = await setupPopup({
+      scanResponse: { ok: true, draft: purchaseDraft },
+      tabUrl: "https://www.argos.co.uk/checkout/e8cd0ac7-67f9-4334-8157-304eac0011c6/delivery",
+    });
+    await flushPopup();
+
+    expect(harness.app.dataset.screen).toBe("empty");
+    expect(text("stateCopy")).toBe("Open Tracer after your order is complete.");
+    expect(harness.scanMessages()).toHaveLength(0);
+    expect(harness.executeScript).not.toHaveBeenCalled();
+  });
+
   it("scans the page when an automatic purchase cache is unavailable", async () => {
     const harness = await setupPopup({
       cachedScanResponse: null,
