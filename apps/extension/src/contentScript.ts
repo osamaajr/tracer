@@ -1,3 +1,5 @@
+import { isCompletedPurchasePage } from "@tracer/core";
+
 declare global {
   interface Window {
     __tracerPurchaseCandidateWatcher?: boolean;
@@ -134,27 +136,7 @@ function isLikelyPurchasePage(page: Document, rawUrl: string): boolean {
     return Boolean(page.querySelector("meta[name='tracer-demo-order'][content='true']"));
   }
 
-  if (
-    url.hostname.toLowerCase() === "shopify.com" &&
-    /^\/\d+\/account\/orders\/[a-z0-9_-]+\/?$/i.test(url.pathname)
-  ) {
-    return true;
-  }
-
-  const routeLooksRelevant = /(?:checkout|order|confirmation|thank[-_]?you)/i.test(url.pathname);
-  if (!routeLooksRelevant) {
-    return false;
-  }
-
-  const text = `${page.title} ${page.body?.textContent ?? ""}`.toLowerCase();
-  return (
-    text.includes("order confirmation") ||
-    text.includes("thank you for your order") ||
-    text.includes("thanks for your order") ||
-    text.includes("order number") ||
-    text.includes("order reference") ||
-    (/\border\s*#[a-z0-9-]+/i.test(text) && /\bconfirmed\b/i.test(text))
-  );
+  return isCompletedPurchasePage(page, rawUrl);
 }
 
 function isKnownContentHost(hostname: string): boolean {

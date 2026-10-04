@@ -11,7 +11,7 @@ import {
   extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
-  isShopifyAccountOrderUrl,
+  isCompletedPurchasePage,
   selectProductImage,
 } from "@tracer/core";
 const traceEnabled = import.meta.env.MODE !== "production" || import.meta.env.VITE_TRACER_STARTUP_TRACE === true;
@@ -132,6 +132,7 @@ export function extractPurchaseFromPage(page: Document, sourceUrl: string): Purc
   if (isKnownNonRetailContentUrl(sourceUrl)) {
     return null;
   }
+  if (!isCompletedPurchasePage(page, sourceUrl)) return null;
 
   // Keep purchase extraction in one shared implementation. The earlier copy in
   // this content script drifted from Core and missed receipt-table layouts such
@@ -596,18 +597,7 @@ function looksLikeOrderConfirmation(page: Document, sourceUrl: string): boolean 
     return false;
   }
 
-  if (isShopifyAccountOrderUrl(sourceUrl)) {
-    return true;
-  }
-
-  const haystack = `${page.title} ${sourceUrl} ${page.body?.textContent ?? ""}`.toLowerCase();
-  return (
-    haystack.includes("order confirmation") ||
-    haystack.includes("thank you for your order") ||
-    haystack.includes("thanks for your order") ||
-    haystack.includes("order number") ||
-    haystack.includes("order reference")
-  );
+  return isCompletedPurchasePage(page, sourceUrl);
 }
 
 function isKnownNonRetailContentUrl(sourceUrl: string): boolean {

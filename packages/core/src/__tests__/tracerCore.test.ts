@@ -10,6 +10,7 @@ import {
   extractGenericProductFromDocument,
   extractGenericPurchaseFromDocument,
   extractPurchaseFromDocument,
+  isCompletedPurchasePage,
   extractShopifyAccountPurchaseFromDocument,
   findProtectedPurchaseForDraft,
   gbp,
@@ -122,6 +123,50 @@ describe("John Lewis extraction", () => {
 });
 
 describe("generic store extraction", () => {
+  it("does not treat an Argos checkout summary as a completed purchase", () => {
+    const document = parseHTML(`
+      <html><body><main>
+        <h1>Arrange delivery</h1>
+        <script type="application/ld+json">${JSON.stringify({
+          "@type": "Order",
+          orderNumber: "ARG-12345",
+          acceptedOffer: [{
+            price: "64.99", priceCurrency: "GBP",
+            itemOffered: {
+              name: "Ergonomic Mesh Office Chair",
+              url: "https://www.argos.co.uk/product/1234567",
+            },
+          }],
+        })}</script>
+        <section class="order-item"><h2>Ergonomic Mesh Office Chair</h2><span>£64.99</span></section>
+        <p>Your order (1 item)</p><p>Total to pay £64.99</p>
+        <button>Continue to payment</button>
+      </main></body></html>
+    `).document;
+    const checkoutUrl = "https://www.argos.co.uk/checkout/e8cd0ac7-67f9-4334-8157-304eac0011c6/delivery";
+
+    expect(isCompletedPurchasePage(document, checkoutUrl)).toBe(false);
+    expect(extractPurchaseFromDocument(document, checkoutUrl)).toBeNull();
+    expect(extractGenericPurchaseFromDocument(document, checkoutUrl)).toBeNull();
+    expect(isCompletedPurchasePage(document, checkoutUrl.replace(/delivery$/, "payment"))).toBe(false);
+    expect(isCompletedPurchasePage(document, "https://www.argos.co.uk/checkout")).toBe(false);
+  });
+
+  it("still accepts a finished order with a confirmation heading on an unchanged checkout URL", () => {
+    const document = parseHTML(`
+      <html><body><main><h1>Thank you, your order is confirmed</h1>
+        <p>Order number: ARG-12345</p>
+        <article class="order-item"><h2>Ergonomic Mesh Office Chair</h2>
+          <a href="https://www.argos.co.uk/product/1234567">View product</a>
+          <span class="price">£64.99</span></article>
+      </main></body></html>
+    `).document;
+
+    expect(extractPurchaseFromDocument(document, "https://www.argos.co.uk/checkout")).toMatchObject({
+      lineItems: [{ productName: "Ergonomic Mesh Office Chair", pricePaid: gbp(6_499) }],
+    });
+  });
+
   it("prefers an order-confirmation image and supports structured image objects", () => {
     const document = parseHTML(`
       <main>

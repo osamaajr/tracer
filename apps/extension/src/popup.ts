@@ -4,6 +4,7 @@ import {
   addCalendarDays,
   defaultPolicyRegistry,
   formatMoney,
+  isPrePurchaseCheckoutUrl,
   parsePrice,
   type Money,
   type PurchaseDraft,
@@ -586,6 +587,10 @@ async function scanActiveTab(): Promise<void> {
     }
     activeProductTabId = tab.id;
     activeProductPageUrl = tab.url ?? null;
+    if (tab.url && isPrePurchaseCheckoutUrl(tab.url)) {
+      renderState("empty", "Nothing to save here", "Open Tracer after your order is complete.");
+      return;
+    }
 
     // Product routes do not need the order-confirmation extractor. Try the
     // lightweight save flow first so we avoid injecting the purchase bundle

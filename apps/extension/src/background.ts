@@ -1,5 +1,5 @@
 import { WatchlistRepository, connectAcceptedSavedItems, type AcceptedProtectionResponse } from "./watchlistRepository";
-import { type SavedProduct } from "@tracer/core";
+import { isPrePurchaseCheckoutUrl, type SavedProduct } from "@tracer/core";
 import type { PurchaseDraft } from "@tracer/core";
 import {
   buildPriceDropNotifications,
@@ -297,7 +297,7 @@ async function openPopupForTab(
   tab: chrome.tabs.Tab,
   rawUrl: string,
 ): Promise<boolean> {
-  if (typeof tab.id !== "number" || autoOpeningTabs.has(tab.id)) return false;
+  if (typeof tab.id !== "number" || autoOpeningTabs.has(tab.id) || isPrePurchaseCheckoutUrl(rawUrl)) return false;
 
   const [activeTab] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
   const targetWindow = await chrome.windows.get(tab.windowId);
@@ -366,6 +366,7 @@ function scheduleAutomaticScan(tabId: number, url: string, attempt = 0): void {
 
 function isLikelyPurchaseUrl(rawUrl: string): boolean {
   try {
+    if (isPrePurchaseCheckoutUrl(rawUrl)) return false;
     const url = new URL(rawUrl);
     const isLocal = url.hostname === "localhost" || url.hostname === "127.0.0.1";
     if (isLocal) return /^\/tracer-demo-order(?:[-/]|\.html)/i.test(url.pathname);
