@@ -1,5 +1,5 @@
 import { normalizeSavedUrl, productImageIdentity, type SavedProduct, type SavedItem } from "@tracer/core";
-import { populateConfetti } from "./confetti";
+import { populateConfetti, populateSavedConfetti } from "./confetti";
 import {
   addCalendarDays,
   defaultPolicyRegistry,
@@ -278,6 +278,7 @@ let itemsLoadRunId = 0;
 let activeScanRunId = 0;
 let dashboardCache: DashboardData | null = null;
 let confettiPopulated = false;
+let savedCelebrationTimer = 0;
 let tracerUserIdPromise: Promise<string> | null = null;
 let monitoringEnabled = true;
 let protectedItemCount = 0;
@@ -2345,11 +2346,13 @@ async function saveCurrentProduct(): Promise<void> {
     saveToTracer.textContent = 'Saved';
     saveToTracer.dataset.status = 'saved';
     watchFeedback.textContent = 'Tracer is now watching this price. Find it in Your items → Saved.';
-    populateConfetti(watchlistConfetti);
+    window.clearTimeout(savedCelebrationTimer);
+    populateSavedConfetti(watchlistConfetti);
     app.dataset.celebrate = 'true';
-    window.setTimeout(() => {
-      app.dataset.celebrate = 'false';
-    }, 1_800);
+    savedCelebrationTimer = window.setTimeout(() => {
+      if (currentState === 'watchlist') app.dataset.celebrate = 'false';
+      watchlistConfetti.replaceChildren();
+    }, 4_100);
   } catch (error) {
     watchFeedback.textContent = error instanceof Error ? error.message : 'Could not save this item.';
     saveToTracer.disabled = false;
