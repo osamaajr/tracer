@@ -17,6 +17,9 @@
 
 /* Landing B is the existing Tracer composition inside one continuous sky. */
 .landing-shell.landing-shell-b {
+  --extension-green: #2f7d4b;
+  --extension-green-soft: color-mix(in srgb, var(--extension-green) 10%, white);
+  --extension-green-border: color-mix(in srgb, var(--extension-green) 32%, white);
   background: #faf8f3;
 }
 
@@ -133,8 +136,8 @@
 }
 
 .landing-b-watch-icon {
-  background: #dff3e8;
-  color: #17271f;
+  background: var(--extension-green-soft);
+  color: var(--extension-green);
   height: 52px;
   width: 52px;
 }
@@ -178,8 +181,8 @@
 }
 
 .landing-b-watch-card footer span:first-child {
-  background: #e4f4e8;
-  color: #22603b;
+  background: var(--extension-green-soft);
+  color: var(--extension-green);
 }
 
 .landing-b-alert-card {
@@ -798,9 +801,9 @@
 
 .landing-b-feature-alert-icon {
   align-items: center;
-  background: #e9f1e8;
+  background: var(--extension-green-soft);
   border-radius: 10px;
-  color: #39724a;
+  color: var(--extension-green);
   display: inline-flex;
   height: 32px;
   justify-content: center;
@@ -879,8 +882,8 @@
 
 .landing-b-feature-price-row {
   align-items: center;
-  background: #eef4ed;
-  border: 1px solid #e3ebdf;
+  background: var(--extension-green-soft);
+  border: 1px solid var(--extension-green-border);
   border-radius: 15px;
   display: grid;
   gap: 18px;
@@ -904,7 +907,7 @@
 }
 
 .landing-b-feature-price-row strong {
-  color: #325b39;
+  color: var(--extension-green);
   font-size: 1.4rem;
   letter-spacing: -.025em;
 }
@@ -920,16 +923,16 @@
 
 .landing-b-drop-footer > span {
   align-items: center;
-  color: #7c8d77;
+  color: var(--extension-green);
   display: inline-flex;
   font-size: .6rem;
   gap: 5px;
 }
 
 .landing-b-drop-footer em {
-  background: #e7f0e3;
+  background: var(--extension-green-soft);
   border-radius: 999px;
-  color: #22603b;
+  color: var(--extension-green);
   font-size: .7rem;
   font-style: normal;
   font-weight: 730;
@@ -1025,8 +1028,8 @@
 }
 
 .landing-b-monitor-card footer > span {
-  background: #e4f4e8;
-  color: #22603b;
+  background: var(--extension-green-soft);
+  color: var(--extension-green);
 }
 
 .landing-b-monitor-card footer small {
@@ -1128,7 +1131,7 @@
 
 .landing-b-save-thumbnail-blue { background: #eaf0f4; }
 .landing-b-save-thumbnail-sand { background: #f3ede3; color: #9b7850; }
-.landing-b-save-thumbnail-green { background: #e9eee7; color: #64765c; }
+.landing-b-save-thumbnail-green { background: var(--extension-green-soft); color: var(--extension-green); }
 
 .landing-b-save-thumbnail img {
   height: 84%;
@@ -1165,11 +1168,11 @@
   gap: 5px;
 }
 
-.landing-b-save-watching { color: #547457; }
+.landing-b-save-watching { color: var(--extension-green); }
 .landing-b-save-watching i {
-  background: #6d9270;
+  background: var(--extension-green);
   border-radius: 50%;
-  box-shadow: 0 0 0 3px #edf3ec;
+  box-shadow: 0 0 0 3px var(--extension-green-soft);
   height: 5px;
   margin-right: 3px;
   width: 5px;
@@ -1269,8 +1272,8 @@
 
 .landing-b-update-detail {
   align-items: center;
-  background: #f1f5ee;
-  border: 1px solid #e3ebdf;
+  background: var(--extension-green-soft);
+  border: 1px solid var(--extension-green-border);
   border-radius: 15px;
   display: grid;
   gap: 11px;
@@ -1285,7 +1288,7 @@
 
 .landing-b-update-detail > span {
   background: #fffdfa;
-  color: #39724a;
+  color: var(--extension-green);
   height: 36px;
   width: 36px;
 }

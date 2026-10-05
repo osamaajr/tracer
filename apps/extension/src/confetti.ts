@@ -1,7 +1,7 @@
 /** A restrained burst that starts behind the confirmation tick and fans upward. */
 export function populateConfetti(container: HTMLElement): void {
   container.replaceChildren();
-  const colors = ["#1f211c", "#3f5d3b", "#7e956f", "#c9c0b1"];
+  const colors = ["#1f211c", "var(--green)", "var(--green)", "#c9c0b1"];
   const trajectories = [
     [-88, -34], [-72, -62], [-52, -88], [-27, -108], [0, -118], [27, -105],
     [54, -86], [78, -58], [-62, -40], [64, -42], [-35, -72], [36, -76],
