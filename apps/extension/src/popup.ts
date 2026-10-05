@@ -2352,7 +2352,7 @@ async function saveCurrentProduct(): Promise<void> {
     savedCelebrationTimer = window.setTimeout(() => {
       if (currentState === 'watchlist') app.dataset.celebrate = 'false';
       watchlistConfetti.replaceChildren();
-    }, 4_100);
+    }, 1_800);
   } catch (error) {
     watchFeedback.textContent = error instanceof Error ? error.message : 'Could not save this item.';
     saveToTracer.disabled = false;
