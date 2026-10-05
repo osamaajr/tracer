@@ -185,6 +185,16 @@ const popupBack = getElement<HTMLButtonElement>("popupBack");
 const popupMenu = getElement<HTMLElement>("popupMenu");
 const yourItemsMenu = getElement<HTMLButtonElement>("yourItemsMenu");
 const itemsList = getElement<HTMLElement>("itemsList");
+const itemsListViewport = getElement<HTMLElement>("itemsListViewport");
+function updateListFades(): void {
+  itemsListViewport.dataset.fadeTop = String(itemsList.scrollTop > 1);
+  itemsListViewport.dataset.fadeBottom = String(
+    itemsList.scrollHeight - itemsList.clientHeight - itemsList.scrollTop > 1,
+  );
+}
+itemsList.addEventListener("scroll", updateListFades, { passive: true });
+new ResizeObserver(updateListFades).observe(itemsList);
+new MutationObserver(updateListFades).observe(itemsList, { childList: true, subtree: true });
 const itemsCount = getElement<HTMLElement>("itemsCount");
 const menuItemsCount = getElement<HTMLElement>("menuItemsCount");
 const detailName = getElement<HTMLElement>("detailName");
