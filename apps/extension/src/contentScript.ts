@@ -136,6 +136,9 @@ function isLikelyPurchasePage(page: Document, rawUrl: string): boolean {
     return Boolean(page.querySelector("meta[name='tracer-demo-order'][content='true']"));
   }
 
+  if (!/(?:checkout|order|confirmation|thank[-_]?you|receipt|success)/i.test(url.pathname)) {
+    return false;
+  }
   return isCompletedPurchasePage(page, rawUrl);
 }
 

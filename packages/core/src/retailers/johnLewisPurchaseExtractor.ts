@@ -1,5 +1,6 @@
 import { parseGbpPrice } from "../domain/money";
 import { extractOrderTotalPaid } from "./orderTotal";
+import { isCompletedPurchasePage } from "./purchasePage";
 import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { extractJsonLdObjects, findJsonLdByType, asRecord, firstString, readString } from "./jsonLd";
 import {
@@ -44,7 +45,8 @@ export function extractJohnLewisPurchaseFromDocument(
   sourceUrl: string,
   fallbackNow: Date = new Date(),
 ): PurchaseDraft | null {
-  if (!isJohnLewisSupportedOrderPage(sourceUrl, document)) {
+  if (!isJohnLewisSupportedOrderPage(sourceUrl, document) ||
+    !isCompletedPurchasePage(document, sourceUrl)) {
     return null;
   }
 

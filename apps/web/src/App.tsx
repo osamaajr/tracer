@@ -3,6 +3,8 @@ import landingWordmark from "./assets/landing-b/tracer-wordmark-outline-transpar
 import productHeadphones from "./assets/product-headphones.webp?inline";
 import productDeskLamp from "./assets/products/desk-lamp.webp?inline";
 import productDaypack from "./assets/products/daypack.webp?inline";
+import productEspressoMachine from "./assets/products/espresso-machine.webp?inline";
+import productRunningTrainers from "./assets/products/running-trainers.webp?inline";
 import storeAmazon from "./assets/retailers/store-amazon.png";
 import storeApple from "./assets/retailers/store-apple.png";
 import storeArgos from "./assets/retailers/store-argos.svg";
@@ -17,15 +19,16 @@ import { initializeScrollReveal } from "./scroll-reveal";
 import {
   ArrowDown,
   ArrowRight,
-  Bell,
   Bookmark,
+  CalendarClock,
   ChevronRight,
   CheckCircle2,
+  Clock3,
   Globe2,
   MoreHorizontal,
+  RotateCcw,
   ShieldCheck,
   ShoppingBag,
-  TrendingUp,
   X,
 } from "lucide-react";
 
@@ -300,13 +303,13 @@ function LandingBFeatures() {
                 <time>Just now</time>
               </header>
               <div className="landing-b-drop-product">
-                <span className="landing-b-drop-product-icon" aria-hidden="true"><TrendingUp size={24} /></span>
-                <div><span>John Lewis</span><strong>Sony WH-1000XM5</strong><p>Wireless headphones · Black</p></div>
+                <span className="landing-b-drop-product-icon"><img src={productEspressoMachine} alt="Cream and steel espresso machine" width={400} height={400} loading="lazy" decoding="async" /></span>
+                <div><span>Currys</span><strong>Compact espresso machine</strong><p>Brushed steel · Cream</p></div>
               </div>
               <div className="landing-b-feature-price-row">
-                <span><small>Previous price</small><s>£349.99</s></span>
+                <span><small>Previous price</small><s>£199.00</s></span>
                 <ArrowRight aria-hidden="true" size={18} />
-                <span><small>Now</small><strong>£319.99</strong></span>
+                <span><small>Now</small><strong>£169.00</strong></span>
               </div>
               <footer className="landing-b-drop-footer"><span><CheckCircle2 aria-hidden="true" size={13} />Still watching the price</span><em>£30 less</em></footer>
             </div>
@@ -315,19 +318,19 @@ function LandingBFeatures() {
 
         <article className="landing-b-editorial-feature">
           <div className="landing-b-editorial-copy">
-            <h3>Only hear about changes worth knowing.</h3>
-            <p>Get a heads-up when a price or policy change could save you money.</p>
+            <h3>Only hear about what matters.</h3>
+            <p>Get a heads-up when a price drops or a return window is about to close.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-update-visual" aria-label="Tracer activity alert example">
             <div className="landing-b-update-card">
               <header>
-                <span><Bell aria-hidden="true" size={20} /></span>
-                <div><strong>Worth a look</strong><p>A meaningful change was found.</p></div>
+                <span><CalendarClock aria-hidden="true" size={20} /></span>
+                <div><strong>Return reminder</strong><p>There’s still time to decide.</p></div>
                 <time>Now</time>
               </header>
               <div className="landing-b-update-detail">
-                <span><TrendingUp aria-hidden="true" size={21} /></span>
-                <div><strong>£30 saving found</strong><p>Review your options before you miss it.</p></div>
+                <span><RotateCcw aria-hidden="true" size={21} /></span>
+                <div><strong>Return window ending</strong><p>Review your order while you still can.</p></div>
                 <ChevronRight aria-hidden="true" size={20} />
               </div>
             </div>
@@ -342,14 +345,14 @@ function LandingBFeatures() {
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
             <div className="landing-b-monitor-card">
               <div className="landing-b-monitor-product">
-                <span className="landing-b-monitor-product-icon" aria-hidden="true"><ShieldCheck size={22} /></span>
-                <div><strong>Sony WH-1000XM5</strong><p>John Lewis</p></div>
+                <span className="landing-b-monitor-product-icon"><img src={productRunningTrainers} alt="Coral running trainers" width={400} height={400} loading="lazy" decoding="async" /></span>
+                <div><strong>Everyday running trainers</strong><p>ASOS</p></div>
               </div>
               <dl>
-                <div><dt>Paid</dt><dd>£349.99</dd></div>
-                <div><dt>Current price</dt><dd>£349.99</dd></div>
+                <div><dt>Paid</dt><dd>£120.00</dd></div>
+                <div><dt>Current price</dt><dd>£120.00</dd></div>
               </dl>
-              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching for drops</span><small><CheckCircle2 aria-hidden="true" size={13} /> Checked just now</small></footer>
+              <footer><span><CheckCircle2 aria-hidden="true" size={15} /> Watching for drops</span><small><Clock3 aria-hidden="true" size={13} /> Checked just now</small></footer>
             </div>
           </div>
         </article>
