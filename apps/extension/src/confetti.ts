@@ -40,7 +40,7 @@ export function populateSavedConfetti(container: HTMLElement): void {
     flight.style.setProperty("--land-x", `${spread * 1.12}px`);
     flight.style.setProperty("--land-y", `${12 + Math.random() * 30}px`);
     flight.style.setProperty("--delay", `${Math.random() * 100}ms`);
-    flight.style.setProperty("--duration", `${1100 + Math.random() * 400}ms`);
+    flight.style.setProperty("--duration", `${2200 + Math.random() * 600}ms`);
     flight.style.setProperty("--tone", colors[index % colors.length]!);
     flight.style.setProperty("--spin", `${side * (180 + Math.random() * 180)}deg`);
     flight.style.setProperty("--r", `${Math.random() * 180}deg`);
