@@ -22,9 +22,9 @@ export function populateConfetti(container: HTMLElement): void {
   }
 }
 
-/** A brief colourful burst around the saved heading. */
+/** A brief white and blue burst around the saved heading. */
 export function populateSavedConfetti(container: HTMLElement): void {
-  const colors = ["#e8ad36", "#4aaf89", "#699bdd", "#e58487", "#9b86cb"];
+  const colors = ["#ffffff", "#397de5", "#86b9ff", "#d4e7ff", "#ffffff"];
   const fragment = document.createDocumentFragment();
   for (let index = 0; index < 28; index += 1) {
     const flight = document.createElement("span");
