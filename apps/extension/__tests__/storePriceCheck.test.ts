@@ -45,4 +45,38 @@ describe("direct store price checking", () => {
       fetchImpl: storeResponse(""), parseHtml,
     })).rejects.toThrow("not a product page");
   });
+  it("accepts duplicate theme and SEO records for the same requested variant", async () => {
+    const productUrl = `${target.productUrl}?variant=123`;
+    const product = { "@type": "Product", name: target.productName, url: target.productUrl };
+    const offer = { price: "69.50", priceCurrency: "GBP", url: productUrl };
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify([
+      { ...product, offers: offer },
+      { ...product, productID: "parent-id", offers: [{ ...offer, sku: "123" }] },
+    ])}</script></head><body><h1>${target.productName}</h1></body></html>`;
+    await expect(checkStorePrice({ ...target, productUrl, externalProductId: "123" }, {
+      fetchImpl: storeResponse(html), parseHtml,
+    })).resolves.toMatchObject({ price: gbp(6_950), externalProductId: "123" });
+    const conflicting = html.replace('"price":"69.50"', '"price":"19.50"');
+    await expect(checkStorePrice({ ...target, productUrl }, {
+      fetchImpl: storeResponse(conflicting), parseHtml,
+    })).rejects.toThrow("verify this product");
+  });
+
+  it("selects the requested variant instead of the first offer", async () => {
+    const productUrl = `${target.productUrl}?variant=123`;
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: target.productName, url: target.productUrl,
+      offers: [
+        { price: "19.50", priceCurrency: "GBP", url: `${target.productUrl}?variant=999` },
+        { price: "69.50", priceCurrency: "GBP", url: productUrl },
+      ],
+    })}</script></head><body><h1>${target.productName}</h1></body></html>`;
+    await expect(checkStorePrice({ ...target, productUrl }, {
+      fetchImpl: storeResponse(html), parseHtml,
+    })).resolves.toMatchObject({ price: gbp(6_950) });
+    await expect(checkStorePrice({ ...target, productUrl: `${target.productUrl}?variant=missing` }, {
+      fetchImpl: storeResponse(html), parseHtml,
+    })).rejects.toThrow("verify this product");
+  });
+
 });

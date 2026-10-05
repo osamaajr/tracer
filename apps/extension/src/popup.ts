@@ -1872,7 +1872,9 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
         return { kind: "server", dashboard: await dashboard.json() as DashboardData, purchaseId: target.id };
         };
         if (purchase.pendingSync) {
-          try { return await checkStore(); } catch { return checkServer(); }
+          try { return await checkStore(); } catch (storeError) {
+            try { return await checkServer(); } catch { throw storeError; }
+          }
         }
         try { return await checkServer(); } catch { return checkStore(); }
       })().finally(() => activePriceChecks.delete(purchase.id));
@@ -1909,13 +1911,14 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
       throw new Error("Price unavailable");
     }
     showItemDetail(updated, data.opportunities.find((item) => item.purchaseId === purchaseId), false);
-  } catch {
+  } catch (error) {
+    console.warn("Tracer current price check failed", error);
     if (!isCurrent()) return;
     detailCurrentPrice.textContent = purchase.currentPriceDisplay ?? "Unable to check";
     detailPriceCard.dataset.error = String(!purchase.currentPriceDisplay);
     detailPriceNote.textContent = purchase.currentPriceDisplay
       ? `Last verified ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}; latest check failed.`
-      : "Couldn’t verify a current price on the store’s product page. Reopen this item to retry.";
+      : priceCheckFailureMessage(error);
     detailStatus.textContent = "● Unable to check";
     detailStatus.dataset.error = "true";
     detailMonitoringState.textContent = "Unavailable";
@@ -1925,6 +1928,24 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
       detailCurrentPrice.setAttribute("aria-busy", "false");
     }
   }
+}
+
+function priceCheckFailureMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (/Store returned (403|429)/.test(message)) {
+    return "The store blocked this price request. Open the product page, then reopen this item to retry.";
+  }
+  if (/not a product page|different product|host does not match/.test(message)) {
+    return "The saved link couldn’t be verified as this product’s page. Check the View product link.";
+  }
+  if (/timeout|timed out/i.test(message) || (error instanceof Error && error.name === "TimeoutError")) {
+    return "The store took too long to respond. Reopen this item to retry.";
+  }
+  if (/Store returned 404/.test(message)) return "The saved product page is no longer available.";
+  if (/verify this product|did not return a product page/.test(message)) {
+    return "The page didn’t provide an unambiguous price for this item and variant. Open the product page to check.";
+  }
+  return "Couldn’t load the store’s price. Open the product page, then reopen this item to retry.";
 }
 
 function safeProductUrl(value: string | undefined): string | null {

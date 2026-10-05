@@ -106,7 +106,8 @@ export function extractGenericProductFromDocument(
     expectedProductName,
   );
   if (productNodes.length > 0 && !product) return null;
-  const offer = getOffer(product);
+  const offer = getPageOffer(product, productUrl);
+  if (product?.offers !== undefined && !offer) return null;
   const productName =
     firstString(product?.name) ??
     document.querySelector("h1")?.textContent?.trim() ??
@@ -119,8 +120,9 @@ export function extractGenericProductFromDocument(
     '[itemtype*="Product"], [data-product], [data-testid*="product" i], main, article',
   ) ?? document;
   const visiblePrice = findCurrentProductPrice(priceRoot, priceCurrency);
+  const offerPrice = parsePrice(firstString(offer?.price) ?? String(offer?.price ?? ""), priceCurrency);
   const price =
-    visiblePrice ?? parsePrice(firstString(offer?.price) ?? String(offer?.price ?? ""), priceCurrency) ??
+    (new URL(productUrl).searchParams.has("variant") ? offerPrice : visiblePrice) ?? offerPrice ?? visiblePrice ??
     parsePrice(document.querySelector<HTMLMetaElement>("meta[property='product:price:amount']")?.content, priceCurrency);
 
   if (!productName || !price) {
@@ -140,7 +142,7 @@ export function extractGenericProductFromDocument(
   };
 
   const sku = firstString(product?.sku);
-  const externalProductId = firstString(product?.productID);
+  const externalProductId = new URL(productUrl).searchParams.get("variant") ?? firstString(product?.productID);
   const image = findProductPageImage(document, productUrl, {
     structuredImage: product?.image,
     productName,
@@ -178,7 +180,7 @@ function findProductForPage(
       normalizeItemUrl(url, productUrl, expectedHost)?.url === requested,
     ),
   );
-  if (urlMatches.length === 1) return urlMatches[0] ?? null;
+  if (urlMatches.length > 0) return reconcileProductRecords(urlMatches, productUrl, expectedHost);
 
   const names = [expectedProductName, document.querySelector("h1")?.textContent]
     .map(normalizeProductName)
@@ -188,6 +190,7 @@ function findProductForPage(
     return candidateName && names.some((name) => candidateName === name);
   });
   if (nameMatches.length === 1) return nameMatches[0] ?? null;
+  if (nameMatches.length > 1) return reconcileProductRecords(nameMatches, productUrl, expectedHost);
 
   if (products.length === 1) {
     const onlyProduct = products[0];
@@ -197,6 +200,58 @@ function findProductForPage(
   // Multiple product nodes with no unambiguous identity are common on pages
   // containing recommendations. Fail closed instead of monitoring a neighbor.
   return null;
+}
+
+/** Themes and SEO plugins often publish the same product independently. */
+function reconcileProductRecords(
+  products: Record<string, unknown>[],
+  productUrl: string,
+  expectedHost: string,
+): Record<string, unknown> | null {
+  if (products.length === 1) return products[0] ?? null;
+  const requested = new URL(productUrl);
+  const names = new Set(products.map((product) => normalizeProductName(product.name)));
+  if (names.size !== 1 || names.has("")) return null;
+  const prices = products.map((product) => {
+    // A matching name alone is insufficient: each duplicate must identify this page.
+    const samePage = productJsonLdUrls(product).some((raw) => {
+      const normalized = normalizeItemUrl(raw, productUrl, expectedHost);
+      if (!normalized) return false;
+      const url = new URL(normalized.url);
+      return url.origin === requested.origin && url.pathname === requested.pathname;
+    });
+    const offer = getPageOffer(product, productUrl);
+    return samePage && offer
+      ? parsePrice(String(offer.price ?? ""), firstString(offer.priceCurrency) ?? "GBP")
+      : null;
+  });
+  if (prices.some((price) => !price)) return null;
+  const values = new Set(prices.map((price) => `${price!.currency}:${price!.amountMinor}`));
+  if (values.size !== 1) return null;
+  return products[0] ?? null;
+}
+
+/** Select the requested offer, never the first price from a different variant. */
+function getPageOffer(product: Record<string, unknown> | null, productUrl: string): Record<string, unknown> | null {
+  if (!product) return null;
+  const offers = (Array.isArray(product.offers) ? product.offers : [product.offers])
+    .map(asRecord).filter((offer): offer is Record<string, unknown> => offer !== null);
+  const requested = new URL(productUrl);
+  const variant = requested.searchParams.get("variant");
+  const matching = offers.filter((offer) => {
+    const raw = firstString(offer.url) ?? firstString(offer["@id"]);
+    if (!raw) return !variant && offers.length === 1;
+    try {
+      const url = new URL(raw, productUrl);
+      return url.origin === requested.origin && url.pathname === requested.pathname &&
+        (!variant || url.searchParams.get("variant") === variant);
+    } catch { return false; }
+  });
+  if (!matching.length) return null;
+  const prices = matching.map((offer) => parsePrice(String(offer.price ?? ""), firstString(offer.priceCurrency) ?? "GBP"));
+  if (prices.some((price) => !price) ||
+    new Set(prices.map((price) => `${price!.currency}:${price!.amountMinor}`)).size !== 1) return null;
+  return matching[0] ?? null;
 }
 
 function productJsonLdUrls(product: Record<string, unknown>): string[] {
