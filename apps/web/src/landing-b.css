@@ -580,42 +580,15 @@
 }
 
 .landing-b-video {
-  background: #fffdfa;
-  border: 1px solid rgb(55 70 82 / 14%);
-  border-radius: 28px;
-  box-shadow: 0 28px 70px rgb(39 44 48 / 11%);
-  margin-top: clamp(52px, 6vw, 76px);
+  background: #eef3f8;
+  border: 0;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgb(39 44 48 / 10%);
+  margin: clamp(36px, 4vw, 52px) auto 0;
+  max-width: min(840px, calc((100svh - 180px) * 1.546));
   overflow: hidden;
-  text-align: left;
-  width: 100%;
-}
-
-.landing-b-video-bar {
-  align-items: center;
-  border-bottom: 1px solid rgb(55 70 82 / 10%);
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 9px 9px 9px 1fr auto;
-  min-height: 54px;
-  padding: 0 22px;
-}
-
-.landing-b-video-bar > span {
-  background: #d5d9dc;
-  border-radius: 50%;
-  height: 9px;
-  width: 9px;
-}
-
-.landing-b-video-bar p,
-.landing-b-video-bar small {
-  color: #72777b;
-  font-size: .76rem;
-  margin: 0;
-}
-
-.landing-b-video-bar p {
-  justify-self: center;
+  scroll-margin-top: 120px;
+  width: 90%;
 }
 
 .landing-b-demo-video {
@@ -1451,11 +1424,6 @@
   .landing-b-video {
     border-radius: 20px;
     margin-top: 42px;
-  }
-
-  .landing-b-video-bar {
-    min-height: 48px;
-    padding: 0 16px;
   }
 
   .landing-b-body-section {

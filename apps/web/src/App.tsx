@@ -242,11 +242,6 @@ function LandingBValueStatement() {
       <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
       <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
       <div className="landing-b-video" role="region" aria-label="Tracer product demo">
-        <div className="landing-b-video-bar" aria-hidden="true">
-          <span /><span /><span />
-          <p>Tracer in action</p>
-          <small>Demo video</small>
-        </div>
         <video
           className="landing-b-demo-video"
           width={1920}
