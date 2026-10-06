@@ -61,6 +61,8 @@ describe("extension popup", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+    delete (globalThis as { MutationObserver?: unknown }).MutationObserver;
     delete (globalThis as { chrome?: unknown }).chrome;
     delete (globalThis as { document?: unknown }).document;
     delete (globalThis as { window?: unknown }).window;
@@ -956,6 +958,14 @@ async function setupPopup(
   Object.assign(globalThis, {
     window,
     document: window.document,
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+    MutationObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     fetch: fetchMock,
     chrome: {
       runtime: {

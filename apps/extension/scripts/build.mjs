@@ -1,5 +1,6 @@
 import { copyFile, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import process from "node:process";
 import { spawnSync } from "node:child_process";
 
 const extensionRoot = resolve(import.meta.dirname, "..");

@@ -66,12 +66,18 @@ export class WatchlistRepository {
       if (!existing) return null;
       const {priceDropAmount, priceDropPercent, lastNotifiedPrice, ...definedUpdate} = update;
       const next: SavedItem = {...existing, ...definedUpdate};
-      if (priceDropAmount === undefined) delete next.priceDropAmount;
-      else next.priceDropAmount = priceDropAmount;
-      if (priceDropPercent === undefined) delete next.priceDropPercent;
-      else next.priceDropPercent = priceDropPercent;
-      if (lastNotifiedPrice === undefined) delete next.lastNotifiedPrice;
-      else next.lastNotifiedPrice = lastNotifiedPrice;
+      if ('priceDropAmount' in update) {
+        if (priceDropAmount === undefined) delete next.priceDropAmount;
+        else next.priceDropAmount = priceDropAmount;
+      }
+      if ('priceDropPercent' in update) {
+        if (priceDropPercent === undefined) delete next.priceDropPercent;
+        else next.priceDropPercent = priceDropPercent;
+      }
+      if ('lastNotifiedPrice' in update) {
+        if (lastNotifiedPrice === undefined) delete next.lastNotifiedPrice;
+        else next.lastNotifiedPrice = lastNotifiedPrice;
+      }
       const all = [...items];
       all[index] = next;
       await this.storage.set({[watchlistKey]: all});

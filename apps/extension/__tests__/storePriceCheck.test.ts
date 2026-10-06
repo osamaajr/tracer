@@ -13,7 +13,10 @@ const target = {
 };
 
 function storeResponse(body: string, status = 200, headers?: HeadersInit): typeof fetch {
-  return (async () => new Response(body, { status, headers })) as typeof fetch;
+  return (async () => new Response(body, {
+    status,
+    headers: { "content-type": "text/html", ...Object.fromEntries(new Headers(headers)) },
+  })) as typeof fetch;
 }
 
 const parseHtml = (html: string): Document => parseHTML(html).document;
