@@ -1,127 +1,114 @@
 # Tracer
 
-Tracer is a post-purchase shopping assistant that can protect purchases from any public HTTPS store page with reliable order data. It captures structured purchase facts locally, stores the product identity, watches later prices, and surfaces policy-backed claim opportunities only when a verified retailer policy supports them.
+**Save a product now. Know when its price falls. Protect a purchase after checkout.**
 
-John Lewis is the first retailer-specific policy adapter. Generic stores can now be captured and monitored without pretending every price drop is automatically claimable.
+Tracer is a Chrome extension and companion web app for tracking products across public online stores. Shoppers can save a product before buying it, see price changes in their Saved list, and protect a completed purchase. For protected purchases, Tracer checks later prices and surfaces a claim opportunity only when a verified retailer policy supports one.
 
-## What is in this repo
+This repository is a working prototype, not a published Chrome Web Store product. It includes the extension, a React landing page, a Fastify API, shared TypeScript domain logic, deterministic monitoring fixtures, and a PostgreSQL schema for a future persistence layer.
 
-- `apps/web` - Vite React public site and dashboard preview for any-store capture.
-- `apps/api` - Fastify API for protected purchases, dashboard data, opportunity actions, extension sync, and monitoring.
-- `apps/extension` - Chrome Manifest V3 extension with an any-store order prompt, active-tab scanner, scheduled sync, and Chrome notifications.
-- `packages/core` - shared domain model, generic and retailer-specific extraction, URL safety, policy evaluation, monitoring use case, and tests.
-- `packages/db` - PostgreSQL/Drizzle schema and the first SQL migration.
+## At a glance
 
-## Prerequisites
+| | |
+| --- | --- |
+| **Product** | Chrome Manifest V3 extension, landing page, and purchase dashboard |
+| **Stack** | TypeScript, React, Vite, Fastify, Vitest, Drizzle schema |
+| **Focus** | Product extraction, price monitoring, safe URL handling, and policy-aware opportunities |
+| **Local data** | Saved items in Chrome storage; protected purchases in a file-backed development store |
 
-- Node.js 26+
-- npm 11+
-- PostgreSQL for production-like persistence
-- Chrome for loading the unpacked extension
+## What it does
 
-## Setup
+- **Save before checkout.** Open Tracer on a supported product page to save its name, retailer, URL, optional image, and price. Saved items remain in the browser profile.
+- **Watch for price drops.** The extension checks saved product prices and shows the current price, amount saved, and a notification when it detects a meaningful drop.
+- **Protect after checkout.** On a supported order confirmation page, Tracer extracts structured purchase details locally and asks the shopper to confirm protection.
+- **Separate tracking from claims.** A lower price is shown as a price drop; a refund or price-match opportunity appears only when a verified retailer policy and its eligibility window support it. John Lewis is the first policy adapter.
+- **Handle uncertain pages conservatively.** Tracer rejects unsafe or ambiguous product URLs and does not invent prices or purchase details when a page lacks reliable evidence.
 
-```sh
+```mermaid
+flowchart LR
+  A[Product page] --> B[Save to Tracer]
+  B --> C[Saved list]
+  C --> D[Price check]
+  D --> E[Price drop alert]
+  F[Order confirmation] --> G[Protect purchase]
+  G --> H[Purchase monitoring]
+  H --> I{Verified retailer policy?}
+  I -->|Yes, eligible| J[Claim opportunity]
+  I -->|No| K[Price tracking only]
+```
+
+## Engineering highlights
+
+**Shared rules across runtimes.** `packages/core` contains money and product models, extraction, URL validation, monitoring decisions, and policy evaluation. The extension and API use these rules rather than duplicating business logic.
+
+**Evidence-based capture.** Retailer-specific adapters run first. Generic extraction falls back to schema.org order/product data and clear page signals. Product identity and same-store URLs are checked before data is saved or fetched.
+
+**Two distinct customer states.** Saved products live locally in Chrome storage. Protected purchases enter the API monitoring flow after explicit confirmation. A saved price drop never becomes a claim opportunity by itself.
+
+**Deterministic monitoring.** HTML fixtures exercise a purchase at its paid price and after a price drop. The same monitoring use case also supports live public product-page checks; fixtures make the core behavior reproducible without relying on a retailer site staying unchanged.
+
+## Repository map
+
+| Path | Responsibility |
+| --- | --- |
+| [`apps/extension`](apps/extension) | Popup, content scripts, saved-item monitor, notifications, and Chrome storage |
+| [`apps/web`](apps/web) | React landing page and dashboard UI |
+| [`apps/api`](apps/api) | Fastify endpoints, monitoring scheduler, and development file store |
+| [`packages/core`](packages/core) | Domain models, extraction, matching, policy, and monitoring use cases |
+| [`packages/db`](packages/db) | Drizzle PostgreSQL schema and initial migration |
+| [`docs`](docs) | Architecture and deeper monitoring notes |
+
+## Run locally
+
+### Requirements
+
+- Node.js 26+ and npm 11+
+- Google Chrome for the unpacked extension
+- PostgreSQL only if you want to inspect or apply the included database migration; the local app uses a file-backed store
+
+```bash
+git clone https://github.com/osamaajr/tracer.git
+cd tracer
 npm install
 cp .env.example .env
-```
-
-Local development works with the file-backed dev store in `.tracer-data/dev-store.json`. PostgreSQL is represented by the schema and migration in `packages/db`; wire a real repository once `DATABASE_URL` is available.
-
-To apply the initial PostgreSQL migration:
-
-```sh
-npm run migrate -w @tracer/db
-```
-
-## Development
-
-Run the API and web app together:
-
-```sh
 npm run dev
 ```
 
-Useful individual commands:
+The API runs at `http://localhost:4000` and the web app at `http://localhost:5173`. The development store is `.tracer-data/dev-store.json` by default.
 
-```sh
-npm run dev:api
-npm run dev:web
-npm run dev -w @tracer/extension
-npm run monitor -w @tracer/api
-npm run verify:monitoring
-```
+To load the extension:
 
-The API defaults to `http://localhost:4000`. The web app defaults to `http://localhost:5173`.
-
-To load the extension locally:
-
-1. Build it with `npm run build -w @tracer/extension`.
-2. Open `chrome://extensions`.
-3. Enable Developer mode.
-4. Load `apps/extension/dist` as an unpacked extension.
-
-Keep `npm run dev` running while using the local extension: saving purchases and checking protection require the API on port 4000. After rebuilding the extension, click Reload on its card in `chrome://extensions`.
-
-The popup can scan the active HTTPS tab for generic order data. The content script also runs on HTTPS pages and shows an automatic prompt only when the order can be confidently parsed.
-
-## Demo Flows
-
-The deterministic monitoring fixture represents a Trail Pack bought for `£84.50`. Run the paid state first, then the dropped state at `£69.50`; both use the production monitoring use case.
-
-```sh
-curl -X POST http://localhost:4000/api/purchases/protect \
-  -H "content-type: application/json" \
-  -H "x-tracer-user-id: dev-user-tracer" \
-  --data @packages/core/fixtures/generic-store/protect-purchase-request.json
-
-curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=paid' \
-  -H "x-tracer-user-id: dev-user-tracer"
-
-curl -X POST 'http://localhost:4000/api/dev/run-monitoring?fixture=dropped' \
-  -H "x-tracer-user-id: dev-user-tracer"
-
-curl http://localhost:4000/api/dashboard \
-  -H "x-tracer-user-id: dev-user-tracer"
-
-curl http://localhost:4000/api/extension/sync \
-  -H "x-tracer-user-id: dev-user-tracer"
-```
-
-The generic fixture also proves that price tracking is independent of retailer refund-policy support. Policy opportunities remain a separate optional capability.
-
-The API scheduler checks immediately and then every 12 hours by default. Set `TRACER_MONITOR_INTERVAL_HOURS` to change the interval. For the complete fixture workflow, event policy, safe fetch behavior, and scheduler notes, see [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
-
-Product images are optional. Tracer prefers an order-confirmation image, then JSON-LD or Open Graph metadata, and ignores unusable candidates without rejecting the purchase. The dashboard and extension use intentional fallback visuals when an image is missing or later becomes unavailable.
-
-## Consumer extension flow
-
-To test the experience from a shopper's perspective, start the app with a fresh data file and build the unpacked extension:
-
-```sh
-TRACER_DATA_FILE=/tmp/tracer-consumer-flow.json npm run dev
+```bash
 npm run build -w @tracer/extension
 ```
 
-Load `apps/extension/dist` from `chrome://extensions`, then open `http://127.0.0.1:5173/tracer-demo-order.html`. Click the Tracer toolbar icon. The popup scans the completed demo order and shows `Purchase detected`; `Protect this purchase` persists it. Open `Your items` from the three-dot menu. Run the paid and dropped fixture commands above to see that item move from Watching at £84.50 to Price dropped at £69.50 with a £15 saving.
+Then open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked** with `apps/extension/dist`. Use **Reload** on the Tracer card after rebuilding. Keep `npm run dev` running for purchase protection and API-backed features.
 
-The order examples, price-drop demo, and generated `/extension-states/` gallery are development-only pages served by Vite. They live under `apps/web/dev-pages`, so production web builds contain only the public site and its actual assets.
+### Try the customer flow
 
-## Quality Checks
+1. Open a public HTTPS product page with reliable product metadata, then click the Tracer toolbar icon and choose **Save to Tracer**.
+2. Open **Your items → Saved** to see the saved product and its monitoring state.
+3. For a repeatable purchase demo, open `http://127.0.0.1:5173/tracer-demo-order.html`, click Tracer, and choose **Protect this purchase**.
+4. Run the paid and dropped fixture flow described in [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md) to see a protected purchase move from watching to price dropped.
 
-```sh
+The local web server also serves development-only order and extension-state previews. They are excluded from production web builds.
+
+## Quality checks
+
+```bash
 npm run typecheck
 npm test
 npm run lint
 npm run build
 ```
 
-## Current Boundaries
+Tests cover extraction, saved-item behavior, monitoring decisions, policy evaluation, and API routes using local fixtures.
 
-- Any-store capture supports public HTTPS order pages with reliable schema.org order data or clear order-confirmation DOM structure.
-- Verified policy-backed opportunities are implemented for John Lewis only.
-- Generic stores are accepted for tracking, but claim guidance is intentionally withheld until a retailer policy is added.
-- Real order pages are represented by fixtures because private checkout pages are unavailable in tests.
-- Local API auth uses a development user header. Production auth is documented in `docs/architecture.md` but not wired yet.
-- Local persistence uses a JSON file store. PostgreSQL schema/migrations are present; a Drizzle repository is the next persistence step.
-- Monitoring has a live HTML fetcher for public product pages plus a fixture fetcher for deterministic dev/test flows.
+## Current scope
+
+- Product and order capture work best on public HTTPS pages with clear structured data or unambiguous page content. Private, heavily scripted, or bot-protected pages may not provide a checkable price.
+- Saved items are local to one Chrome profile. Account sync and production authentication are not wired yet.
+- Local purchase persistence is file-backed. The PostgreSQL schema and migration are present, but a database repository is not connected to the app.
+- John Lewis is the first verified policy adapter. Other stores can be tracked without implying a refund is available.
+- The extension is loaded locally; it is not yet distributed through the Chrome Web Store.
+
+For implementation detail, see [`docs/architecture.md`](docs/architecture.md), [`docs/universal-watchlist.md`](docs/universal-watchlist.md), and [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).

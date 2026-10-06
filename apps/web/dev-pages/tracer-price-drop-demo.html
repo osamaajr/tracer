@@ -17,11 +17,20 @@
       h1 { margin:0; font-family:Georgia,serif; font-size:52px; line-height:1.04; letter-spacing:-.035em; }
       .description { margin:24px 0 34px; color:#60655d; font-size:17px; line-height:1.65; }
       .price-row { display:flex; align-items:baseline; gap:14px; margin-bottom:30px; }
+      .previous-price { color:#858a82; font-size:21px; }
       .price { font-size:30px; font-weight:760; letter-spacing:-.03em; }
       .price-note { color:#71766e; font-size:14px; }
       .stock { display:flex; gap:9px; align-items:center; color:#456b4f; font-size:14px; font-weight:650; }
       .stock::before { content:""; width:8px; height:8px; border-radius:50%; background:#43804f; }
+      .demo-button { margin-top:28px; padding:13px 19px; border:0; border-radius:999px; background:#171915; color:#fff; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+      .demo-button:hover { background:#343a32; }
       .demo-note { margin-top:46px; padding-top:22px; border-top:1px solid #dcd6cb; color:#8a8d86; font-size:12px; }
+      .price-drop-preview { position:fixed; z-index:10; top:24px; right:24px; width:min(390px,calc(100vw - 32px)); padding:18px 20px; border:1px solid #dce6dc; border-radius:22px; background:#fff; box-shadow:0 20px 60px rgb(24 44 30 / .18); }
+      .price-drop-preview[hidden] { display:none; }
+      .preview-source { display:flex; align-items:center; gap:8px; margin:0 0 12px; color:#477151; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+      .preview-source::before { content:"↓"; display:grid; place-items:center; width:23px; height:23px; border-radius:50%; background:#e3f2e6; font-size:17px; letter-spacing:0; }
+      .price-drop-preview strong { display:block; font-size:17px; }
+      .price-drop-preview p:last-child { margin:7px 0 0; color:#535b52; font-size:14px; line-height:1.5; }
       @media (max-width:760px) { body{padding:24px} main{grid-template-columns:1fr;gap:34px}.image{min-height:390px}h1{font-size:42px} }
     </style>
   </head>
@@ -36,20 +45,50 @@
         <p class="description" itemprop="description">A structured everyday backpack with a padded laptop sleeve, weather-resistant shell and quick-access side pocket.</p>
         <div class="price-row" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
           <meta itemprop="priceCurrency" content="GBP" />
+          <s class="previous-price" id="previousPrice" hidden>£129.99</s>
           <span class="price" itemprop="price" id="productPrice">£129.99</span>
           <span class="price-note" id="priceNote">Original price</span>
         </div>
         <p class="stock">In stock — ready to dispatch</p>
-        <p class="demo-note">Tracer monitoring demonstration product</p>
+        <button class="demo-button" id="demoButton" type="button">Simulate price drop</button>
+        <p class="demo-note">Tracer monitoring demonstration product. Prices on this page are simulated.</p>
       </section>
     </main>
+    <aside class="price-drop-preview" id="priceDropPreview" aria-live="polite" hidden>
+      <p class="preview-source">Tracer · Demo alert</p>
+      <strong>Price drop detected</strong>
+      <p>Northstar Transit Backpack is now £99.99 — £30.00 less (23.08%).</p>
+    </aside>
     <script>
-      const current = localStorage.getItem('tracer-demo-price') || '129.99';
       const price = document.getElementById('productPrice');
       const note = document.getElementById('priceNote');
-      price.textContent = new Intl.NumberFormat('en-GB', { style:'currency', currency:'GBP' }).format(Number(current));
-      price.setAttribute('content', current);
-      if (Number(current) < 129.99) note.textContent = 'Sale price';
+      const previousPrice = document.getElementById('previousPrice');
+      const preview = document.getElementById('priceDropPreview');
+      const button = document.getElementById('demoButton');
+      const formatPrice = value => new Intl.NumberFormat('en-GB', { style:'currency', currency:'GBP' }).format(Number(value));
+      if (new URLSearchParams(location.search).get('drop') === '1') {
+        localStorage.setItem('tracer-demo-price', '99.99');
+      }
+      function renderDemo() {
+        const current = localStorage.getItem('tracer-demo-price') || '129.99';
+        const dropped = Number(current) < 129.99;
+        price.textContent = formatPrice(current);
+        price.setAttribute('content', current);
+        note.textContent = dropped ? 'Sale price' : 'Original price';
+        previousPrice.hidden = !dropped;
+        preview.hidden = !dropped;
+        button.textContent = dropped ? 'Reset demo' : 'Simulate price drop';
+      }
+      button.addEventListener('click', () => {
+        const dropped = Number(localStorage.getItem('tracer-demo-price') || '129.99') < 129.99;
+        localStorage.setItem('tracer-demo-price', dropped ? '129.99' : '99.99');
+        const url = new URL(location.href);
+        if (dropped) url.searchParams.delete('drop');
+        else url.searchParams.set('drop', '1');
+        history.replaceState(null, '', url);
+        renderDemo();
+      });
+      renderDemo();
     </script>
   </body>
 </html>

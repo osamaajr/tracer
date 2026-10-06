@@ -423,7 +423,7 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
         </nav>
       </div>
       <p className="footer-copyright">© 2026 Tracer. All rights reserved.</p>
-      <div className="footer-giant-wordmark" aria-hidden="true"><span>T<em>r</em>acer</span></div>
+      <div className="footer-giant-wordmark" aria-hidden="true"><span>Tracer</span></div>
     </footer>
   );
 }

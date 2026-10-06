@@ -472,29 +472,25 @@
 .landing-shell-b > .site-footer .footer-giant-wordmark {
   color: rgb(255 255 255 / 30%);
   display: block;
-  left: 50%;
+  margin-left: calc(50% - 50vw);
   margin-top: 28px;
   pointer-events: none;
   position: relative;
   text-align: center;
   text-shadow: 0 2px 18px rgb(36 77 115 / 4%);
-  transform: translateX(-50%);
+  transform: translateX(-1vw);
   width: 100vw;
   z-index: 3;
 }
 
 .landing-shell-b > .site-footer .footer-giant-wordmark span {
   display: block;
-  font-family: "Landing Montserrat", "Arial Black", sans-serif;
-  font-size: 28vw;
+  font-family: Montserrat, "Arial Black", sans-serif;
+  font-size: 32.5vw;
   font-weight: 900;
-  letter-spacing: 0;
+  letter-spacing: -.095em;
   line-height: .8;
   white-space: nowrap;
-}
-
-.landing-shell-b > .site-footer .footer-giant-wordmark em {
-  font-style: normal;
 }
 
 .landing-shell-b > .site-footer .footer-clouds {

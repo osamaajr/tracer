@@ -131,6 +131,34 @@ type PopupState =
   | "settings";
 
 const popupModuleStartedAt = performance.now();
+const savedPriceDropOverrides = (() => {
+  const overrides = new Map<string, Money>();
+  try {
+    const configured = JSON.parse(import.meta.env.VITE_TRACER_SAVED_PRICE_DROP_OVERRIDES) as Record<string, Partial<Money>>;
+    for (const [id, price] of Object.entries(configured)) {
+      if (Number.isInteger(price?.amountMinor) && price.amountMinor! > 0 && typeof price.currency === 'string') {
+        overrides.set(id, { amountMinor: price.amountMinor!, currency: price.currency });
+      }
+    }
+  } catch {
+    // An invalid local demo configuration must not affect the saved list.
+  }
+  return overrides;
+})();
+function displaySavedPriceDrop(item: SavedItem): SavedItem {
+  if (item.monitoringStatus === 'price_dropped') return item;
+  const currentPrice = savedPriceDropOverrides.get(item.id);
+  if (!currentPrice || !item.savedPrice) return item;
+  if (currentPrice.currency !== item.savedPrice.currency) return item;
+  const savingMinor = item.savedPrice.amountMinor - currentPrice.amountMinor;
+  if (savingMinor <= 0) return item;
+  return {
+    ...item,
+    currentPrice,
+    priceDropAmount: { amountMinor: savingMinor, currency: currentPrice.currency },
+    monitoringStatus: 'price_dropped',
+  };
+}
 const startupTraceEnabled = import.meta.env.MODE !== "production" || import.meta.env.VITE_TRACER_STARTUP_TRACE === true;
 const startupStages: Array<{ name: string; start: number; end: number }> = [];
 let startupUsableLogged = false;
@@ -2450,7 +2478,7 @@ function renderSavedProduct(
     status.textContent = monitoringState === 'off'
       ? '● Price watching is off'
       : dropped
-      ? `● Price dropped ${formatMoney(item.priceDropAmount!)}${item.priceDropPercent ? ` (${item.priceDropPercent}%)` : ''}`
+      ? `● Price dropped ${formatMoney(item.priceDropAmount!)}`
       : item.monitoringStatus === 'unavailable' ? '● Unable to check price' : '● Watching for price drops';
     copy.append(status);
   }
@@ -2501,7 +2529,7 @@ async function showSavedItems(): Promise<void> {
       renderItemsMessage('A place for your maybes.', 'Open Tracer on a product page and choose Save to Tracer.');
       return;
     }
-    const orderedItems = [...items].sort((left, right) => {
+    const orderedItems = items.map(displaySavedPriceDrop).sort((left, right) => {
       const alertDifference = Number(right.monitoringStatus === 'price_dropped') - Number(left.monitoringStatus === 'price_dropped');
       return alertDifference || right.savedAt.localeCompare(left.savedAt);
     });

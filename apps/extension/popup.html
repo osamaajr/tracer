@@ -19,6 +19,9 @@
         --green: var(--accent);
         --green-soft: var(--accent-soft);
         --green-border: color-mix(in srgb, var(--accent) 32%, white);
+        --price-drop: #8f7019;
+        --price-drop-soft: #fff9e9;
+        --price-drop-border: #e9daa9;
         --radius: 18px;
         color: var(--ink);
         font-family:
@@ -1108,7 +1111,7 @@
       .item-row-copy { display: block; min-width: 0; margin: 0; }
       .item-row strong { display: -webkit-box; max-width: 100%; overflow: hidden; color: #171a18; font-size: 14px; line-height: 1.3; font-weight: 650; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
       .item-row .item-row-status { display: block; margin-top: 7px; color: var(--green); font-size: 12px; }
-      .item-row[data-alert="true"] .item-row-status { color: var(--green); }
+      .item-row[data-alert="true"] .item-row-status { color: var(--price-drop); }
       .item-row[data-error="true"] .item-row-status { color: #9b3a32; }
       .item-row[data-paused="true"] { background: #f1f1ee; border-color: #e2e2de; box-shadow: none; }
       .item-row[data-paused="true"] strong { color: #7b7e7d; }
@@ -1121,10 +1124,11 @@
       .item-row[data-paused="true"] em,
       .item-row[data-paused="true"] i { color: #9a9d9c; }
       .item-row em { align-self: center; color: var(--green); font-size: 13px; font-style: normal; font-weight: 700; }
+      .item-row[data-alert="true"] em { color:var(--price-drop); }
       .item-row i { align-self: center; color: #6b706d; font-size: 23px; font-style: normal; }
       .detail-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; }
       .detail-status { color: var(--green); font-size: 13px; font-weight: 600; }
-      .detail-status[data-alert="true"] { color: var(--green); font-weight: 600; }
+      .detail-status[data-alert="true"] { color: var(--price-drop); font-weight: 600; }
       .detail-status[data-error="true"] { color: #9b3a32; }
       .detail-status[data-paused="true"] { color: #909493; }
       .detail-status[data-paused="true"] { color: #909493; }
@@ -1148,7 +1152,7 @@
       .detail-price strong { overflow: hidden; color: #20221f; font-size: 19px; font-weight: 680; letter-spacing: -.35px; text-overflow: ellipsis; white-space: nowrap; }
       .detail-price small { color: #7e847a; font-size: 10px; line-height: 1.35; }
       .detail-price--current { padding-left: 8px; }
-      .detail-price-card[data-alert="true"] .detail-price--current strong { color: var(--green); }
+      .detail-price-card[data-alert="true"] .detail-price--current strong { color: var(--price-drop); }
       .detail-price-card[data-error="true"] .detail-price--current strong { color: #a33f36; font-size: 14px; }
       .detail-actions-card { overflow: hidden; padding: 0 13px; border: 1px solid #e8e5de; border-radius: 15px; background: #fff; box-shadow: 0 3px 12px #29272008; }
       .detail-action-row,.detail-insight-row { display: flex; min-height: 58px; align-items: center; gap: 11px; }
@@ -1440,7 +1444,7 @@
       .items-segments button { flex:1; border:0; background:transparent; border-radius:999px; padding:10px; color:#666866; font:600 13px Arial,sans-serif; }
       .items-segments button[aria-pressed="true"] { background:#ffffff; color:#22231f; box-shadow:0 2px 5px #22231f0a; }
       .saved-product,.saved-row { padding:16px; border:1px solid #e6e3db; border-radius:18px; background:#fff; }
-      .saved-row[data-alert="true"] { border-color:var(--green-border); box-shadow:0 10px 24px color-mix(in srgb, var(--green) 10%, transparent); }
+      .saved-row[data-alert="true"] { border-color:var(--price-drop-border); background:var(--price-drop-soft); box-shadow:0 10px 24px color-mix(in srgb, var(--price-drop) 10%, transparent); }
       .watchlist-screen .saved-product {
         align-content:start;
         box-shadow:0 16px 32px #29292312;
@@ -1459,8 +1463,9 @@
       .saved-product strong,.saved-row strong { display:block; font:600 14px/1.4 Arial,sans-serif; overflow-wrap:anywhere; }
       .saved-product p,.saved-row p { color:#737870; font:400 12px/1.5 Arial,sans-serif; margin:5px 0; }
       .saved-row .saved-monitoring-status { color:#737870; font-weight:600; }
-      .saved-row .saved-monitoring-status[data-state="watching"],
-      .saved-row .saved-monitoring-status[data-state="alert"] { color:var(--green); }
+      .saved-row .saved-monitoring-status[data-state="watching"] { color:var(--green); }
+      .saved-row .saved-monitoring-status[data-state="alert"] { color:var(--price-drop); }
+      .saved-row[data-alert="true"] .saved-price { color:var(--price-drop); font-weight:600; }
       .saved-row .saved-monitoring-status[data-state="off"] { color:#92968f; }
       .saved-row .saved-monitoring-status[data-state="unavailable"] { color:#9b3a32; }
       .saved-product img,.saved-row img { width:48px; height:48px; object-fit:contain; border-radius:10px; float:left; margin:0 12px 8px 0; }
@@ -1950,7 +1955,7 @@
       .detail-retailer { color:#85857c; font-size:11px; }
       .detail-meta { min-height:0; padding:0; }
       .detail-status { display:inline-flex; width:fit-content; min-height:18px; padding:0; border:0; border-radius:0; background:transparent; color:var(--green); font-size:11px; font-weight:600; }
-      .detail-status[data-alert="true"] { color:var(--green); }
+      .detail-status[data-alert="true"] { color:var(--price-drop); }
       .detail-status[data-error="true"] { color:#9b3a32; }
       .detail-status[data-paused="true"] { color:#8a8a80; }
       .detail-hero .delete-item { width:28px; height:28px; flex:0 0 28px; border:0; border-radius:50%; background:transparent; color:#95958c; box-shadow:none; }
@@ -1970,7 +1975,7 @@
         -webkit-text-fill-color:transparent; animation:loading-text-shimmer 2.6s ease-in-out infinite;
       }
       .detail-price-card[data-error="true"] .detail-price--current strong { color:#9b3a32; font-size:24px; }
-      .detail-price-card[data-alert="true"] .detail-price--current strong { color:var(--green); }
+      .detail-price-card[data-alert="true"] .detail-price--current strong { color:var(--price-drop); }
       .detail-price--paid { display:grid; grid-template-columns:1fr auto; align-items:center; padding-top:11px; border-top:1px dashed #e2dfd6; }
       .detail-price--paid strong { grid-column:2; grid-row:1/3; font-size:18px; letter-spacing:-.02em; }
       .detail-price--paid small { grid-column:1; }

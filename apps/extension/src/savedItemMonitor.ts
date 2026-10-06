@@ -103,11 +103,10 @@ async function monitorSavedItem(
     });
     if (updatedItem && decision.shouldNotify && await dependencies.getPriceDropAlertsEnabled()) {
       const saving = formatMonitoringMoney(decision.priceDropAmount!);
-      const percentText = decision.priceDropPercent === undefined ? "" : ` (${decision.priceDropPercent}%)`;
       await dependencies.createNotification({
         id: `tracer-saved-drop:${item.id}:${latest.amountMinor}`,
         title: "Price drop detected",
-        message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less${percentText}.`,
+        message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less.`,
       });
       // A failed browser notification must remain retryable on the next check.
       // Persist the delivery marker only after Chrome confirms creation.

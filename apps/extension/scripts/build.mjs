@@ -15,6 +15,7 @@ const definitions = [
   `--define:import.meta.env.VITE_TRACER_API_BASE_URL=${JSON.stringify(process.env.VITE_TRACER_API_BASE_URL ?? "http://127.0.0.1:4000")}`,
   `--define:import.meta.env.VITE_TRACER_DASHBOARD_BASE_URL=${JSON.stringify(process.env.VITE_TRACER_DASHBOARD_BASE_URL ?? "http://127.0.0.1:5173")}`,
   `--define:import.meta.env.VITE_TRACER_USER_ID=${JSON.stringify(process.env.VITE_TRACER_USER_ID ?? "dev-user-tracer")}`,
+  `--define:import.meta.env.VITE_TRACER_SAVED_PRICE_DROP_OVERRIDES=${JSON.stringify(process.env.VITE_TRACER_SAVED_PRICE_DROP_OVERRIDES ?? "{}")}`,
 ];
 
 function bundle(entry, output, format, globalName) {

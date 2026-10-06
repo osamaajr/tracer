@@ -14,7 +14,7 @@ Saved entries retain their name, retailer, canonical URL, original optional pric
 
 Manual toolbar opens are save-first: Tracer runs product extraction and shows either Save to Tracer or Nothing to save here. Automatic order-confirmation opens use the background worker's cached verified purchase and retain the protection flow. No polling or page-wide observer is added. JSON-LD Product data (including graph/mainEntity), product OpenGraph metadata, product-scoped microdata, and a conservative product-route/add-to-cart control fallback provide product evidence. Arbitrary first prices, price ranges, ambiguous product lists, and unknown currencies are omitted. Missing optional data does not prevent saving. Unsupported and unsafe URLs, non-product routes, and cross-store canonical URLs are rejected.
 
-The new screen offers Save to Tracer, a confirmation or Already saved state, View saved items, and Continue browsing. Your items has Saved and Protected buttons. Saved cards offer Open item and Remove, and label prices as a saved snapshot. Existing settings and protected cards remain in place.
+The new screen offers Save to Tracer, a confirmation or Already saved state, View saved items, and Continue browsing. Your items has Saved and Protected buttons. Saved cards offer Open item and Remove. They show a saved-price snapshot until a current price has been checked, then show the current price and any detected saving. Existing settings and protected cards remain in place.
 
 ## Becoming protected
 
@@ -26,7 +26,9 @@ Removing a Saved item does not delete purchases, price observations, activity, n
 
 ## Monitoring and scope
 
-Only existing protected purchases enter the monitoring and notification pipeline. Saved prices are a snapshot; Saved does not promise price refreshes, price alerts, stock alerts, or variant tracking. Saving is a pre-purchase convenience and does not mark a purchase as protected. No folders, tags, notes, price targets, variant selectors, social sharing, or checkout features were added. Broad compatibility is best-effort, not guaranteed for every store.
+Saved items have their own extension-side monitoring path. Tracer revisits the public product URL, stores the latest price, and marks the item as `price_dropped` when that price is below the saved price. A meaningful new drop can trigger a Chrome notification; repeat checks at the same lower price do not send duplicate alerts. The Saved row renders its stored `currentPrice` and `priceDropAmount`, so a real detection uses the same UI as a local visual demonstration. If a check fails, Tracer preserves the last valid price rather than replacing it with an invented one. Monitoring can be paused in extension settings.
+
+Protected purchases use the separate API monitoring and policy pipeline. Saving a product does not mark it as purchased or make a retailer claim available. Stock alerts, variant tracking, folders, tags, notes, price targets, social sharing, and checkout features are outside the current scope. Compatibility remains best-effort across public stores.
 
 ## Local verification
 
@@ -36,5 +38,5 @@ Only existing protected purchases enter the monitoring and notification pipeline
 4. Check a product with no reliable price/image: the product should still save when its name and product URL can be established. Ordinary articles and cart/order pages must not offer the pre-purchase save flow.
 5. Switch between Saved and Protected. Remove a Saved entry and confirm that existing protected purchases and activity remain.
 6. For a purchase you actually made, open its order confirmation and use the existing Protect flow. A matching Saved entry moves out of Saved only after acceptance. With the API offline, the existing pending-protection flow remains; the Saved entry stays until sync succeeds.
-7. Run `npm test` for deterministic extraction, repository reload, concurrent duplicate prevention, conversion, popup flow, API, and monitoring coverage without buying anything. Run `npm run typecheck` and `npm run lint`.
+7. Run `npm test` for deterministic extraction, repository reload, concurrent duplicate prevention, conversion, popup flow, API, and monitoring coverage without buying anything. The saved-item monitoring test verifies that a real drop updates the current price and creates a notification without a percentage. Run `npm run typecheck` and `npm run lint`.
 8. Run `node scripts/preview-extension-states.mjs`, then open `/extension-states/` on the local web server to inspect watchlist, saved confirmation, duplicate, saved-list, and empty-list visual states alongside the original screens.
