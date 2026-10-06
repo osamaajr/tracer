@@ -237,16 +237,54 @@ function HeroMonitoringVisual() {
 }
 
 function LandingBValueStatement() {
+  const demoVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = demoVideoRef.current;
+    if (!video) return;
+    let inView = false;
+    const updatePlayback = () => {
+      if (inView && !document.hidden && !video.ended) {
+        // Keep controls available if the browser declines muted inline autoplay.
+        void video.play().catch(() => undefined);
+      } else {
+        video.pause();
+      }
+    };
+    // Buffer before the player arrives, without downloading it at startup.
+    const preloadObserver = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      video.preload = "auto";
+      video.load();
+      preloadObserver.disconnect();
+    }, { rootMargin: "450px 0px" });
+    const playbackObserver = new IntersectionObserver(([entry]) => {
+      inView = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.25);
+      updatePlayback();
+    }, { rootMargin: "-100px 0px 0px", threshold: [0, 0.25] });
+    preloadObserver.observe(video);
+    playbackObserver.observe(video);
+    document.addEventListener("visibilitychange", updatePlayback);
+    return () => {
+      preloadObserver.disconnect();
+      playbackObserver.disconnect();
+      document.removeEventListener("visibilitychange", updatePlayback);
+      video.pause();
+    };
+  }, []);
+
   return (
     <section className="landing-b-value">
       <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
       <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
       <div className="landing-b-video" role="region" aria-label="Tracer product demo">
         <video
+          ref={demoVideoRef}
           className="landing-b-demo-video"
           width={1920}
           height={1242}
           controls
+          muted
           playsInline
           preload="none"
           poster={tracerDemoPoster}
