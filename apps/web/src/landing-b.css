@@ -584,7 +584,7 @@
   border: 0;
   border-radius: 20px;
   box-shadow: 0 20px 50px rgb(39 44 48 / 10%);
-  margin: clamp(36px, 4vw, 52px) auto 0;
+  margin: clamp(56px, calc(4vw + 20px), 72px) auto 0;
   max-width: min(840px, calc((100svh - 180px) * 1.546));
   overflow: hidden;
   scroll-margin-top: 120px;
@@ -1423,7 +1423,7 @@
 
   .landing-b-video {
     border-radius: 20px;
-    margin-top: 42px;
+    margin-top: 62px;
   }
 
   .landing-b-body-section {
