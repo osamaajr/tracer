@@ -1,4 +1,6 @@
 import "./landing-b.css";
+import tracerDemoVideo from "./assets/demo/tracer-demo.mp4";
+import tracerDemoPoster from "./assets/demo/tracer-demo-poster.webp";
 import landingWordmark from "./assets/landing-b/tracer-wordmark-outline-transparent.webp";
 import productHeadphones from "./assets/product-headphones.webp?inline";
 import productDeskLamp from "./assets/products/desk-lamp.webp?inline";
@@ -239,17 +241,25 @@ function LandingBValueStatement() {
     <section className="landing-b-value">
       <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
       <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
-      <div className="landing-b-video-placeholder" role="img" aria-label="Tracer product demo video placeholder">
+      <div className="landing-b-video" role="region" aria-label="Tracer product demo">
         <div className="landing-b-video-bar" aria-hidden="true">
           <span /><span /><span />
           <p>Tracer in action</p>
           <small>Demo video</small>
         </div>
-        <div className="landing-b-video-poster">
-          <div className="landing-b-video-play" aria-hidden="true"><i /></div>
-          <strong>See how Tracer keeps watch</strong>
-          <p>Product demo coming soon</p>
-        </div>
+        <video
+          className="landing-b-demo-video"
+          width={1920}
+          height={1242}
+          controls
+          playsInline
+          preload="none"
+          poster={tracerDemoPoster}
+          aria-label="See Tracer in action"
+        >
+          <source src={tracerDemoVideo} type="video/mp4" />
+          Your browser doesn’t support this video. <a href={tracerDemoVideo}>Watch the demo</a>.
+        </video>
       </div>
     </section>
   );

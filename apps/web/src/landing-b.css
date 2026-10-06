@@ -579,7 +579,7 @@
   margin: 26px 0 0;
 }
 
-.landing-b-video-placeholder {
+.landing-b-video {
   background: #fffdfa;
   border: 1px solid rgb(55 70 82 / 14%);
   border-radius: 28px;
@@ -618,52 +618,11 @@
   justify-self: center;
 }
 
-.landing-b-video-poster {
-  align-content: center;
-  aspect-ratio: 16 / 8.6;
-  background:
-    linear-gradient(120deg, rgb(220 238 255 / 74%), rgb(255 253 247 / 74%)),
-    url('./assets/landing-b/tracer-sky.webp') 50% 70% / cover no-repeat;
-  display: grid;
-  justify-items: center;
-  min-height: 360px;
-  padding: 48px;
-  text-align: center;
-}
-
-.landing-b-video-play {
-  align-items: center;
-  background: #171813;
-  border-radius: 50%;
-  box-shadow: 0 14px 34px rgb(23 24 19 / 24%);
-  display: flex;
-  height: 78px;
-  justify-content: center;
-  margin-bottom: 24px;
-  width: 78px;
-}
-
-.landing-b-video-play i {
-  border-bottom: 9px solid transparent;
-  border-left: 15px solid #fff;
-  border-top: 9px solid transparent;
+.landing-b-demo-video {
+  background: #eef3f8;
   display: block;
-  margin-left: 5px;
-}
-
-.landing-b-video-poster strong {
-  color: #171813;
-  font-family: "Tracer B Reference Serif", Charter, Georgia, serif;
-  font-size: clamp(2rem, 3.8vw, 3.7rem);
-  font-weight: 400;
-  letter-spacing: -.02em;
-  line-height: 1;
-}
-
-.landing-b-video-poster p {
-  color: #66615a;
-  font-size: .92rem;
-  margin-top: 16px;
+  height: auto;
+  width: 100%;
 }
 
 .landing-b-body-section {
@@ -1489,7 +1448,7 @@
     font-size: clamp(2.8rem, 13vw, 4rem);
   }
 
-  .landing-b-video-placeholder {
+  .landing-b-video {
     border-radius: 20px;
     margin-top: 42px;
   }
@@ -1497,17 +1456,6 @@
   .landing-b-video-bar {
     min-height: 48px;
     padding: 0 16px;
-  }
-
-  .landing-b-video-poster {
-    min-height: 260px;
-    padding: 32px 20px;
-  }
-
-  .landing-b-video-play {
-    height: 64px;
-    margin-bottom: 20px;
-    width: 64px;
   }
 
   .landing-b-body-section {
