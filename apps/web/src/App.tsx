@@ -457,7 +457,7 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
           </>}
         </a>
         <nav className="footer-links" aria-label="Footer navigation">
-          <a href="mailto:osama.alnajar.26@gmail.com">Contact</a>
+          <a href="/contact">Contact</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>
@@ -524,7 +524,7 @@ function PrivacyPage() {
     <SitePage title="Privacy Policy" description="How Tracer handles product, purchase, and settings data.">
       <article className="policy-document">
         <PolicySection title="About this policy">
-          <p>Last updated 22 September 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified through <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a> (“Tracer”, “we”, “us”).</p>
+          <p>Last updated 22 September 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified on our <a href="/contact">Contact page</a> (“Tracer”, “we”, “us”).</p>
           <p>Where data-protection law applies, we act as the controller for the personal data described here. This policy reflects the current product and will be updated if that changes.</p>
         </PolicySection>
 
@@ -571,7 +571,7 @@ function PrivacyPage() {
         </PolicySection>
 
         <PolicySection title="Your rights">
-          <p>Depending on where you live and the applicable law, you may have rights to access, correct, delete, restrict, or object to processing of your personal data, and to receive portable data. You may also complain to your local data-protection authority. To make a request, email <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>; we may need enough information to verify and locate the relevant data.</p>
+          <p>Depending on where you live and the applicable law, you may have rights to access, correct, delete, restrict, or object to processing of your personal data, and to receive portable data. You may also complain to your local data-protection authority. To make a request, use our <a href="/contact">Contact page</a>; we may need enough information to verify and locate the relevant data.</p>
         </PolicySection>
 
         <PolicySection title="Changes to this policy">
@@ -579,7 +579,7 @@ function PrivacyPage() {
         </PolicySection>
 
         <PolicySection title="Contact">
-          <p>Privacy questions and requests can be sent to <a href="mailto:osama.alnajar.26@gmail.com">osama.alnajar.26@gmail.com</a>.</p>
+          <p>For privacy questions and requests, visit our <a href="/contact">Contact page</a>.</p>
         </PolicySection>
       </article>
     </SitePage>
