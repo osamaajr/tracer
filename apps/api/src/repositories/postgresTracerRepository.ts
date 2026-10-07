@@ -25,7 +25,7 @@ export class PostgresTracerRepository extends FileTracerRepository {
     const rows = await this.sql<{ state: StoreState }[]>`
       SELECT state FROM tracer_state WHERE id = 1
     `;
-    return clone(rows[0]?.state ?? emptyStore);
+    return decodeState(rows[0]?.state ?? emptyStore);
   }
 
   protected override async mutate<T>(mutator: (state: StoreState) => T): Promise<T> {
@@ -34,10 +34,10 @@ export class PostgresTracerRepository extends FileTracerRepository {
       const rows = await transaction<{ state: StoreState }[]>`
         SELECT state FROM tracer_state WHERE id = 1 FOR UPDATE
       `;
-      const state = clone(rows[0]?.state ?? emptyStore);
+      const state = decodeState(rows[0]?.state ?? emptyStore);
       const result = mutator(state);
       await transaction`
-        UPDATE tracer_state SET state = ${JSON.stringify(state)}::jsonb WHERE id = 1
+        UPDATE tracer_state SET state = ${this.sql.json(state as unknown as postgres.JSONValue)}::jsonb WHERE id = 1
       `;
       return { result };
     });
@@ -56,7 +56,7 @@ export class PostgresTracerRepository extends FileTracerRepository {
         `;
         await transaction`
           INSERT INTO tracer_state (id, state)
-          VALUES (1, ${JSON.stringify(emptyStore)}::jsonb)
+          VALUES (1, ${this.sql.json(emptyStore as unknown as postgres.JSONValue)}::jsonb)
           ON CONFLICT (id) DO NOTHING
         `;
       });
@@ -66,4 +66,26 @@ export class PostgresTracerRepository extends FileTracerRepository {
     });
     return this.initialized;
   }
+}
+
+function decodeState(raw: unknown): StoreState {
+  // Earlier deployments serialized the state before passing it to postgres.js,
+  // which serialized it again and stored a JSONB string. Decode those rows once
+  // without replacing any existing purchases or price history.
+  const value: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+  if (!value || typeof value !== "object") {
+    throw new Error("Invalid Tracer database state");
+  }
+  const state = value as Record<string, unknown>;
+  if (
+    !Array.isArray(state.products) ||
+    !Array.isArray(state.purchases) ||
+    !Array.isArray(state.observations) ||
+    !Array.isArray(state.opportunities) ||
+    !Array.isArray(state.activityEvents) ||
+    !Array.isArray(state.monitoringPreferences)
+  ) {
+    throw new Error("Invalid Tracer database state");
+  }
+  return clone(state as unknown as StoreState);
 }
