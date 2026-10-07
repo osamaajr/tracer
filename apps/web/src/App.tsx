@@ -503,6 +503,7 @@ function ContactPage() {
     <SitePage
       title="Contact"
       description="Questions, feedback, or support requests? Get in touch and we’ll do our best to help."
+      background="plain"
     >
       <section className="contact-card" aria-labelledby="contact-email-heading">
         <div>
