@@ -54,6 +54,16 @@ await mkdir(nextDir, { recursive: true });
 try {
   await copyDirectory(resolve(extensionRoot, "public"), nextDir);
 
+  if (outputName === "release") {
+    const manifestPath = resolve(nextDir, "manifest.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    manifest.host_permissions = manifest.host_permissions.filter((pattern) => pattern.startsWith("https://"));
+    for (const script of manifest.content_scripts) {
+      script.matches = script.matches.filter((pattern) => pattern.startsWith("https://"));
+    }
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+
   bundle("background", "background.js", "esm");
   bundle("popup", "popup.js", "esm");
   bundle("storePriceCheck", "storePriceCheck.js", "esm");
