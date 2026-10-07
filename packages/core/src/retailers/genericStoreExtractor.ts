@@ -761,7 +761,7 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
 
   const receiptText = normalizedText(element);
   const explicitUnitAmount = receiptText.match(
-    /\b(?:each|unit\s+price)\b\s*[:\-]?\s*((?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*\d[\d.,]*)/i,
+    /\b(?:each|unit\s+price)\b\s*[:-]?\s*((?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*\d[\d.,]*)/i,
   )?.[1];
   const explicitUnitPrice = parsePrice(explicitUnitAmount);
   if (explicitUnitPrice) return explicitUnitPrice;
@@ -802,7 +802,7 @@ function extractPurchaseDate(document: Document, fallbackNow: Date): string {
     attrFromSelectors(document, ["time[datetime]", "[data-tracer-purchased-at]", "[data-order-date]"], "datetime") ??
     textFromSelectors(document, ["[data-tracer-purchased-at]", "[data-order-date]", "[data-purchase-date]", "[class*='order-date' i]"]);
   const bodyMatch = normalizedText(document.body).match(
-    /\border\s*date\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/i,
+    /\border\s*date\s*[:-]?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/i,
   )?.[1];
   return parsePurchaseDate(explicit ?? bodyMatch) ?? fallbackNow.toISOString();
 }
@@ -816,7 +816,7 @@ function parsePurchaseDate(value: string | null | undefined): string | null {
     const parsedIso = new Date(iso);
     if (!Number.isNaN(parsedIso.getTime())) return parsedIso.toISOString();
   }
-  const uk = value.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  const uk = value.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (uk?.[1] && uk[2] && uk[3]) {
     const year = Number(uk[3].length === 2 ? `20${uk[3]}` : uk[3]);
     const month = Number(uk[2]);

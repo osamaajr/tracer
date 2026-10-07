@@ -26,6 +26,8 @@ function bundle(entry, output, format, globalName) {
     `--format=${format}`,
     "--platform=browser",
     "--target=chrome120",
+    // Compact packaging while preserving identifiers and diagnostic messages.
+    "--minify-whitespace",
     `--outfile=${resolve(nextDir, output)}`,
     ...definitions,
   ];

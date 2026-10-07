@@ -7,13 +7,6 @@ import productDeskLamp from "./assets/products/desk-lamp.webp?inline";
 import productDaypack from "./assets/products/daypack.webp?inline";
 import productEspressoMachine from "./assets/products/espresso-machine.webp?inline";
 import productRunningTrainers from "./assets/products/running-trainers.webp?inline";
-import storeAmazon from "./assets/retailers/store-amazon.png";
-import storeApple from "./assets/retailers/store-apple.png";
-import storeArgos from "./assets/retailers/store-argos.svg";
-import storeAsos from "./assets/retailers/store-asos.svg";
-import storeCurrys from "./assets/retailers/store-currys.png";
-import storeJohnLewis from "./assets/retailers/store-john-lewis.png";
-import storeNike from "./assets/retailers/store-nike.svg";
 import tracerLogo from "./assets/tracer-logo.png";
 import tracerWordmark from "./assets/tracer-wordmark.png";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -116,10 +109,14 @@ function LandingPageB() {
     if (reducedMotion.matches) return;
 
     let frame = 0;
+    let previousShift: number | undefined;
     const updateSky = () => {
       frame = 0;
       const shift = Math.min(window.scrollY * 0.035, 24);
-      skyRef.current?.style.setProperty("--landing-b-sky-shift", `${shift}px`);
+      if (shift !== previousShift && skyRef.current) {
+        skyRef.current.style.setProperty("--landing-b-sky-shift", `${shift}px`);
+        previousShift = shift;
+      }
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(updateSky);
@@ -928,20 +925,6 @@ function statusLabel(status: "idle" | "loading" | "ready" | "offline"): string {
 
 function retailerName(purchase: DashboardPurchase): string {
   return purchase.retailerName ?? (purchase.retailerId === "john-lewis" ? "John Lewis" : purchase.retailerId);
-}
-
-function _retailerAsset(retailerId: string): string | null {
-  const assets: Record<string, string> = {
-    amazon: storeAmazon,
-    apple: storeApple,
-    argos: storeArgos,
-    asos: storeAsos,
-    currys: storeCurrys,
-    "john-lewis": storeJohnLewis,
-    nike: storeNike,
-  };
-
-  return assets[retailerId] ?? null;
 }
 
 function isActionableOpportunityStatus(status: string): boolean {

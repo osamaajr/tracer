@@ -254,7 +254,7 @@ function parseDisplayedCurrentPrice(value: string, currency: string): Money | nu
   // Sale components often expose a single accessible string such as
   // "Was £85, now £34.99". Prefer the explicitly current value instead of
   // accidentally recording the crossed-out original price.
-  const labelledCurrent = value.match(/(?:now|current(?:\s+price)?|sale(?:\s+price)?)\s*[:\-]?\s*((?:£|\$|€|GBP|USD|EUR)\s*[0-9][0-9.,\s]*|[0-9][0-9.,\s]*\s*(?:£|\$|€|GBP|USD|EUR))/i)?.[1];
+  const labelledCurrent = value.match(/(?:now|current(?:\s+price)?|sale(?:\s+price)?)\s*[:-]?\s*((?:£|\$|€|GBP|USD|EUR)\s*[0-9][0-9.,\s]*|[0-9][0-9.,\s]*\s*(?:£|\$|€|GBP|USD|EUR))/i)?.[1];
   if (labelledCurrent) return parsePrice(labelledCurrent.trim(), currency);
   return parsePrice(value, currency);
 }

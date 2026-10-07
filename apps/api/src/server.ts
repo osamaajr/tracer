@@ -17,7 +17,6 @@ import {
   type PriceFetcher,
   type PurchaseDraft,
   type PurchaseLineItemDraft,
-  type PurchaseRecord,
 } from "@tracer/core";
 import { requireAuthenticatedUser } from "./auth";
 import { type ApiConfig, loadConfig } from "./config";

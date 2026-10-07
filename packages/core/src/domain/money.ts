@@ -80,7 +80,7 @@ function parseLocalizedAmount(raw: string): number | null {
     }
   }
 
-  let normalized = compact;
+  let normalized: string;
   if (decimalSeparator) {
     const decimalIndex = compact.lastIndexOf(decimalSeparator);
     normalized = `${compact.slice(0, decimalIndex).replace(/[.,]/g, "")}.${compact.slice(decimalIndex + 1)}`;
@@ -103,14 +103,29 @@ export function isLessThan(left: Money, right: Money): boolean {
   return left.amountMinor < right.amountMinor;
 }
 
+// Keep repeated list rendering cheap without retaining unbounded currency inputs.
+const moneyFormatters = new Map<string, Intl.NumberFormat>();
+const maximumMoneyFormatters = 32;
+
 export function formatMoney(value: Money): string {
   const pounds = value.amountMinor / 100;
 
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: value.currency,
-    maximumFractionDigits: Number.isInteger(pounds) ? 0 : 2,
-  }).format(pounds);
+  const maximumFractionDigits = Number.isInteger(pounds) ? 0 : 2;
+  const key = `${value.currency}:${maximumFractionDigits}`;
+  let formatter = moneyFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: value.currency,
+      maximumFractionDigits,
+    });
+    if (moneyFormatters.size >= maximumMoneyFormatters) {
+      const oldestKey = moneyFormatters.keys().next().value;
+      if (oldestKey !== undefined) moneyFormatters.delete(oldestKey);
+    }
+    moneyFormatters.set(key, formatter);
+  }
+  return formatter.format(pounds);
 }
 
 function inferCurrency(value: string, fallbackCurrency: string): string {
