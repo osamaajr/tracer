@@ -19,9 +19,11 @@ import {
   monitorSavedItems,
 } from "./savedItemMonitor";
 import { savedMonitorReadyAtKey, shouldRunSavedMonitorAlarm } from "./savedMonitorAlarm";
-import { defaultApiBaseUrl, defaultUserId } from "./config";
+import { configuredBaseUrl, defaultApiBaseUrl } from "./config";
+import { getTracerUserId } from "./identity";
 
 const serviceWorkerStartedAt = performance.now();
+void chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
 const backgroundTraceEnabled = import.meta.env.MODE !== "production" || import.meta.env.VITE_TRACER_STARTUP_TRACE === true;
 if (backgroundTraceEnabled) {
   console.debug(`[Tracer startup] service worker module evaluation began (timeOrigin ${performance.timeOrigin})`);
@@ -656,8 +658,7 @@ async function syncMonitoringPreference(): Promise<void> {
 
 function getApiBaseUrl(): Promise<string> {
   apiBaseUrlPromise ??= chrome.storage.sync.get("apiBaseUrl").then((stored) => {
-    const configured = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : "";
-    return configured || defaultApiBaseUrl;
+    return configuredBaseUrl(stored.apiBaseUrl, defaultApiBaseUrl);
   }).catch((error: unknown) => {
     apiBaseUrlPromise = null;
     throw error;
@@ -676,16 +677,7 @@ function getPriceDropAlertsEnabled(): Promise<boolean> {
 }
 
 function getUserId(): Promise<string> {
-  userIdPromise ??= chrome.storage.local.get("tracerUserId").then(async (stored) => {
-    const configured = typeof stored.tracerUserId === "string" ? stored.tracerUserId : "";
-
-    if (configured) {
-      return configured;
-    }
-
-    await chrome.storage.local.set({ tracerUserId: defaultUserId });
-    return defaultUserId;
-  }).catch((error: unknown) => {
+  userIdPromise ??= getTracerUserId().catch((error: unknown) => {
     userIdPromise = null;
     throw error;
   });

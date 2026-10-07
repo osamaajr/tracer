@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import type { ApiConfig } from "./config";
 
@@ -14,7 +15,12 @@ export function requireAuthenticatedUser(
 
   if (requestedUserId && isSafeUserId(requestedUserId)) {
     if (!config.enableDevAuth) {
-      throw new Error("Extension token authentication is not configured");
+      if (!/^[a-f0-9]{64}$/.test(requestedUserId)) {
+        throw new Error("Authentication required");
+      }
+      return {
+        id: `anon_${createHash("sha256").update(requestedUserId).digest("hex")}`,
+      };
     }
 
     return { id: requestedUserId };

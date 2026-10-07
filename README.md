@@ -4,7 +4,7 @@
 
 Tracer is a Chrome extension and companion web app for tracking products across public online stores. Shoppers can save a product before buying it, see price changes in their Saved list, and protect a completed purchase. For protected purchases, Tracer checks later prices and surfaces a claim opportunity only when a verified retailer policy supports one.
 
-This repository is a working prototype, not a published Chrome Web Store product. It includes the extension, a React landing page, a Fastify API, shared TypeScript domain logic, deterministic monitoring fixtures, and a PostgreSQL schema for a future persistence layer.
+This repository includes the extension, a React landing page, a Fastify API, shared TypeScript domain logic, deterministic monitoring fixtures, and a PostgreSQL schema. Local development uses a file store; the production API uses transactional PostgreSQL storage.
 
 ## At a glance
 
@@ -13,7 +13,7 @@ This repository is a working prototype, not a published Chrome Web Store product
 | **Product** | Chrome Manifest V3 extension, landing page, and purchase dashboard |
 | **Stack** | TypeScript, React, Vite, Fastify, Vitest, Drizzle schema |
 | **Focus** | Product extraction, price monitoring, safe URL handling, and policy-aware opportunities |
-| **Local data** | Saved items in Chrome storage; protected purchases in a file-backed development store |
+| **Storage** | Saved items in Chrome storage; protected purchases in a local file for development or PostgreSQL for production |
 
 ## What it does
 
@@ -52,7 +52,7 @@ flowchart LR
 | --- | --- |
 | [`apps/extension`](apps/extension) | Popup, content scripts, saved-item monitor, notifications, and Chrome storage |
 | [`apps/web`](apps/web) | React landing page and dashboard UI |
-| [`apps/api`](apps/api) | Fastify endpoints, monitoring scheduler, and development file store |
+| [`apps/api`](apps/api) | Fastify endpoints, monitoring scheduler, and development/production repositories |
 | [`packages/core`](packages/core) | Domain models, extraction, matching, policy, and monitoring use cases |
 | [`packages/db`](packages/db) | Drizzle PostgreSQL schema and initial migration |
 | [`docs`](docs) | Architecture and deeper monitoring notes |
@@ -106,9 +106,11 @@ Tests cover extraction, saved-item behavior, monitoring decisions, policy evalua
 ## Current scope
 
 - Product and order capture work best on public HTTPS pages with clear structured data or unambiguous page content. Private, heavily scripted, or bot-protected pages may not provide a checkable price.
-- Saved items are local to one Chrome profile. Account sync and production authentication are not wired yet.
-- Local purchase persistence is file-backed. The PostgreSQL schema and migration are present, but a database repository is not connected to the app.
+- Saved items are local to one Chrome profile. Protected purchases use a random extension-installation token; account sync and recovery are not available.
+- Production purchase persistence uses a transactional PostgreSQL JSONB state row. The normalized schema is not yet used by the API.
 - John Lewis is the first verified policy adapter. Other stores can be tracked without implying a refund is available.
 - The extension is loaded locally; it is not yet distributed through the Chrome Web Store.
 
 For implementation detail, see [`docs/architecture.md`](docs/architecture.md), [`docs/universal-watchlist.md`](docs/universal-watchlist.md), and [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
+
+For the API hosting, domain, and customer extension release steps, see [`docs/production-deployment.md`](docs/production-deployment.md).

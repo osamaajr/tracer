@@ -23,6 +23,8 @@ import { type ApiConfig, loadConfig } from "./config";
 import { createDevFixturePriceFetcher } from "./devFixturePriceFetcher";
 import { HttpPriceFetcher } from "./httpPriceFetcher";
 import { FileTracerRepository } from "./repositories/fileTracerRepository";
+import { PostgresTracerRepository } from "./repositories/postgresTracerRepository";
+import { registerApiRateLimit } from "./rateLimit";
 import {
   devMonitoringQuerySchema,
   lineItemSchema,
@@ -56,11 +58,13 @@ export async function createTracerServer(
   options: CreateServerOptions = {},
 ): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
-  const repository =
-    options.repository ?? new FileTracerRepository(config.dataFile);
+  const repository = options.repository ?? (config.databaseUrl
+    ? new PostgresTracerRepository(config.databaseUrl)
+    : new FileTracerRepository(config.dataFile));
   const configuredPriceFetcher = options.priceFetcher;
   const livePriceFetcher = configuredPriceFetcher ?? new HttpPriceFetcher();
   const app = Fastify({
+    trustProxy: process.env.NODE_ENV === "production",
     logger:
       process.env.NODE_ENV === "test"
         ? false
@@ -72,6 +76,10 @@ export async function createTracerServer(
   await app.register(cors, {
     origin: [/^chrome-extension:\/\//, /^http:\/\/localhost:\d+$/],
   });
+  if (!config.enableDevAuth) registerApiRateLimit(app);
+  if (!options.repository && repository instanceof PostgresTracerRepository) {
+    app.addHook("onClose", async () => repository.close());
+  }
 
   app.setErrorHandler((error, _request, reply) => {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -90,10 +98,20 @@ export async function createTracerServer(
     return reply.code(500).send({ error: "internal_server_error" });
   });
 
-  app.get("/health", async () => ({
-    ok: true,
-    service: "tracer-api",
-  }));
+  app.get("/health", async () => {
+    if (repository instanceof PostgresTracerRepository) {
+      await repository.getMonitoringPreference("__health__");
+    }
+    return { ok: true, service: "tracer-api" };
+  });
+
+  app.get("/api/cron/monitor", async (request, reply) => {
+    if (!config.cronSecret || request.headers.authorization !== `Bearer ${config.cronSecret}`) {
+      return reply.code(401).send({ error: "authentication_required" });
+    }
+    const summary = await runPriceMonitoringCycle({ repository, priceFetcher: livePriceFetcher });
+    return { ok: true, summary };
+  });
 
   app.post("/api/purchases/protect", async (request, reply) => {
     const user = requireAuthenticatedUser(request, config);

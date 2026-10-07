@@ -473,7 +473,7 @@ export class FileTracerRepository implements TracerRepository {
     );
   }
 
-  private async mutate<T>(mutator: (state: StoreState) => T): Promise<T> {
+  protected async mutate<T>(mutator: (state: StoreState) => T): Promise<T> {
     const operation = this.queue.then(async () => {
       const state = await this.read();
       const result = mutator(state);
@@ -489,7 +489,7 @@ export class FileTracerRepository implements TracerRepository {
     return operation;
   }
 
-  private async read(): Promise<StoreState> {
+  protected async read(): Promise<StoreState> {
     try {
       const contents = await readFile(this.filePath, "utf8");
       const parsed = JSON.parse(contents) as StoreState;

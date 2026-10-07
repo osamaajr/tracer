@@ -19,7 +19,8 @@ import {
   setPendingPurchases,
   type PendingProtectedPurchase,
 } from "./pendingPurchases";
-import { defaultApiBaseUrl, defaultDashboardBaseUrl, defaultUserId } from "./config";
+import { configuredBaseUrl, defaultApiBaseUrl, defaultDashboardBaseUrl, defaultUserId } from "./config";
+import { getTracerUserId } from "./identity";
 
 interface ScanResponse {
   ok: boolean;
@@ -307,7 +308,6 @@ let activeScanRunId = 0;
 let dashboardCache: DashboardData | null = null;
 let confettiPopulated = false;
 let savedCelebrationTimer = 0;
-let tracerUserIdPromise: Promise<string> | null = null;
 let monitoringEnabled = true;
 let protectedItemCount = 0;
 let savedItemCount = 0;
@@ -387,10 +387,8 @@ const preferencesReady = chrome.storage.sync.get([
   "priceDropAlertsEnabled",
   "monitoringEnabled",
 ]).then((stored) => {
-  apiBaseUrl = typeof stored.apiBaseUrl === "string" ? stored.apiBaseUrl : defaultApiBaseUrl;
-  dashboardBaseUrl = typeof stored.dashboardBaseUrl === "string"
-    ? stored.dashboardBaseUrl
-    : defaultDashboardBaseUrl;
+  apiBaseUrl = configuredBaseUrl(stored.apiBaseUrl, defaultApiBaseUrl);
+  dashboardBaseUrl = configuredBaseUrl(stored.dashboardBaseUrl, defaultDashboardBaseUrl);
   apiInput.value = apiBaseUrl;
   dashboardLink.href = buildDashboardUrl();
   setSwitchValue(priceDropAlertsToggle, stored.priceDropAlertsEnabled !== false);
@@ -412,8 +410,8 @@ saveButton.addEventListener("click", () => {
   const value = apiInput.value.trim();
 
   if (
-    !value.startsWith("http://localhost:") &&
-    !value.startsWith("http://127.0.0.1:") &&
+    !(defaultApiBaseUrl.startsWith("http://") && value.startsWith("http://localhost:")) &&
+    !(defaultApiBaseUrl.startsWith("http://") && value.startsWith("http://127.0.0.1:")) &&
     !value.startsWith("https://")
   ) {
     apiInput.setAttribute("aria-invalid", "true");
@@ -425,7 +423,7 @@ saveButton.addEventListener("click", () => {
   void chrome.storage.sync.set({ apiBaseUrl: value }).then(() => {
     apiBaseUrl = value;
     dashboardCache = null;
-    renderState(currentState, "Settings saved.", "Tracer will use this API URL for local testing.");
+    renderState(currentState, "Settings saved.", "Tracer will use this API URL.");
   });
 });
 
@@ -2085,16 +2083,6 @@ async function deleteSelectedPurchase(): Promise<void> {
 async function removePendingPurchase(pendingDraftId: string): Promise<void> {
   const pending = await getPendingPurchases();
   await setPendingPurchases(pending.filter((purchase) => purchase.id !== pendingDraftId));
-}
-
-function getTracerUserId(): Promise<string> {
-  tracerUserIdPromise ??= chrome.storage.local.get("tracerUserId").then(async (stored) => {
-    const configured = typeof stored.tracerUserId === "string" ? stored.tracerUserId : "";
-    if (configured) return configured;
-    await chrome.storage.local.set({ tracerUserId: defaultUserId });
-    return defaultUserId;
-  });
-  return tracerUserIdPromise;
 }
 
 function daysUntil(dateOnly: string): number {

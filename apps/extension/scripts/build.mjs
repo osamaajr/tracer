@@ -4,9 +4,10 @@ import process from "node:process";
 import { spawnSync } from "node:child_process";
 
 const extensionRoot = resolve(import.meta.dirname, "..");
-const outDir = resolve(extensionRoot, "dist");
-const nextDir = resolve(extensionRoot, ".dist-next");
-const previousDir = resolve(extensionRoot, ".dist-previous");
+const outputName = process.env.TRACER_EXTENSION_OUTPUT_DIR ?? "dist";
+const outDir = resolve(extensionRoot, outputName);
+const nextDir = resolve(extensionRoot, `.${outputName}-next`);
+const previousDir = resolve(extensionRoot, `.${outputName}-previous`);
 const sourceDir = resolve(extensionRoot, "src");
 
 const esbuild = resolve(extensionRoot, "..", "..", "node_modules", ".bin", "esbuild");

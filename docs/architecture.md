@@ -24,11 +24,11 @@ The current implementation proves an any-store capture pipeline with one verifie
 - Web app: Vite + React. The landing page and early dashboard are client-rendered and do not need a heavier SSR framework yet.
 - API: Fastify. It gives typed, testable HTTP boundaries without introducing a large framework.
 - Domain: `packages/core`. Generic extraction, retailer adapters, policy evaluation, product matching, and monitoring live outside the API so they can be tested without servers or browsers.
-- Database target: PostgreSQL with Drizzle schema definitions and SQL migrations. Local dev currently uses a file-backed repository so the first slice runs without requiring database credentials.
+- Database target: PostgreSQL with Drizzle schema definitions and SQL migrations. Local dev uses a file-backed repository. The initial production API stores the same state atomically in a PostgreSQL JSONB row; the normalized schema is reserved for a scale-up migration.
 - Extension: Chrome Manifest V3 with Vite. The popup injects a one-shot generic scanner into the active tab, while the content script runs on HTTPS pages and only renders when the shared extractor finds a reliable order.
 - Tests: Vitest with saved HTML fixtures. Tests do not depend on live retailer pages.
-- Authentication direction: Clerk for the beta product, storing the Clerk subject in `users.external_auth_subject`. Clerk avoids custom password handling and has a realistic browser extension authentication path. Current local development uses an explicit dev user header behind non-production config.
-- Jobs direction: start with a single monitoring worker use case and a manual API trigger. A production deployment can schedule product-level monitoring by retailer/store and product, then evaluate all active purchases for that product.
+- Authentication: the customer extension holds a random installation token and the API derives a pseudonymous user key from it. Local development uses an explicit dev user header behind non-production config. Account sign-in and recovery remain future work.
+- Jobs: local development uses an in-process scheduler. On Vercel Hobby, a secret-protected daily cron invokes the monitoring use case; the extension also offers an immediate price check. More frequent or product-level scheduling remains future work.
 
 ## Domain Model
 
@@ -67,8 +67,8 @@ This is intentionally not a generic policy engine. A generic store purchase may 
 
 ## Incomplete By Design
 
-- Clerk is selected but not integrated.
-- PostgreSQL repository implementation is not yet wired; migrations are ready.
-- Real scheduled backend jobs are not present yet.
+- Account sign-in and cross-device recovery are not integrated.
+- Production persistence currently uses a single JSONB state row; normalized tables are ready but are not yet wired.
+- Vercel Hobby scheduled monitoring runs once per day. More frequent jobs require a different plan or scheduler.
 - The live HTML fetcher covers public product pages. Private pages, heavy bot protection, client-only prices, and stores that hide prices from HTML will need retailer-specific adapters or browser-based fetching.
 - Extension publishing and Chrome Web Store URL are placeholders.

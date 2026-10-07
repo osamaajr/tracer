@@ -1,11 +1,12 @@
 {
   "name": "@tracer/extension",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
     "build": "node scripts/build.mjs",
+    "build:release": "node scripts/build-release.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

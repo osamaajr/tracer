@@ -7,6 +7,7 @@ export default tseslint.config(
     ignores: [
       "node_modules",
       "**/dist/**",
+      "apps/extension/release/**",
       "coverage",
       ".tracer-data",
       "package-lock.json",
