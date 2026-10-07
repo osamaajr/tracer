@@ -14,9 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@tracer/core": "*",
     "@tracer/db": "*",
-    "@fastify/cors": "^11.3.0",
     "fastify": "^5.12.1",
     "linkedom": "^0.18.13",
     "postgres": "^3.4.9",
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
   }
 }
