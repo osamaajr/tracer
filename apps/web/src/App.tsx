@@ -471,10 +471,12 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
 function SitePage({
   title,
   description,
+  background = "sky",
   children,
 }: {
   title: string;
   description: string;
+  background?: "sky" | "plain";
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -482,7 +484,7 @@ function SitePage({
   }, [title]);
 
   return (
-    <main className="site-page-shell landing-shell-b landing-b-subpage">
+    <main className="site-page-shell landing-shell-b landing-b-subpage" data-background={background}>
       <LandingHeader homeHref="/" installHref="/#install" />
       <div className="site-page-main">
         <header className="site-page-intro">
@@ -521,7 +523,7 @@ function ContactPage() {
 
 function PrivacyPage() {
   return (
-    <SitePage title="Privacy Policy" description="How Tracer handles product, purchase, and settings data.">
+    <SitePage title="Privacy Policy" description="How Tracer handles product, purchase, and settings data." background="plain">
       <article className="policy-document">
         <PolicySection title="About this policy">
           <p>Last updated 22 September 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified on our <a href="/contact">Contact page</a> (“Tracer”, “we”, “us”).</p>
@@ -588,7 +590,7 @@ function PrivacyPage() {
 
 function TermsPage() {
   return (
-    <SitePage title="Terms of Service" description="The terms that apply when you use Tracer.">
+    <SitePage title="Terms of Service" description="The terms that apply when you use Tracer." background="plain">
       <article className="policy-document">
         <PolicySection title="Agreement">
           <p>Last updated 22 September 2026. By visiting the Tracer website or installing or using the extension, you agree to these terms. If you do not agree, do not use Tracer.</p>

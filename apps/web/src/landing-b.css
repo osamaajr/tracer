@@ -1536,6 +1536,9 @@
   background: linear-gradient(180deg, rgb(250 248 243 / 0%) 0, #faf8f3 510px), url('./assets/landing-b/tracer-sky.webp') center top / 100% auto no-repeat, #faf8f3;
   color: #22231f;
 }
+.landing-b-subpage.site-page-shell[data-background="plain"] {
+  background: #faf8f3;
+}
 .landing-b-subpage .site-page-main {
   max-width:1216px;
   padding:88px 38px 112px;
