@@ -30,7 +30,7 @@
 
 ## Configuration and operations
 
-The API project uses the repository's npm workspace install. `apps/api/vercel.json` sets the function region to London and the daily cron. Vercel serves the Fastify entry point as a function; the in-process scheduler is disabled there. Local development continues to use the 12-hour scheduler and `.tracer-data/dev-store.json` when no database URL is set.
+The API project uses the repository's npm workspace install. Its build typechecks the source and bundles the API with its shared workspace packages into `dist/server.cjs`; the root `index.js` is Vercel's Fastify entry point. `apps/api/vercel.json` sets the function region to London and the daily cron. The in-process scheduler is disabled on Vercel. Local development continues to use the 12-hour scheduler and `.tracer-data/dev-store.json` when no database URL is set.
 
 The database holds purchase details and price history. Monitor database usage and API logs after deploys, and export a backup before changing storage formats. The single JSONB state row suits an initial small beta; migrate to the existing normalized tables before the data or request volume grows substantially. The in-memory request limiter is only a per-function-instance guard; configure Vercel Firewall rules if public traffic grows.
 
