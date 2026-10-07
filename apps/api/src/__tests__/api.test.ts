@@ -6,7 +6,7 @@ import {
   type PurchaseDraft,
   type ProductPriceSnapshot,
 } from "@tracer/core";
-import { createTracerServer } from "../server";
+import { createTracerServer } from "../tracerServer";
 
 const purchaseDraft: PurchaseDraft = {
   retailerId: "john-lewis",

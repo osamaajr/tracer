@@ -1,4 +1,4 @@
-import { createTracerServer } from "./server";
+import { createTracerServer } from "./tracerServer";
 import { loadConfig } from "./config";
 import { HttpPriceFetcher } from "./httpPriceFetcher";
 import { startMonitoringScheduler } from "./monitoringScheduler";
