@@ -200,7 +200,7 @@ async function syncOpportunity(input: {
     input.now,
   );
 
-  if (!decision.eligible) {
+  if (decision.eligible === false) {
     if (!existing) {
       if (decision.reason === "outside_policy_window") {
         result.activityEventsCreated += await recordActivity(input.repository, {
