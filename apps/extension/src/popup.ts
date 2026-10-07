@@ -443,9 +443,11 @@ settingsToggle.addEventListener("click", openSettings);
 menuToggle.addEventListener("click", () => { popupMenu.hidden = !popupMenu.hidden; menuToggle.setAttribute("aria-expanded", String(!popupMenu.hidden)); });
 yourItemsMenu.addEventListener("click", openProtectedItems);
 menuSettings.addEventListener("click", openSettings);
-getElement<HTMLButtonElement>("menuHelp").addEventListener("click", () => {
+getElement<HTMLButtonElement>("menuHelp").addEventListener("click", async () => {
   popupMenu.hidden = true;
-  openExtensionUrl(`${dashboardBaseUrl.replace(/\/$/, "")}/`);
+  menuToggle.setAttribute("aria-expanded", "false");
+  await preferencesReady;
+  openExtensionUrl(new URL("/contact", dashboardBaseUrl).href);
 });
 popupBack.addEventListener("click", navigateBack);
 priceDropAlertsToggle.addEventListener("click", () => {

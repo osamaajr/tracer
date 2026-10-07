@@ -39,6 +39,7 @@ interface PopupHarnessOptions {
   savedProducts?: Array<SavedProduct | null>;
   protectResponse?: unknown;
   dashboardBaseUrl?: string;
+  preferencesGate?: Promise<void>;
   dashboardResponse?: {
     purchases: Array<Record<string, unknown>>;
     opportunities: Array<Record<string, unknown>>;
@@ -67,6 +68,46 @@ describe("extension popup", () => {
     delete (globalThis as { document?: unknown }).document;
     delete (globalThis as { window?: unknown }).window;
     globalThis.fetch = originalFetch;
+  });
+
+  it.each([
+    "https://app.tracer.test",
+    "https://app.tracer.test/",
+    "https://app.tracer.test/dashboard?purchase=123#items",
+    "http://127.0.0.1:5174",
+  ])("opens Contact from the Help menu using %s", async (dashboardBaseUrl) => {
+    const harness = await setupPopup({ dashboardBaseUrl });
+    await flushPopup();
+    const toggle = element<HTMLButtonElement>("menuToggle");
+    toggle.click();
+    expect(element("popupMenu").hidden).toBe(false);
+
+    element<HTMLButtonElement>("menuHelp").click();
+    await flushPopup();
+
+    expect(harness.tabsCreate).toHaveBeenCalledExactlyOnceWith({
+      url: new URL("/contact", dashboardBaseUrl).href,
+    });
+    expect(element("popupMenu").hidden).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("waits for saved preferences before opening Help", async () => {
+    let releasePreferences!: () => void;
+    const preferencesGate = new Promise<void>((resolve) => { releasePreferences = resolve; });
+    const harness = await setupPopup({
+      dashboardBaseUrl: "https://app.tracer.test",
+      preferencesGate,
+    });
+    element<HTMLButtonElement>("menuToggle").click();
+    element<HTMLButtonElement>("menuHelp").click();
+    expect(harness.tabsCreate).not.toHaveBeenCalled();
+
+    releasePreferences();
+    await flushPopup();
+    expect(harness.tabsCreate).toHaveBeenCalledExactlyOnceWith({
+      url: "https://app.tracer.test/contact",
+    });
   });
 
   it("saves a product, shows confirmation, deduplicates, and separates Saved from Protected", async () => {
@@ -985,6 +1026,7 @@ async function setupPopup(
         },
         sync: {
           get: vi.fn(async (key: string | string[]) => {
+            await options.preferencesGate;
             const keys = Array.isArray(key) ? key : [key];
             return {
               ...(keys.includes("dashboardBaseUrl") && options.dashboardBaseUrl
