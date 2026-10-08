@@ -1,0 +1,20 @@
+Save the things you like. Come back when you’re ready.
+
+Tracer keeps products from supported shopping pages in one place and watches for price changes—even after you buy.
+
+SAVE FOR LATER
+Open Tracer on a product page, choose an image and save the item. Revisit your saved items and open the retailer’s product page whenever you want.
+
+WATCH THE PRICE
+Tracer checks saved product pages and protected purchases for price drops. See the latest verified price and enable Chrome notifications for relevant changes.
+
+PROTECT A PURCHASE
+On a supported completed order page, Tracer detects purchase details. Review them before choosing Protect this purchase. Where the retailer page exposes it reliably, Tracer shows the final order total after discounts, delivery and fees separately from the item price.
+
+YOU STAY IN CONTROL
+No Tracer account or email sign-in is required. Saved items stay in your browser. Protecting a purchase sends its details to Tracer’s service for monitoring. You can disable monitoring or notifications and remove saved or protected items in the extension.
+
+Retailer support depends on page structure and available data. Prices and availability can change; if Tracer cannot verify a price, it reports that rather than inventing one. Tracer does not buy items, submit claims or guarantee refunds.
+
+Privacy: https://www.tracercart.com/privacy
+Support: https://www.tracercart.com/contact

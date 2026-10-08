@@ -1772,11 +1772,11 @@
       main[data-screen="detected"] { min-height:550px; overflow:hidden; }
       main[data-screen="detected"] .detected-screen {
         align-content:start;
-        gap:16px;
+        gap:12px;
         grid-template-rows:auto minmax(106px,1fr) auto;
         justify-content:stretch;
         min-height:470px;
-        padding:0 10px 10px;
+        padding:0 10px 0;
       }
       main[data-screen="detected"] .detected-copy { gap:0; }
       main[data-screen="detected"] .purchase-receipt {
@@ -1832,6 +1832,10 @@
         letter-spacing:-.025em;
         line-height:1;
       }
+      .protection-data-note { color:#777871; font:12px/1.4 Arial,sans-serif; margin:0; text-align:center; }
+      .protection-data-note a { color:inherit; }
+      main[data-screen="detected"] .purchase-receipt { height:126px; margin-bottom:4px; }
+      main[data-screen="detected"] .purchase-receipt > img { height:204px; width:204px; left:-14px; }
       main[data-screen="detected"] .detected-copy .purchase-intro {
         color:#85857f;
         font:350 14px/1.45 Arial,sans-serif;
@@ -2217,6 +2221,7 @@
 
         <section class="actions">
           <button class="protect" id="protect" type="button" disabled>Protect this purchase</button>
+          <p class="protection-data-note">Protecting sends these purchase details to Tracer for price monitoring. <a href="https://www.tracercart.com/privacy" target="_blank" rel="noopener noreferrer">Privacy</a></p>
           <button class="text-action" id="reviewDetails" type="button" disabled>Review details</button>
           <button class="maybe-later" id="maybeLater" type="button">Maybe later</button>
         </section>

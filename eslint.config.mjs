@@ -9,6 +9,7 @@ export default tseslint.config(
       "**/dist/**",
       "apps/extension/release/**",
       "coverage",
+      "output/**",
       ".tracer-data",
       "package-lock.json",
     ],

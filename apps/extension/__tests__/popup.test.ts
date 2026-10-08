@@ -7,6 +7,9 @@ import { gbp, type PurchaseDraft, type SavedProduct } from "@tracer/core";
 
 const popupPath = new URL("../popup.html", import.meta.url);
 const originalFetch = globalThis.fetch;
+const originalSetTimeout = globalThis.setTimeout;
+const popupTimers = new Set<ReturnType<typeof setTimeout>>();
+const fallbackPriceCheck = vi.fn(async () => { throw new Error("Store price unavailable in this fixture"); });
 
 const purchaseDraft: PurchaseDraft = {
   retailerId: "john-lewis",
@@ -58,10 +61,18 @@ interface PopupHarnessOptions {
 describe("extension popup", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-22T09:05:00.000Z"));
+    fallbackPriceCheck.mockClear();
+    vi.doMock("../src/storePriceCheck", () => ({
+      checkStorePrice: fallbackPriceCheck,
+    }));
   });
 
   afterEach(() => {
+    for (const timer of popupTimers) clearTimeout(timer);
+    popupTimers.clear();
     vi.restoreAllMocks();
+    vi.doUnmock("../src/storePriceCheck");
     delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
     delete (globalThis as { MutationObserver?: unknown }).MutationObserver;
     delete (globalThis as { chrome?: unknown }).chrome;
@@ -258,6 +269,7 @@ describe("extension popup", () => {
       dashboardBaseUrl: "https://app.tracer.test",
       scanResponse: {
         ok: false,
+        failureReason: "not_purchase_page",
         error: "No order confirmation data found on this page.",
       },
       tabUrl: "https://example.com/articles/story",
@@ -381,6 +393,10 @@ describe("extension popup", () => {
     });
     await flushPopup();
 
+    expect(harness.app.dataset.screen).toBe("detecting");
+    await wait(1_200);
+    await flushPopup();
+
     expect(harness.app.dataset.screen).toBe("empty");
     expect(text("stateTitle")).toBe("Nothing to save here");
     expect(text("stateCopy")).toBe("Open Tracer on a product page to save it for later.");
@@ -495,7 +511,7 @@ describe("extension popup", () => {
     expect(harness.app.dataset.screen).toBe("detail");
     expect(text("detailStatus")).toBe("● Price dropped by £30");
     expect(element("detailStatus").dataset.alert).toBe("true");
-    expect(text("detailPaid")).toBe("£349.00");
+    expect(text("detailPaid")).toBe("£349");
     expect(text("detailCurrentPrice")).toBe("£319");
     expect(element<HTMLImageElement>("detailImage").getAttribute("src")).toBe("https://store.example.com/headphones.png");
     expect(text("detailMonitoringInsight")).toContain("Last checked");
@@ -546,7 +562,7 @@ describe("extension popup", () => {
     harness.firstItem().click();
     await flushPopup();
     expect(harness.priceCheckRequests()).toHaveLength(1);
-    expect(text("detailCurrentPrice")).toBe("Unable to check");
+    await vi.waitFor(() => expect(text("detailCurrentPrice")).toBe("Unable to check"));
     expect(element("detailCurrentPrice").dataset.checking).toBe("false");
   });
 
@@ -561,7 +577,8 @@ describe("extension popup", () => {
     await flushPopup();
 
     expect(harness.priceCheckRequests()).toHaveLength(1);
-    expect(text("detailCurrentPrice")).toBe("£319.99");
+    await vi.waitFor(() => expect(element("detailCurrentPrice").dataset.checking).toBe("false"));
+    expect(text("detailCurrentPrice")).toBe("£319");
     expect(text("detailPriceNote")).toContain("latest check failed");
     expect(element("detailCurrentPrice").dataset.checking).toBe("false");
   });
@@ -815,6 +832,31 @@ describe("extension popup", () => {
     expect(harness.deleteItem.disabled).toBe(false);
   });
 
+  it.each([false, true])("keeps a deletion error visible after a delayed price check (failure: %s)", async (priceCheckFails) => {
+    let releaseCheck!: () => void;
+    const priceCheckGate = new Promise<void>((resolve) => { releaseCheck = resolve; });
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.lastCheckedAt = "2026-09-01T08:00:00.000Z";
+    const harness = await setupPopup({ dashboardResponse: dashboard, deleteStatus: 500, priceCheckGate, priceCheckFails });
+    await flushPopup();
+    harness.protectedItemsCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await flushPopup();
+    expect(text("detailCurrentPrice")).toBe("Checking");
+    harness.deleteItem.click();
+    await flushPopup();
+    expect(text("detailStatus")).toBe("Couldn’t remove this item. Try again.");
+    releaseCheck();
+    await vi.waitFor(() => priceCheckFails
+      ? expect(fallbackPriceCheck).toHaveBeenCalledTimes(1)
+      : expect(harness.dashboardRequests()).toHaveLength(2));
+    await flushPopup();
+    expect(text("detailStatus")).toBe("Couldn’t remove this item. Try again.");
+    expect(element("detailCurrentPrice").dataset.checking).toBe("false");
+    expect(harness.deleteItem.disabled).toBe(false);
+  });
+
   it("saves the purchase locally when the service is unavailable", async () => {
     const protectResponse: unknown = {
       ok: false,
@@ -851,6 +893,11 @@ async function setupPopup(
   } = {},
 ) {
   const { window } = parseHTML(readFileSync(popupPath, "utf8"));
+  vi.spyOn(window, "setTimeout").mockImplementation((...args: Parameters<typeof setTimeout>) => {
+    const timer = originalSetTimeout(...args);
+    popupTimers.add(timer);
+    return timer;
+  });
   const defaultPurchaseScan = {
     ok: true,
     draft: purchaseDraft,
@@ -1011,6 +1058,7 @@ async function setupPopup(
     chrome: {
       runtime: {
         sendMessage: runtimeSendMessage,
+        getURL: vi.fn(() => new URL("../src/storePriceCheck.ts", import.meta.url).href),
         lastError: undefined,
       },
       scripting: {

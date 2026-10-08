@@ -21,6 +21,7 @@ import {
 import { savedMonitorReadyAtKey, shouldRunSavedMonitorAlarm } from "./savedMonitorAlarm";
 import { configuredBaseUrl, defaultApiBaseUrl } from "./config";
 import { getTracerUserId } from "./identity";
+import { purchaseDraftForUpload, readPurchaseProtection } from "./purchaseProtection";
 
 const serviceWorkerStartedAt = performance.now();
 void chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
@@ -461,16 +462,7 @@ async function checkPurchaseProtection(purchaseDraft: PurchaseDraft): Promise<un
 
   try {
     const [apiBaseUrl, userId] = await Promise.all([getApiBaseUrl(), getUserId()]);
-    const response = await fetchApi(`${apiBaseUrl}/api/purchases/protection-status`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-tracer-user-id": userId,
-      },
-      body: JSON.stringify({ purchaseDraft }),
-    });
-    if (!response.ok) return { protected: false, purchase: null };
-    return (await response.json()) as unknown;
+    return await readPurchaseProtection(purchaseDraft, apiBaseUrl, userId, fetchApi);
   } catch {
     return { protected: false, purchase: null };
   }
@@ -509,7 +501,7 @@ function postProtectedPurchase(apiBaseUrl: string, userId: string, purchaseDraft
       "content-type": "application/json",
       "x-tracer-user-id": userId,
     },
-    body: JSON.stringify({ purchaseDraft }),
+    body: JSON.stringify({ purchaseDraft: purchaseDraftForUpload(purchaseDraft) }),
   });
 }
 

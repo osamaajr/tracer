@@ -20,51 +20,59 @@ export async function findProtectedPurchaseForDraft(
   command: FindProtectedPurchaseForDraftCommand,
 ): Promise<FindProtectedPurchaseForDraftResult> {
   const purchases = await repository.listPurchasesForUser(command.userId);
+  const matchedPurchases = matchProtectedPurchasesForDraft(purchases, command.draft);
+  if (!matchedPurchases.length) return { protected: false, purchase: null };
+
+  const updatedPurchases: PurchaseRecord[] = [];
+  for (const purchase of matchedPurchases) {
+    const total = command.draft.orderTotalPaid;
+    if (total && (purchase.orderTotalPaid?.amountMinor !== total.amountMinor ||
+      purchase.orderTotalPaid?.currency !== total.currency)) {
+      const updated = await repository.updatePurchaseDetailsForUser(purchase.id, command.userId, {
+        pricePaid: purchase.pricePaid,
+        orderTotalPaid: total,
+        quantity: purchase.quantity,
+        productName: purchase.productName,
+        productUrl: purchase.productUrl,
+        captureMethod: purchase.captureMethod,
+        captureConfidence: purchase.captureConfidence,
+      });
+      updatedPurchases.push(updated ?? purchase);
+    } else {
+      updatedPurchases.push(purchase);
+    }
+  }
+  return { protected: true, purchase: updatedPurchases[0] ?? null };
+}
+
+/** Match in memory so detection can check existing protections without uploading a new order. */
+export function matchProtectedPurchasesForDraft(
+  purchases: PurchaseRecord[],
+  draft: PurchaseDraft,
+): PurchaseRecord[] {
   const activePurchases = purchases.filter(
     (purchase) =>
       purchase.protectionStatus === "active" &&
-      purchase.retailerId === command.draft.retailerId,
+      purchase.retailerId === draft.retailerId,
   );
 
   const unmatchedPurchases = [...activePurchases];
   const matchedPurchases: PurchaseRecord[] = [];
 
-  for (const lineItem of command.draft.lineItems) {
+  for (const lineItem of draft.lineItems) {
     const matchIndex = unmatchedPurchases.findIndex((candidate) =>
-      matchesLineItem(candidate, command.draft, lineItem),
+      matchesLineItem(candidate, draft, lineItem),
     );
 
     if (matchIndex === -1) {
-      return { protected: false, purchase: null };
+      return [];
     }
 
     const [purchase] = unmatchedPurchases.splice(matchIndex, 1);
-    if (purchase) {
-      const total = command.draft.orderTotalPaid;
-      if (total && (purchase.orderTotalPaid?.amountMinor !== total.amountMinor ||
-        purchase.orderTotalPaid?.currency !== total.currency)) {
-        const updated = await repository.updatePurchaseDetailsForUser(purchase.id, command.userId, {
-          pricePaid: purchase.pricePaid,
-          orderTotalPaid: total,
-          quantity: purchase.quantity,
-          productName: purchase.productName,
-          productUrl: purchase.productUrl,
-          captureMethod: purchase.captureMethod,
-          captureConfidence: purchase.captureConfidence,
-        });
-        matchedPurchases.push(updated ?? purchase);
-      } else {
-        matchedPurchases.push(purchase);
-      }
-    }
+    if (purchase) matchedPurchases.push(purchase);
   }
 
-  const purchase = matchedPurchases[0] ?? null;
-
-  return {
-    protected: command.draft.lineItems.length > 0 && matchedPurchases.length === command.draft.lineItems.length,
-    purchase,
-  };
+  return matchedPurchases;
 }
 
 function matchesLineItem(

@@ -1,0 +1,17 @@
+{
+  "version": "0.1.2",
+  "files": 20,
+  "bytes": 2199011,
+  "sha256": "10d31a4ffb18ab0a03474768809c47353f43e4ccc979ca577fa1bf56bcdff987",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ],
+  "checks": "Manifest paths, production endpoints, no dev endpoints/secrets/maps, bundled syntax, no eval, upload notice all passed"
+}

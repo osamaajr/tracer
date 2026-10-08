@@ -2018,6 +2018,10 @@ async function deleteSelectedPurchase(): Promise<void> {
 
   const purchaseId = selectedPurchaseId;
   const selectedPurchase = dashboardCache?.purchases.find((purchase) => purchase.id === purchaseId);
+  // Invalidate an in-flight price render before deletion so it cannot erase a deletion error.
+  if (selectedPurchase) {
+    showItemDetail(selectedPurchase, dashboardCache?.opportunities.find((item) => item.purchaseId === purchaseId), false);
+  }
   deleteItem.disabled = true;
   deleteItem.dataset.loading = "true";
   deleteItem.setAttribute("aria-busy", "true");

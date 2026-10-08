@@ -359,18 +359,18 @@ function LandingBFeatures() {
         <article className="landing-b-editorial-feature">
           <div className="landing-b-editorial-copy">
             <h3>Only hear about what matters.</h3>
-            <p>Get a heads-up when a price drops or a return window is about to close.</p>
+            <p>Get a heads-up when a saved or protected item drops in price.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-update-visual" aria-label="Tracer activity alert example">
             <div className="landing-b-update-card">
               <header>
                 <span><CalendarClock aria-hidden="true" size={20} /></span>
-                <div><strong>Return reminder</strong><p>There’s still time to decide.</p></div>
+                <div><strong>Price drop alert</strong><p>Your saved item costs less.</p></div>
                 <time>Now</time>
               </header>
               <div className="landing-b-update-detail">
                 <span><RotateCcw aria-hidden="true" size={21} /></span>
-                <div><strong>Return window ending</strong><p>Review your order while you still can.</p></div>
+                <div><strong>Ready when you are</strong><p>Open your item to see the latest price.</p></div>
                 <ChevronRight aria-hidden="true" size={20} />
               </div>
             </div>
@@ -380,7 +380,7 @@ function LandingBFeatures() {
         <article className="landing-b-editorial-feature landing-b-editorial-feature-reversed">
           <div className="landing-b-editorial-copy">
             <h3>Protect it once. We keep watch.</h3>
-            <p>After checkout, Tracer keeps checking for price drops and refund opportunities.</p>
+            <p>After checkout, Tracer keeps checking the price and alerts you when it drops.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
             <div className="landing-b-monitor-card">
@@ -527,7 +527,7 @@ function PrivacyPage() {
     <SitePage title="Privacy Policy" description="How Tracer handles product, purchase, and settings data." background="plain">
       <article className="policy-document">
         <PolicySection title="About this policy">
-          <p>Last updated 22 September 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified on our <a href="/contact">Contact page</a> (“Tracer”, “we”, “us”).</p>
+          <p>Last updated 8 October 2026. This policy explains how Tracer handles information when you visit this website or use the Tracer Chrome extension. Tracer is operated by the person or business identified on our <a href="/contact">Contact page</a> (“Tracer”, “we”, “us”).</p>
           <p>Where data-protection law applies, we act as the controller for the personal data described here. This policy reflects the current product and will be updated if that changes.</p>
         </PolicySection>
 
@@ -542,7 +542,8 @@ function PrivacyPage() {
         </PolicySection>
 
         <PolicySection title="What is sent to the API">
-          <p>When you choose to protect a purchase, the extension sends the captured purchase and product information needed to create and monitor that protection. The API stores purchase records, product details, price observations, monitoring preferences, opportunities, and activity events so Tracer can show protected items and notify you about relevant price changes.</p>
+          <p>When you choose to protect a purchase, the extension sends the captured purchase and product information needed to create and monitor that protection. New purchase detections are matched against your existing protections on your device. If a purchase you already protected exposes a corrected final order total, that total may be sent to update its existing record. Order-page query strings and fragments are removed before upload because they may contain access tokens. The API stores purchase records, product details, price observations, monitoring preferences, opportunities, and activity events so Tracer can show protected items and notify you about relevant price changes.</p>
+          <p>API requests include a random installation token that authenticates access to your protected purchases. The token stays in trusted extension storage; the API derives a pseudonymous identifier from it. Hosting and API logs may include your IP address, request path, time, response status, and diagnostic information used to operate and secure the service. Tracer does not request your precise location.</p>
           <p>Saved watchlist items are primarily managed locally. The extension may visit a saved product page in a background tab to read a current price; the resulting price and monitoring status stay in extension storage unless you later protect that purchase.</p>
         </PolicySection>
 
@@ -556,12 +557,17 @@ function PrivacyPage() {
           <p>We do not sell Tracer data, build advertising profiles, or use it to provide personalised ads.</p>
         </PolicySection>
 
+        <PolicySection title="Chrome Web Store Limited Use">
+          <p>Tracer’s use of information received from Chrome APIs adheres to the <a href="https://developer.chrome.com/docs/webstore/program-policies/policies#limited-use">Chrome Web Store User Data Policy</a>, including the Limited Use requirements. We use extension data only to provide or improve Tracer’s stated shopping and price-monitoring features. We do not sell it, use it for advertising, or use it to determine creditworthiness or for lending.</p>
+          <p>Transfers are limited to what is necessary to provide those features, comply with law, protect security, or complete a business transfer after obtaining your explicit prior consent. Human access to personal or sensitive extension data is restricted to cases where you consent to access specific data, access is necessary for security or legal purposes, or the data is aggregated and anonymised for internal operations.</p>
+        </PolicySection>
+
         <PolicySection title="Lawful bases">
           <p>Where the UK GDPR or similar law applies, we generally process information because it is necessary to provide a feature you ask us to use, because we have a legitimate interest in operating and securing Tracer, or because you have given consent where consent is required.</p>
         </PolicySection>
 
         <PolicySection title="Retailers and service providers">
-          <p>Tracer checks public product pages and information displayed by the retailer whose order page you use. Retailers remain responsible for their own sites and privacy practices. Hosting, storage, monitoring, and notification providers may process information needed to operate Tracer. We do not sell personal information or share it for advertising; disclosures may occur when required by law, for security, or as part of a business transfer.</p>
+          <p>Tracer checks public product pages and information displayed by the retailer whose order page you use. Retailers remain responsible for their own sites and privacy practices. Vercel hosts the website and API, including scheduled monitoring, and Neon stores protected-purchase data in Postgres. Chrome provides local extension storage and browser notifications. These providers may process information needed to operate their services. We do not sell personal information or share it for advertising; disclosures may occur when required by law or for security. Any business transfer of extension user data requires your explicit prior consent.</p>
         </PolicySection>
 
         <PolicySection title="International transfers and security">

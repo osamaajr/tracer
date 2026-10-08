@@ -25,7 +25,7 @@
    npm run build:release -w @tracer/extension
    ```
 
-8. Package only `apps/extension/release` (manifest version `0.1.1`) and upload the ZIP to the existing Chrome Web Store draft. The release build keeps the local `apps/extension/dist` demo untouched. Complete the listing, privacy declarations, and required screenshots before submitting it for review.
+8. Package only `apps/extension/release` (manifest version `0.1.2`) and upload the ZIP to the existing Chrome Web Store draft. The release build keeps the local `apps/extension/dist` demo untouched. Complete the listing, privacy declarations, and required screenshots before submitting it for review.
 9. On an installed extension, verify a saved-item check, a protected purchase, `/api/dashboard`, an immediate protected-purchase price check, and the next daily cron invocation. Check that an older localhost override is ignored after the customer build is installed.
 
 ## Configuration and operations
