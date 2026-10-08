@@ -1,0 +1,15 @@
+{
+  "version": "0.1.3",
+  "zip": "output/submission-review/tracer-0.1.3-submission.zip",
+  "sha256": "6a77165ff947d1af7aa31c5be1b02ccd7b5304c9bf47238c81915174cbf9a201",
+  "files": 21,
+  "changedComparedWith012": [
+    "background.js",
+    "manifest.json",
+    "savedMonitoringCapture.js"
+  ],
+  "permissionsUnchanged": true,
+  "popupAndOtherAssetsByteIdentical": true,
+  "backgroundCannotCreateOrNavigateTabs": true,
+  "tests": 213
+}

@@ -15,7 +15,6 @@ import {
 import {
   cleanupOrphanedMonitoringTabs,
   cleanupOrphanedMonitoringTab,
-  forgetMonitoringTab,
   monitorSavedItems,
 } from "./savedItemMonitor";
 import { savedMonitorReadyAtKey, shouldRunSavedMonitorAlarm } from "./savedMonitorAlarm";
@@ -104,7 +103,7 @@ let priceDropAlertsEnabledPromise: Promise<boolean> | null = null;
 // Session storage survives MV3 worker restarts but clears on browser restart.
 // Register listeners synchronously so Chrome can deliver startup events.
 chrome.runtime.onInstalled.addListener(() => {
-  void Promise.all([ensureSyncAlarm(), resetSavedMonitorAlarm()]);
+  void Promise.all([ensureSyncAlarm(), resetSavedMonitorAlarm(), cleanupOrphanedMonitoringTabs()]);
 });
 
 chrome.runtime.onStartup.addListener(() => {
@@ -134,7 +133,6 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  forgetMonitoringTab(tabId);
   autoOpenedPageByTab.delete(tabId);
   autoOpeningTabs.delete(tabId);
   const timer = automaticScanTimers.get(tabId);
@@ -144,9 +142,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Monitoring tabs are lifecycle-managed by savedItemMonitor. Closing them
-  // here races tabs.create() and can kill a legitimate monitor before its
-  // capture script runs; the cleanup helper checks for an active run.
+  // Remove only explicitly marked tabs left by an older extension version.
   if (changeInfo.url || changeInfo.status === "loading" || changeInfo.status === "complete") {
     void cleanupOrphanedMonitoringTab(tab);
   }

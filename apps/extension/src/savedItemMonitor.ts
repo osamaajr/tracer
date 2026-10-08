@@ -1,5 +1,6 @@
-import { normalizeSavedUrl, type SavedProduct, type SavedItem } from "@tracer/core";
-import { evaluateSavedPrice, buildInternalMonitoringUrl, isInternalMonitoringUrl } from "./savedPriceMonitoring";
+import type { SavedProduct, SavedItem } from "@tracer/core";
+import { evaluateSavedPrice, isInternalMonitoringUrl } from "./savedPriceMonitoring";
+import { checkSavedProductPrice } from "./savedProductPriceCheck";
 import { WatchlistRepository } from "./watchlistRepository";
 
 export type SavedItemMonitorMode = "all" | "unavailable";
@@ -11,16 +12,12 @@ interface MonitoringNotification {
 }
 
 export interface SavedItemMonitorDependencies {
+  checkPrice?: (item: SavedItem) => Promise<SavedProduct | null>;
   getPriceDropAlertsEnabled: () => Promise<boolean>;
   createNotification: (notification: MonitoringNotification) => Promise<void>;
 }
 
-export const activeMonitoringTabs = new Set<number>();
 let savedMonitorRun: Promise<void> | null = null;
-
-export function forgetMonitoringTab(tabId: number): void {
-  activeMonitoringTabs.delete(tabId);
-}
 
 export function monitorSavedItems(
   watchlist: WatchlistRepository,
@@ -61,18 +58,9 @@ async function monitorSavedItem(
   dependencies: SavedItemMonitorDependencies,
 ): Promise<void> {
   const checkedAt = new Date().toISOString();
-  let tabId: number | undefined;
   try {
-    const tab = await chrome.tabs.create({
-      url: buildInternalMonitoringUrl(normalizeSavedUrl(item.canonicalUrl)),
-      active: false,
-    });
-    tabId = tab.id;
-    if (typeof tabId !== "number") throw new Error("monitor_tab_unavailable");
-    activeMonitoringTabs.add(tabId);
-    await waitForTabReady(tabId);
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["watchlistCapture.js"] });
-    const monitoredProduct = await readSavedProductWithRetries(tabId);
+    const checkPrice = dependencies.checkPrice ?? checkSavedProductPrice;
+    const monitoredProduct = await checkPrice(item);
     const latest = monitoredProduct?.savedPrice;
     if (!latest || latest.amountMinor <= 0) {
       throw new Error("monitor_price_unavailable");
@@ -122,11 +110,6 @@ async function monitorSavedItem(
         monitoringStatus: item.priceDropAmount ? "price_dropped" : "watching",
       });
     }
-  } finally {
-    if (typeof tabId === "number") {
-      await chrome.tabs.remove(tabId).catch(() => undefined);
-      activeMonitoringTabs.delete(tabId);
-    }
   }
 }
 
@@ -136,37 +119,11 @@ export async function cleanupOrphanedMonitoringTabs(): Promise<void> {
 }
 
 export async function cleanupOrphanedMonitoringTab(tab: chrome.tabs.Tab): Promise<void> {
-  // A new monitoring tab can emit onUpdated before tabs.create resolves.
-  if (savedMonitorRun || typeof tab.id !== "number" || activeMonitoringTabs.has(tab.id)) return;
+  // Migration cleanup only: new price checks never create browser tabs.
+  if (typeof tab.id !== "number") return;
   if (isInternalMonitoringUrl(tab.url ?? "") || isInternalMonitoringUrl(tab.pendingUrl ?? "")) {
     await chrome.tabs.remove(tab.id).catch(() => undefined);
   }
-}
-
-async function readSavedProductWithRetries(tabId: number): Promise<SavedProduct | null> {
-  const delays = [0, 300, 700, 1_500, 2_500];
-  let lastProduct: SavedProduct | null = null;
-  for (const delay of delays) {
-    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-    const response = await chrome.tabs.sendMessage(tabId, { type: "TRACER_EXTRACT_SAVED_PRODUCT" }) as { product?: SavedProduct | null };
-    lastProduct = response?.product ?? lastProduct;
-    if (lastProduct?.savedPrice) return lastProduct;
-  }
-  return lastProduct;
-}
-
-function waitForTabReady(tabId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => { cleanup(); reject(new Error("monitor_tab_timeout")); }, 15_000);
-    const cleanup = () => { clearTimeout(timeout); chrome.tabs.onUpdated.removeListener(listener); };
-    const listener = (updatedTabId: number, changeInfo: { status?: string }) => {
-      if (updatedTabId === tabId && changeInfo.status === "complete") { cleanup(); resolve(); }
-    };
-    chrome.tabs.onUpdated.addListener(listener);
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === "complete") { cleanup(); resolve(); }
-    }).catch(() => { cleanup(); reject(new Error("monitor_tab_closed")); });
-  });
 }
 
 function formatMonitoringMoney(money: { amountMinor: number; currency: string }): string {

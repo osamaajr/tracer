@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 import { build, defineConfig } from "vite";
 
 export default defineConfig({
@@ -6,7 +7,7 @@ export default defineConfig({
     name: "standalone-content-scripts",
     async closeBundle() {
       // Chrome injects these as classic scripts, so they cannot import shared chunks.
-      for (const name of ["contentScript", "genericCapture", "watchlistCapture"]) {
+      for (const name of ["contentScript", "genericCapture", "watchlistCapture", "savedMonitoringCapture"]) {
         await build({
           configFile: false,
           publicDir: false,
@@ -21,6 +22,10 @@ export default defineConfig({
             },
           },
         });
+        if (name === "savedMonitoringCapture") {
+          const path = resolve(import.meta.dirname, "dist", `${name}.js`);
+          await writeFile(path, `${await readFile(path, "utf8")}\nTracer_savedMonitoringCapture.readSavedMonitoringProduct();\n`);
+        }
       }
     },
   }],

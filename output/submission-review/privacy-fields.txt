@@ -2,7 +2,7 @@ Single purpose:
 Save and monitor shopping items and selected purchases, show verified product prices, and notify users of relevant price drops.
 
 HTTPS host permission justification:
-Tracer detects completed purchase pages locally and captures product details when the user opens it. Retailers use many HTTPS domains. Access is also needed to revisit saved product pages in background tabs to verify prices and to connect to Tracer’s HTTPS API for purchases the user chooses to protect. Unrelated browsing content is not uploaded.
+Tracer detects completed purchase pages locally and captures product details when the user opens it. Retailers use many HTTPS domains. Access is also needed to request saved product pages in the background, or read matching product tabs the user already has open, to verify prices and to connect to Tracer’s HTTPS API for purchases the user chooses to protect. Unrelated browsing content is not uploaded.
 
 Notifications permission justification:
 Shows browser alerts when a saved product or protected purchase drops in price, if the user has enabled price alerts.

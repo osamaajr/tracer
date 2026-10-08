@@ -1,8 +1,12 @@
 # Chrome Web Store submission review — 8 October 2026
 
+## Later monitoring correction
+
+The Store draft is now **Pending review**. A subsequent user report exposed saved-item monitoring opening browser tabs. That mechanism is removed in 0.1.3, built and installed locally, with 213 passing tests and package-level regression checks. The corrected ZIP is prepared, but has not replaced the pending 0.1.2 submission; cancellation requires user approval. See [the monitoring fix report](saved-monitor-tab-fix-2026-10-08.md).
+
 ## Decision
 
-**The required corrections have now been applied.** Version 0.1.2 is uploaded to the existing Chrome Web Store draft. The privacy policy and corrected landing copy are live. Listing, privacy, reviewer instructions and the small promotional tile are saved. The draft remains unpublished; Google’s final submission checks and review decision remain outstanding.
+**The required corrections have now been applied.** Version 0.1.2 is uploaded to the existing Chrome Web Store draft. The privacy policy and corrected landing copy are live. Listing, privacy, reviewer instructions and the small promotional tile are saved. The draft remains unpublished and is now pending Google review; see the later 0.1.3 correction above.
 
 ## Findings and corrections
 

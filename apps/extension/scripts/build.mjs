@@ -70,6 +70,9 @@ try {
   for (const name of ["contentScript", "genericCapture", "watchlistCapture"]) {
     bundle(name, `${name}.js`, "iife", `Tracer_${name}`);
   }
+  bundle("savedMonitoringCapture", "savedMonitoringCapture.js", "iife", "Tracer_savedMonitoringCapture");
+  const monitorCapturePath = resolve(nextDir, "savedMonitoringCapture.js");
+  await writeFile(monitorCapturePath, `${await readFile(monitorCapturePath, "utf8")}\nTracer_savedMonitoringCapture.readSavedMonitoringProduct();\n`);
 
   const popupSource = await readFile(resolve(extensionRoot, "popup.html"), "utf8");
   const popupHtml = popupSource.replace(
