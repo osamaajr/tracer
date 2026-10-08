@@ -2295,12 +2295,17 @@ async function offerSaveProduct(
     const extractionStartedAt = performance.now();
     const response = await withTimeout(chrome.tabs.sendMessage(tabId, {type:'TRACER_EXTRACT_SAVED_PRODUCT'}), pageCaptureTimeoutMs, 'Product scan timed out.') as {
       product: SavedProduct | null;
+      pageUrl: string;
       imageCandidates?: string[];
       imageCandidatesPending?: boolean;
     };
     traceStartupStage("product-content-script response", extractionStartedAt);
     if (runId !== activeScanRunId) return true;
     if (!response?.product) return false;
+    if (response.pageUrl !== activeProductPageUrl) return false;
+    const capturePageIsCurrent = await isCurrentProductPage(tabId, response.pageUrl);
+    if (runId !== activeScanRunId) return true;
+    if (!capturePageIsCurrent) return false;
     savedProduct = response.product;
     savedImageCandidates = dedupeSavedImageCandidates([
       savedProduct.imageUrl,
@@ -2326,6 +2331,12 @@ async function offerSaveProduct(
     const savedItems = await (savedItemsPromise ?? watchlistRequest<SavedItem[]>('LIST').catch(() => []));
     traceStartupStage("saved-items storage read", storageReadStartedAt);
     if (runId !== activeScanRunId) return true;
+    const renderPageIsCurrent = await isCurrentProductPage(tabId, response.pageUrl);
+    if (runId !== activeScanRunId) return true;
+    if (!renderPageIsCurrent) {
+      savedProduct = null;
+      return false;
+    }
     const savedLookupStartedAt = performance.now();
     const alreadySaved = savedItems.some((item) =>
       normalizeSavedUrl(item.canonicalUrl) === normalizeSavedUrl(savedProduct!.canonicalUrl)
@@ -2344,6 +2355,7 @@ async function offerSaveProduct(
 
 async function saveCurrentProduct(): Promise<void> {
   if (!savedProduct) return;
+  const saveRunId = activeScanRunId;
   saveToTracer.disabled = true;
   saveToTracer.textContent = 'Saving…';
   saveToTracer.dataset.status = 'saving';
@@ -2357,6 +2369,9 @@ async function saveCurrentProduct(): Promise<void> {
         }),
       ]);
       window.clearTimeout(timeoutId);
+    }
+    if (activeProductTabId === null || activeProductPageUrl === null || !(await isCurrentProductPage(activeProductTabId, activeProductPageUrl)) || saveRunId !== activeScanRunId || !savedProduct) {
+      throw new Error('This page changed. Reopen Tracer to save the current item.');
     }
     const result = await watchlistRequest<{duplicate:boolean}>('SAVE', {product:savedProduct});
     if (!result.duplicate) {
@@ -2381,6 +2396,10 @@ async function saveCurrentProduct(): Promise<void> {
     saveToTracer.textContent = 'Try saving again';
     saveToTracer.dataset.status = 'ready';
   }
+}
+
+async function isCurrentProductPage(tabId: number, pageUrl: string): Promise<boolean> {
+  try { return (await chrome.tabs.get(tabId)).url === pageUrl; } catch { return false; }
 }
 
 function setItemsSegment(saved: boolean): void {

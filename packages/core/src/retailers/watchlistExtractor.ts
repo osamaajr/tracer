@@ -34,7 +34,7 @@ export function extractSavedProduct(
     const page = measure('input URL normalization', () => normalizePublicStoreUrl(pageUrl));
     const requestedPath = new URL(page.url).pathname;
     if (/\/(?:cart|basket|checkout|account|orders?)(?:\/|$)/i.test(requestedPath)) return null;
-    const isListingRoute = /\/(?:search|collections|category)(?:\/|$)/i.test(requestedPath);
+    const isListingRoute = /\/(?:search(?:[-_]results)?|collections?|categor(?:y|ies)|catalog(?:ue)?)(?:\/|$)/i.test(requestedPath);
     const hasNestedProductRoute = /\/products?\//i.test(requestedPath);
     if (isListingRoute && !hasNestedProductRoute) return null;
     const metaValues = measure('meta and OpenGraph collection', () => {
@@ -55,6 +55,11 @@ export function extractSavedProduct(
       return normalizePublicStoreUrl(new URL(canonical || page.url, page.url).href, { expectedHost: page.host }).url;
     });
     if (new URL(url).pathname === '/') return null;
+    // SPA metadata can lag behind navigation. A canonical from another page
+    // cannot establish the identity of the page currently being scanned.
+    const canonicalPath = new URL(url).pathname.replace(/\/$/, '');
+    const currentPath = requestedPath.replace(/\/$/, '');
+    if (canonicalPath !== currentPath && !(hasNestedProductRoute && currentPath.endsWith(canonicalPath))) return null;
     const objects = measure('JSON-LD parse + traversal', () => flattenJsonLd(extractJsonLdObjects(document)));
     const entities = objects.flatMap(value => {
       const entity = asRecord(value)?.mainEntity;
@@ -62,24 +67,36 @@ export function extractSavedProduct(
     });
     const products = entities.filter(p => jsonLdHasType(p, 'Product') || jsonLdHasType(p, 'https://schema.org/Product')).map(asRecord).filter(p => p !== null);
     const groups = entities.filter(p => jsonLdHasType(p, 'ProductGroup') || jsonLdHasType(p, 'https://schema.org/ProductGroup')).map(asRecord).filter(p => p !== null);
-    let product = products.length === 1 ? products[0] : products.find(p => {
-      try { return typeof p.url === 'string' && normalizeSavedUrl(new URL(p.url, page.url).href) === normalizeSavedUrl(url); } catch { return false; }
-    });
+    const matchesPage = (raw: unknown) => {
+      try { return typeof raw === 'string' && normalizeSavedUrl(new URL(raw, page.url).href) === normalizeSavedUrl(url); } catch { return false; }
+    };
+    let product = products.length === 1 ? products[0] : products.find(p =>
+      matchesPage(p.url) || asRecords(p.offers).some(offer => matchesPage(offer.url)),
+    );
     if (!product && groups.length === 1) product = groups[0];
     if ((products.length > 1 || groups.length > 1) && !product) return null;
     // A lone recommended product must not turn an unrelated page into that product.
     if (typeof product?.url === 'string' && normalizeSavedUrl(new URL(product.url, page.url).href) !== normalizeSavedUrl(url)) return null;
+    const offerUrls = asRecords(product?.offers).map(offer => offer.url).filter(raw => typeof raw === 'string');
+    if (!product?.url && offerUrls.length && !offerUrls.some(matchesPage)) return null;
     const scopes = measure('itemprop product scope scan', () => document.querySelectorAll('[itemtype$="/Product"]'));
-    const scope = scopes.length === 1 ? scopes[0] : null;
+    let scope = scopes.length === 1 ? scopes[0] : null;
     if (scopes.length > 1 && !product) return null;
     const ogProduct = /^(?:product|product\.item)$/i.test(meta('og:type') || '');
-    const productRoute = /\/(?:products?|dp|p)\//i.test(new URL(url).pathname) ||
-      /\/productpage\.\d+/i.test(new URL(url).pathname);
+    const productRoute = isProductDetailPath(canonicalPath);
     const { productForm, addControl, headings } = measure('product DOM evidence scan', () => {
-      const form = document.querySelector('main form[action*="/cart/add"], form[action="/cart/add"]');
+      const belongsToAnotherCard = (element: Element) => {
+        const card = element.closest('li, article, [class*="product-card" i], [class*="product-tile" i], [class*="product-item" i], [data-testid*="product-card" i]');
+        return Boolean(card && !card.querySelector('h1') && Array.from(card.querySelectorAll('a[href]')).some(link => !matchesPage(link.getAttribute('href'))));
+      };
+      const form = Array.from(document.querySelectorAll('main form[action*="/cart/add"], form[action="/cart/add"]'))
+        .find(element => !belongsToAnotherCard(element));
       let hasAddControl = false;
-      for (const element of document.querySelectorAll('button, [role="button"]')) {
+      for (const element of (document.querySelector('main') ?? document).querySelectorAll('button, [role="button"]')) {
         if (/^add to (?:bag|basket|cart)$/i.test(element.textContent?.trim() ?? '')) {
+          // Quick-add controls in recommendation/listing cards are not the
+          // purchase control for the page's main product.
+          if (belongsToAnotherCard(element)) continue;
           hasAddControl = true;
           break;
         }
@@ -87,8 +104,35 @@ export function extractSavedProduct(
       return { productForm: form, addControl: hasAddControl, headings: document.querySelectorAll('h1') };
     });
     const hasSingleProductName = headings.length === 1 || Boolean(meta('og:title'));
-    const domProduct = productRoute && hasSingleProductName && (Boolean(productForm) || addControl);
-    if (!product && !scope && !ogProduct && !domProduct) return null;
+    const detailControl = Boolean(productForm) || addControl;
+    const domProduct = productRoute && hasSingleProductName && detailControl;
+    const hasPageType = (type: string) => objects.some(value =>
+      jsonLdHasType(value, type) || jsonLdHasType(value, `https://schema.org/${type}`),
+    );
+    // Some stores publish Product + AggregateOffer for an entire category.
+    // Explicit listing evidence wins over even a matching Product URL.
+    if (hasPageType('CollectionPage') || hasPageType('SearchResultsPage')) return null;
+    if (objects.some(value => asRecords(asRecord(value)?.mainEntity).some(entity =>
+      jsonLdHasType(entity, 'ItemList') || jsonLdHasType(entity, 'https://schema.org/ItemList'),
+    ))) return null;
+    if (hasProductListingControls(document, page.url) && !(productRoute && detailControl)) return null;
+    if (!productRoute && !detailControl && hasPageType('ItemList')) return null;
+    const aggregateOffers = asRecords(product?.offers).filter(offer =>
+      jsonLdHasType(offer, 'AggregateOffer') || jsonLdHasType(offer, 'https://schema.org/AggregateOffer'),
+    );
+    if (aggregateOffers.length && !productRoute && !detailControl) return null;
+    // OpenGraph alone describes categories too. Require a detail route or a
+    // real purchase control before allowing it to establish product identity.
+    const ogDetail = ogProduct && (productRoute || headings.length === 1 && detailControl);
+    let scopeDetail = Boolean(scope && (productRoute || detailControl || headings.length === 1 && scope.contains(headings[0]!)));
+    if (scopeDetail && scope) {
+      const scopeUrl = scope.querySelector('[itemprop="url"]');
+      const rawScopeUrl = scopeUrl?.getAttribute('href') ?? scopeUrl?.getAttribute('content');
+      if (rawScopeUrl && !matchesPage(rawScopeUrl)) scopeDetail = false;
+    }
+    if (!scopeDetail) scope = null;
+    if (!product && !scopeDetail && !ogDetail && !domProduct) return null;
+    if (product && !productRoute && !detailControl && !matchesPage(product.url)) return null;
     const name = (firstString(product?.name) || scope?.querySelector('[itemprop="name"]')?.textContent || meta('og:title') || headings[0]?.textContent)?.trim().replace(/\s+/g, ' ');
     if (!name || name.length < 2 || name.length > 300) return null;
     const retailerId = /(^|\.)johnlewis\.com$/.test(page.host) ? 'john-lewis' : createGenericRetailerIdFromHost(page.host);
@@ -107,14 +151,16 @@ export function extractSavedProduct(
     const priceNode = scope?.querySelector('[itemprop="price"]');
     const metaPrice = meta('product:price:amount') ?? meta('og:price:amount');
     const metaCurrency = meta('product:price:currency') ?? meta('og:price:currency');
-    const rawPrice = offer?.price ?? offer?.lowPrice ?? priceNode?.getAttribute('content') ?? priceNode?.textContent ?? ((ogProduct || domProduct) ? metaPrice : undefined);
-    const currency = firstString(offer?.priceCurrency) || scope?.querySelector('[itemprop="priceCurrency"]')?.getAttribute('content') || metaCurrency;
+    const priceSpecification = currentPriceSpecification(offer);
+    const isPriceRange = offer?.lowPrice !== undefined && offer?.highPrice !== undefined && String(offer.lowPrice) !== String(offer.highPrice);
+    const rawPrice = offer?.price ?? priceSpecification?.price ?? (!isPriceRange ? offer?.lowPrice : undefined) ?? priceNode?.getAttribute('content') ?? priceNode?.textContent ?? ((ogProduct || domProduct) ? metaPrice : undefined);
+    const currency = firstString(offer?.priceCurrency) || firstString(priceSpecification?.priceCurrency) || scope?.querySelector('[itemprop="priceCurrency"]')?.getAttribute('content') || metaCurrency;
     // Do not guess currency or use range, recommended-product, or arbitrary DOM prices.
     if (currency && /^[A-Z]{3}$/.test(currency) && (typeof rawPrice === 'string' || typeof rawPrice === 'number')) {
       const price = parsePrice(typeof rawPrice === 'string' || typeof rawPrice === 'number' ? rawPrice : undefined, currency);
       if (price) result.savedPrice = price;
     }
-    if (!result.savedPrice && (product || scope || ogProduct || domProduct)) {
+    if (!result.savedPrice && !isPriceRange && (product || scopeDetail || ogDetail || domProduct)) {
       const domPrice = findScopedDomPrice(document, currency ?? inferPageCurrency(page.url));
       if (domPrice) result.savedPrice = domPrice;
     }
@@ -134,6 +180,29 @@ export function extractSavedProduct(
     if (productId) result.externalProductId = productId;
     return result;
   } catch { return null; }
+}
+
+function isProductDetailPath(path: string): boolean {
+  return /\/(?:products?|dp|p)\//i.test(path) || /\/productpage\.\d+/i.test(path) ||
+    /\/p\d+(?:\/|$)/i.test(path) || /-p\d+\.html$/i.test(path);
+}
+
+function hasProductListingControls(document: Document, pageUrl: string): boolean {
+  const main = document.querySelector('main') ?? document.body;
+  if (!main) return false;
+  const sortControl = Array.from(main.querySelectorAll('select, [role="combobox"], button[aria-label]')).some(element =>
+    /sort(?:\s|[-_]|$)|most relevant/i.test([
+      element.getAttribute('aria-label'), element.getAttribute('name'), element.id,
+      element.tagName === 'SELECT' ? element.textContent : '',
+    ].join(' ')),
+  );
+  if (!sortControl) return false;
+  return Array.from(main.querySelectorAll('a[href]')).some(link => {
+    try {
+      const target = new URL(link.getAttribute('href')!, pageUrl);
+      return target.origin === new URL(pageUrl).origin && isProductDetailPath(target.pathname) && normalizeSavedUrl(target.href) !== normalizeSavedUrl(pageUrl);
+    } catch { return false; }
+  });
 }
 
 /**
@@ -211,11 +280,20 @@ function selectOffer(
 }
 
 function offerSignature(offer: Record<string, unknown>): string | null {
-  const currency = firstString(offer.priceCurrency);
-  const rawPrice = offer.price ?? offer.lowPrice;
+  const specification = currentPriceSpecification(offer);
+  const currency = firstString(offer.priceCurrency) || firstString(specification?.priceCurrency);
+  const rawPrice = offer.price ?? specification?.price ?? offer.lowPrice;
   if (!currency || !/^[A-Z]{3}$/.test(currency) || (typeof rawPrice !== 'string' && typeof rawPrice !== 'number')) return null;
   const price = parsePrice(rawPrice, currency);
   return price ? `${price.currency}:${price.amountMinor}` : null;
+}
+
+function currentPriceSpecification(offer: Record<string, unknown> | null): Record<string, unknown> | null {
+  const specifications = asRecords(offer?.priceSpecification).filter(specification =>
+    (jsonLdHasType(specification, 'UnitPriceSpecification') || jsonLdHasType(specification, 'https://schema.org/UnitPriceSpecification')) &&
+    (!specification.priceType || specification.priceType === 'https://schema.org/SalePrice'),
+  );
+  return specifications.length === 1 ? specifications[0]! : null;
 }
 
 function inferPageCurrency(pageUrl: string): string | null {

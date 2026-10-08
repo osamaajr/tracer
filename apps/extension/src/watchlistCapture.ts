@@ -18,19 +18,22 @@ if (previousListener) chrome.runtime.onMessage.removeListener(previousListener);
 const watchlistCaptureListener: WatchlistCaptureListener = (message, _sender, respond) => {
   if (message.type !== 'TRACER_EXTRACT_SAVED_PRODUCT') return false;
   const extractionStartedAt = performance.now();
-  void extractCurrentSavedProduct().then((product) => {
+  const pageUrl = location.href;
+  void extractCurrentSavedProduct(pageUrl).then((capturedProduct) => {
+    const product = location.href === pageUrl ? capturedProduct : null;
     const extractionEndedAt = performance.now();
     if (traceEnabled) console.debug(`[Tracer startup] product metadata extraction: ${(extractionEndedAt - extractionStartedAt).toFixed(1)}ms`);
-    respond({product, imageCandidates: product?.imageUrl ? [product.imageUrl] : [], imageCandidatesPending: Boolean(product)});
+    respond({product, pageUrl, imageCandidates: product?.imageUrl ? [product.imageUrl] : [], imageCandidatesPending: Boolean(product)});
     if (!product) return;
 
     // Return the product before scanning and ranking every gallery image. The
     // popup can show the item immediately, then receive the richer image list.
     window.setTimeout(() => {
+      if (location.href !== pageUrl) return;
       const imageStartedAt = performance.now();
       let rankedImages: ReturnType<typeof findProductPageImages> = [];
       try {
-        rankedImages = findProductPageImages(document, location.href, {
+        rankedImages = findProductPageImages(document, pageUrl, {
           productName: product.name,
           productIdentifiers: [product.externalProductId, product.sku],
         });
@@ -50,7 +53,7 @@ const watchlistCaptureListener: WatchlistCaptureListener = (message, _sender, re
       try {
         chrome.runtime.sendMessage({
           type: 'TRACER_PRODUCT_IMAGES_READY',
-          pageUrl: location.href,
+          pageUrl,
           imageCandidates,
           imageExtractionMs: performance.now() - imageStartedAt,
         }, () => void chrome.runtime.lastError);
@@ -65,22 +68,22 @@ const watchlistCaptureListener: WatchlistCaptureListener = (message, _sender, re
 window.__tracerWatchlistCaptureListener = watchlistCaptureListener;
 chrome.runtime.onMessage.addListener(watchlistCaptureListener);
 
-async function extractCurrentSavedProduct() {
+async function extractCurrentSavedProduct(pageUrl: string) {
   const standardStartedAt = performance.now();
-  const standard = extractSavedProduct(document, location.href, {
+  const standard = extractSavedProduct(document, pageUrl, {
     includeImage: false,
     ...(traceEnabled ? {
       onTiming: (name: string, durationMs: number) => console.debug(`[Tracer startup] ${name}: ${durationMs.toFixed(1)}ms`),
     } : {}),
   });
   if (traceEnabled) console.debug(`[Tracer startup] extractSavedProduct metadata: ${(performance.now() - standardStartedAt).toFixed(1)}ms`);
-  if (standard?.savedPrice || !/(^|\.)zara\.com$/i.test(location.hostname)) return standard;
+  if (standard?.savedPrice || !/(^|\.)zara\.com$/i.test(new URL(pageUrl).hostname)) return standard;
   try {
-    const ajaxUrl = new URL(location.href);
+    const ajaxUrl = new URL(pageUrl);
     ajaxUrl.searchParams.set('ajax', 'true');
     const response = await fetch(ajaxUrl, { credentials: 'same-origin', cache: 'no-store' });
     if (!response.ok) return standard;
-    return extractZaraSavedProduct(await response.json(), location.href) ?? standard;
+    return extractZaraSavedProduct(await response.json(), pageUrl) ?? standard;
   } catch {
     return standard;
   }

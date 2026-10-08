@@ -84,3 +84,7 @@ External updates completed after user approval: GitHub main and codex/vercel-api
 ## Uploaded package verification
 
 The downloaded 0.1.2 Store CRX has 19 assets byte-identical to the reviewed release. Its manifest matches apart from the normal Google update_url addition. Results are saved in output/submission-review/uploaded-crx-validation.json. No CRX was installed during this comparison.
+
+## Product detection addendum — 0.1.4
+
+The latest prepared package is `output/submission-review/tracer-0.1.4-submission.zip`. It includes the tab-free monitoring fix plus generic category/listing and stale navigation safeguards. The final suite passes 240 tests; packaged capture scripts reject the reported category and read the actual Decathlon product at £14.99. Details are in `docs/product-detection-fix-2026-10-08.md`. The pending Store review has not been cancelled or replaced.

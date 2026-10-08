@@ -56,6 +56,7 @@ interface PopupHarnessOptions {
   scanResponse?: unknown;
   scanResponses?: unknown[];
   tabUrl?: string;
+  capturedPageUrl?: string;
 }
 
 describe("extension popup", () => {
@@ -193,6 +194,33 @@ describe("extension popup", () => {
       .find((message) => message.type === 'TRACER_WATCHLIST_SAVE');
     expect(saveMessage?.product?.imageUrl).toBe(secondImage);
     expect(productCard.querySelectorAll('.saved-image-arrow')).toHaveLength(0);
+  });
+
+  it('discards a product captured from a different page', async () => {
+    const harness = await setupPopup({
+      savedProduct:{name:'Lamp',retailer:'Shop',retailerId:'shop',canonicalUrl:'https://shop.example.com/products/lamp'},
+      capturedPageUrl:'https://shop.example.com/products/lamp',
+      tabUrl:'https://shop.example.com/audio',
+      scanResponse:{ok:false,failureReason:'not_purchase_page'},
+    });
+    await flushPopup();
+    expect(harness.app.dataset.screen).toBe('empty');
+    expect(text('watchProduct')).not.toContain('Lamp');
+  });
+
+  it('does not save a stale product after the page navigates', async () => {
+    const harness = await setupPopup({
+      savedProduct:{name:'Lamp',retailer:'Shop',retailerId:'shop',canonicalUrl:'https://shop.example.com/products/lamp'},
+      tabUrl:'https://shop.example.com/products/lamp',
+      scanResponse:{ok:false,failureReason:'not_purchase_page'},
+    });
+    await flushPopup();
+    expect(harness.app.dataset.screen).toBe('watchlist');
+    harness.tabsGet.mockResolvedValue({id:1,url:'https://shop.example.com/audio'});
+    element<HTMLButtonElement>('saveToTracer').click();
+    await flushPopup();
+    expect(text('watchFeedback')).toContain('This page changed');
+    expect(harness.runtimeSendMessage.mock.calls.some(([message]) => message.type === 'TRACER_WATCHLIST_SAVE')).toBe(false);
   });
 
   it("shows resized variants of the same product image only once", async () => {
@@ -972,6 +1000,7 @@ async function setupPopup(
     }
   });
   const tabsCreate = vi.fn();
+  const tabsGet = vi.fn(async () => ({ id: 1, url: options.tabUrl ?? purchaseDraft.sourceUrl }));
   const storageSet = vi.fn(async () => undefined);
   const localStore: Record<string, unknown> = {
     tracerUserId: "dev-user",
@@ -987,6 +1016,7 @@ async function setupPopup(
   const tabSendMessage = vi.fn((_tabId: number, _message: unknown, callback: (response: unknown) => void) => {
     if ((_message as {type:string}).type === 'TRACER_EXTRACT_SAVED_PRODUCT') {
       return Promise.resolve({
+        pageUrl: options.capturedPageUrl ?? options.tabUrl ?? purchaseDraft.sourceUrl,
         product: options.savedProducts
           ? options.savedProducts[Math.min(savedProductIndex++, options.savedProducts.length - 1)] ?? null
           : options.savedProduct ?? null,
@@ -1086,6 +1116,7 @@ async function setupPopup(
         },
       },
       tabs: {
+        get: tabsGet,
         query: vi.fn().mockResolvedValue([{ id: 1, url: options.tabUrl ?? purchaseDraft.sourceUrl }]),
         sendMessage: tabSendMessage,
         create: tabsCreate,
@@ -1119,6 +1150,7 @@ async function setupPopup(
     localStorageSet,
     executeScript,
     tabsCreate,
+    tabsGet,
     protectMessages: () =>
       runtimeSendMessage.mock.calls.filter(([message]) => {
         return (message as { type: string }).type === "TRACER_PROTECT_PURCHASE";

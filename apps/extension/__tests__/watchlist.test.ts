@@ -14,6 +14,91 @@ function storageHarness() {
 }
 
 describe('watchlist extraction', () => {
+  it.each(['https://www.decathlon.co.uk/accessories/sunglasses/f-color_green', 'https://shop.example.com/accessories/sunglasses'])('rejects a category mislabeled Product with AggregateOffer at %s', page => {
+    const {document} = parseHTML(`<h1>Green Sunglasses</h1><script type="application/ld+json">${JSON.stringify({
+      '@context':'https://schema.org','@type':'Product',url:page,name:'Sunglasses',
+      aggregateRating:{'@type':'AggregateRating',ratingValue:4.6,ratingCount:9239},
+      offers:{'@type':'AggregateOffer',highPrice:178.9,lowPrice:6.99,priceCurrency:'GBP'},
+    })}</script>`);
+    expect(extractSavedProduct(document,page)).toBeNull();
+  });
+  it.each(['CollectionPage','SearchResultsPage'])('rejects explicit %s even with a matching Product and quick-add control', type => {
+    const {document} = parseHTML(`<script type="application/ld+json">${JSON.stringify([
+      {'@type':type,url}, {'@type':'Product',url,name:'All headphones',offers:{price:10,priceCurrency:'GBP'}},
+    ])}</script><main><h1>All headphones</h1><button>Add to cart</button></main>`);
+    expect(extractSavedProduct(document,url)).toBeNull();
+  });
+  it.each(['categories','collection','search-results','catalog'])('rejects a %s route with misleading Product metadata', route => {
+    expect(extractSavedProduct(productDoc({}),`https://shop.example.com/${route}/audio`)).toBeNull();
+  });
+  it('rejects an ItemList declared as the page main entity even on a product-like URL', () => {
+    const document=productDoc({url},`<script type="application/ld+json">${JSON.stringify({'@type':'WebPage',url,mainEntity:{'@type':'ItemList',itemListElement:[{'@type':'Product',name:'Speaker'}]}})}</script>`);
+    expect(extractSavedProduct(document,url)).toBeNull();
+  });
+  it('preserves a real product with review sorting and recommendation links', () => {
+    const document=productDoc({url,offers:{price:10,priceCurrency:'GBP'}},'<main><h1>Headphones</h1><button>Add to basket</button><section><h2>Reviews</h2><select aria-label="Sort reviews"><option>Newest</option></select></section><a href="/products/speaker">Recommended speaker</a></main>');
+    expect(extractSavedProduct(document,url)).toMatchObject({name:'Headphones',savedPrice:{amountMinor:1000,currency:'GBP'}});
+  });
+  it('rejects a sorted grid despite matching Product data, fixed pricing, and quick-add buttons', () => {
+    const page = 'https://shop.example.com/accessories/sunglasses';
+    const {document} = parseHTML(`<script type="application/ld+json">${JSON.stringify({'@type':'Product',url:page,name:'Sunglasses',offers:{price:20,priceCurrency:'GBP'}})}</script>
+      <main><h1>Sunglasses</h1><button role="combobox" aria-label="Most relevant (Sort by)"></button>
+      <article><h2><a href="/products/glasses">Glasses</a></h2><button>Add to cart</button></article></main>`);
+    expect(extractSavedProduct(document,page)).toBeNull();
+  });
+  it('rejects an unscoped OpenGraph product label on an arbitrary category route', () => {
+    const {document} = parseHTML('<meta property="og:type" content="product"><meta property="og:title" content="Sunglasses"><main><h1>Sunglasses</h1></main>');
+    expect(extractSavedProduct(document,'https://shop.example.com/accessories/sunglasses')).toBeNull();
+  });
+  it('does not accept category AggregateOffer data because a recommended card has a Shopify quick-add form', () => {
+    const page = 'https://shop.example.com/accessories/sunglasses';
+    const document = productDoc({url:page,offers:{'@type':'AggregateOffer',lowPrice:5,highPrice:50,priceCurrency:'GBP'}},
+      '<main><h1>Sunglasses</h1><article><a href="/products/glasses">Glasses</a><form action="/cart/add"><button>Add to cart</button></form></article></main>');
+    expect(extractSavedProduct(document,page)).toBeNull();
+  });
+  it('preserves a product detail purchase control inside an article with shipping links', () => {
+    const {document}=parseHTML('<meta property="og:type" content="product"><meta property="og:title" content="Desk lamp"><main><article><h1>Desk lamp</h1><a href="/delivery">Shipping</a><button>Add to basket</button></article></main>');
+    expect(extractSavedProduct(document,'https://shop.example.com/desk-lamp')?.name).toBe('Desk lamp');
+  });
+  it('rejects stale canonical metadata after navigation, including another product', () => {
+    const document = productDoc({url}, `<link rel="canonical" href="${url}">`);
+    expect(extractSavedProduct(document,'https://shop.example.com/accessories/audio')).toBeNull();
+    expect(extractSavedProduct(document,'https://shop.example.com/products/speaker')).toBeNull();
+  });
+  it('rejects a lone recommended microdata product on an ordinary page', () => {
+    const {document} = parseHTML('<main><h1>Audio accessories</h1><article itemtype="https://schema.org/Product"><a itemprop="url" href="/products/headphones"><span itemprop="name">Headphones</span></a><button>Add to cart</button></article></main>');
+    expect(extractSavedProduct(document,'https://shop.example.com/audio')).toBeNull();
+  });
+  it('preserves an OpenGraph product with an opaque route and main purchase control', () => {
+    const {document} = parseHTML('<meta property="og:type" content="product"><meta property="og:title" content="Desk lamp"><main><h1>Desk lamp</h1><button>Add to basket</button></main>');
+    expect(extractSavedProduct(document,'https://shop.example.com/desk-lamp')?.name).toBe('Desk lamp');
+  });
+  it('preserves a real product with recommendations and an aggregate variant range without claiming its lowest price', () => {
+    const {document} = parseHTML(`<script type="application/ld+json">${JSON.stringify([
+      {'@type':'Product',url,name:'Headphones',offers:{'@type':'AggregateOffer',lowPrice:10,highPrice:20,priceCurrency:'GBP'}},
+      {'@type':'ItemList',itemListElement:[{'@type':'Product',name:'Speaker',url:'https://shop.example.com/products/speaker'}]},
+    ])}</script><main><h1>Headphones</h1><button>Add to cart</button><span class="product-price">£10–£20</span></main>`);
+    expect(extractSavedProduct(document,url)).toMatchObject(saved);
+    expect(extractSavedProduct(document,url)?.savedPrice).toBeUndefined();
+  });
+  it('selects the current ProductGroup variant by its offer URL', () => {
+    const {document} = parseHTML(`<script type="application/ld+json">${JSON.stringify({'@graph':[
+      {'@type':'ProductGroup',name:'Glasses',productGroupID:'181317'},
+      {'@type':'Product',name:'White glasses',image:'https://shop.example.com/white.jpg',offers:{url,priceSpecification:{'@type':'UnitPriceSpecification',price:14.99,priceCurrency:'GBP'}}},
+      {'@type':'Product',name:'Black glasses',offers:{url:'https://shop.example.com/products/black',price:19.99,priceCurrency:'GBP'}},
+    ]})}</script>`);
+    expect(extractSavedProduct(document,url)).toMatchObject({name:'White glasses',savedPrice:{amountMinor:1499,currency:'GBP'}});
+  });
+  it('does not treat an original list price specification as the current price', () => {
+    expect(extractSavedProduct(productDoc({offers:{priceSpecification:{'@type':'UnitPriceSpecification',price:100,priceCurrency:'GBP',priceType:'https://schema.org/ListPrice'}}}),url)?.savedPrice).toBeUndefined();
+  });
+  it('rejects a lone recommended product identified only by an unrelated offer URL', () => {
+    expect(extractSavedProduct(productDoc({offers:{url:'https://shop.example.com/products/speaker',price:10,priceCurrency:'GBP'}}),url)).toBeNull();
+  });
+  it('ignores an unrelated microdata recommendation when extracting the main structured product', () => {
+    const document=productDoc({offers:{price:20,priceCurrency:'GBP'}},'<article itemtype="https://schema.org/Product"><a itemprop="url" href="/products/speaker"></a><span itemprop="name">Speaker</span><meta itemprop="price" content="5"></article>');
+    expect(extractSavedProduct(document,url)).toMatchObject({name:'Headphones',savedPrice:{amountMinor:2000,currency:'GBP'}});
+  });
   it('extracts JSON-LD product metadata and strips tracking', () => {
     const result = extractSavedProduct(productDoc({sku:'S1',offers:{price:'349.99',priceCurrency:'GBP'},image:'https://shop.example.com/headphones.jpg'}), `${url}?utm_source=mail#details`);
     expect(result).toMatchObject({...saved, sku:'S1', savedPrice:{amountMinor:34999,currency:'GBP'},imageUrl:'https://shop.example.com/headphones.jpg'});

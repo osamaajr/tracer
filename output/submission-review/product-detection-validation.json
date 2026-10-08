@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "liveDom": true,
+  "checks": [
+    {
+      "bundle": "watchlistCapture.js",
+      "page": "category",
+      "detected": false,
+      "priceMinor": null,
+      "pageUnchanged": true
+    },
+    {
+      "bundle": "watchlistCapture.js",
+      "page": "product",
+      "detected": true,
+      "priceMinor": 1499,
+      "pageUnchanged": true
+    },
+    {
+      "bundle": "savedMonitoringCapture.js",
+      "page": "category",
+      "detected": false,
+      "priceMinor": null,
+      "pageUnchanged": true
+    },
+    {
+      "bundle": "savedMonitoringCapture.js",
+      "page": "product",
+      "detected": true,
+      "priceMinor": 1499,
+      "pageUnchanged": true
+    }
+  ]
+}
