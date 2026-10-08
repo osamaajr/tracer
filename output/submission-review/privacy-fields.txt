@@ -4,6 +4,9 @@ Save and monitor shopping items and selected purchases, show verified product pr
 HTTPS host permission justification:
 Tracer detects completed purchase pages locally and captures product details when the user opens it. Retailers use many HTTPS domains. Access is also needed to revisit saved product pages in background tabs to verify prices and to connect to Tracer’s HTTPS API for purchases the user chooses to protect. Unrelated browsing content is not uploaded.
 
+Notifications permission justification:
+Shows browser alerts when a saved product or protected purchase drops in price, if the user has enabled price alerts.
+
 Data usage:
 Keep Financial and payment information, Location (IP addresses in service logs), Web history (saved/product/order URLs), and Website content checked. Also declare Authentication information: a random installation token authenticates API requests. No email/password account is used. Other categories remain unchecked based on the reviewed extension implementation.
 

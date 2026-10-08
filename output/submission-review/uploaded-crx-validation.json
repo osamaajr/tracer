@@ -1,0 +1,28 @@
+{
+  "version": "0.1.2",
+  "manifestMatchesApartFromGoogleUpdateUrl": true,
+  "matchedAssets": 19,
+  "allAssetsByteIdentical": true,
+  "storeCrxSha256": "b3787ee6be507f65bd4844e3b6b3184c5fb258e7bac4e3422c46a68cef20ac7c",
+  "matchingFiles": [
+    "assets/icons/icon-128.png",
+    "assets/icons/icon-16.png",
+    "assets/icons/icon-32.png",
+    "assets/icons/icon-48.png",
+    "assets/logo-panels/tracer-panel-center.png",
+    "assets/logo-panels/tracer-panel-left.png",
+    "assets/logo-panels/tracer-panel-right.png",
+    "assets/product-headphones.png",
+    "assets/purchase-receipt-detected.png",
+    "assets/tracer-empty-box.webp",
+    "assets/tracer-loading.webp",
+    "assets/tracer-outline.webp",
+    "background.js",
+    "contentScript.js",
+    "genericCapture.js",
+    "popup.html",
+    "popup.js",
+    "storePriceCheck.js",
+    "watchlistCapture.js"
+  ]
+}

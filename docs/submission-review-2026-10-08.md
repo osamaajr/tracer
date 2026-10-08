@@ -2,19 +2,19 @@
 
 ## Decision
 
-**Do not submit the currently uploaded 0.1.1 package yet.** The corrected 0.1.2 package and website changes are prepared locally. The dashboard and live website have not been changed during this audit. Google’s final validation and review decision remain outstanding.
+**The required corrections have now been applied.** Version 0.1.2 is uploaded to the existing Chrome Web Store draft. The privacy policy and corrected landing copy are live. Listing, privacy, reviewer instructions and the small promotional tile are saved. The draft remains unpublished; Google’s final submission checks and review decision remain outstanding.
 
-## Required before submission
+## Findings and corrections
 
-| Finding | Prepared correction | Remaining action |
+| Initial finding | Correction | Completion |
 | --- | --- | --- |
-| Automatic purchase detection sent a newly captured order to the API before the user clicked Protect, contrary to the privacy wording. | Match existing protections locally using the authenticated dashboard. Only previously protected orders can upload a corrected total automatically. Strip receipt query strings, fragments and URL credentials before purchase uploads. Add a disclosure beside Protect. | Upload the new 0.1.2 ZIP. |
-| A delayed price refresh could overwrite an error when removing a protected purchase failed. | Invalidate the old detail render before removal; added regression coverage for successful and failed delayed checks. | Included in 0.1.2. |
-| Live privacy wording omitted the Limited Use affirmation and installation authentication token, and did not identify current infrastructure providers. | Updated privacy draft describes token authentication, IP/request diagnostics, Vercel, Neon, Chrome, and Limited Use restrictions. | Review the operational commitments and deploy the website changes. |
-| Listing description contained development jargon and promised claim links that the extension does not display. Landing copy promised return reminders that are not implemented. | Prepared consumer listing copy and corrected local landing copy to describe available price monitoring. | Apply listing copy and deploy website changes. |
-| Dashboard does not declare Authentication information, although the extension uses a random installation token to authenticate API access. HTTPS justification refers to local HTTP development permissions absent from the uploaded release. | Prepared corrected data declaration and HTTPS justification. | Update the privacy fields; developer must confirm that declarations accurately describe operations. |
-| Reviewer instructions are empty. | Prepared instructions within the 500-character limit; no login required. | Fill the dashboard field. Purchase protection still needs a completed retailer order page controlled by the reviewer; a separate public test receipt has not been deployed. |
-| Small promotional tile is absent. | Prepared an opaque RGB 440×280 PNG using the existing Tracer wordmark. | Upload the tile. Google’s [image guidance](https://developer.chrome.com/docs/webstore/images) lists this asset as required; dashboard submission validation has not been triggered. |
+| Automatic purchase detection sent a newly captured order to the API before the user clicked Protect, contrary to the privacy wording. | Match existing protections locally using the authenticated dashboard. Only previously protected orders can upload a corrected total automatically. Strip receipt query strings, fragments and URL credentials before purchase uploads. Add a disclosure beside Protect. | Uploaded 0.1.2 and compared the processed Store CRX with the reviewed release. |
+| A delayed price refresh could overwrite an error when removing a protected purchase failed. | Invalidate the old detail render before removal; added regression coverage for successful and failed delayed checks. | Included in uploaded 0.1.2. |
+| Live privacy wording omitted the Limited Use affirmation and installation authentication token, and did not identify current infrastructure providers. | Updated privacy draft describes token authentication, IP/request diagnostics, Vercel, Neon, Chrome, and Limited Use restrictions. | Deployed after user approval; verified the new wording on the public privacy page. |
+| Listing description contained development jargon and promised claim links that the extension does not display. Landing copy promised return reminders that are not implemented. | Prepared consumer listing copy and corrected local landing copy to describe available price monitoring. | Listing saved and website deployed; both verified. |
+| Dashboard does not declare Authentication information, although the extension uses a random installation token to authenticate API access. HTTPS justification refers to local HTTP development permissions absent from the uploaded release. | Prepared corrected data declaration and HTTPS justification. | Saved Authentication information, corrected purpose/HTTPS justification and precise price-alert justification; existing developer certifications were unchanged. |
+| Reviewer instructions are empty. | Prepared instructions within the 500-character limit; no login required. | Saved 484-character instructions. Purchase protection still needs a completed retailer order page controlled by the reviewer; a separate public test receipt has not been deployed. |
+| Small promotional tile is absent. | Prepared an opaque RGB 440×280 PNG using the existing Tracer wordmark. | Uploaded and saved the tile. Google’s [image guidance](https://developer.chrome.com/docs/webstore/images) lists this asset as required; dashboard submission validation has not been triggered. |
 
 ## Prepared artifacts
 
@@ -53,7 +53,7 @@ The privacy source is `apps/web/src/App.tsx`. Preview it at `http://127.0.0.1:51
 
 ### Dashboard
 
-- Draft, uploaded version 0.1.1, public distribution, free, all regions, Shopping category, English UK, mature content off.
+- Draft initially used version 0.1.1; replaced with verified 0.1.2. Public distribution, free, all regions, Shopping category, English UK, mature content off.
 - Correct 128px logo and five screenshot slots populated. Screenshot thumbnails were inspected. Uploaded asset dimensions were not independently downloaded from the dashboard; source marketing/screenshot assets had been prepared to listing dimensions earlier.
 - Homepage, support and privacy URLs point to live Tracer pages.
 - Remote-code answer is No and agrees with the package. Existing Limited Use certifications were already checked by the developer and were not changed.
@@ -75,4 +75,8 @@ Price capture depends on the retailer exposing reliable public data and matching
 - [Privacy dashboard fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy): single purpose and data disclosures.
 - [Listing images](https://developer.chrome.com/docs/webstore/images): icon, screenshot and promotional image requirements.
 
-External changes remain pending: website deployment, new package upload, listing/privacy/test field changes and promotional tile upload. Submission for review remains the user’s next decision after those changes are verified.
+External updates completed after user approval: GitHub main and codex/vercel-api-deployment pushed at 5f5121e; Vercel website and API deployments both succeeded; the production privacy page and API access guards were checked again. Version 0.1.2, listing/privacy fields, reviewer instructions and promotional tile are saved in the Store draft. Submission for review remains the user’s next action.
+
+## Uploaded package verification
+
+The downloaded 0.1.2 Store CRX has 19 assets byte-identical to the reviewed release. Its manifest matches apart from the normal Google update_url addition. Results are saved in output/submission-review/uploaded-crx-validation.json. No CRX was installed during this comparison.
