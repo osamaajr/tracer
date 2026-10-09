@@ -29,6 +29,7 @@ import {
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 const demoUserId = "dev-user-tracer";
+const chromeWebStoreUrl = "https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm";
 
 interface DashboardPurchase {
   id: string;
@@ -152,7 +153,7 @@ function HeroSectionB() {
         <p className="hero-text">
           Save products from any website, come back anytime, and let Tracer keep an eye on the price — even after you buy.
         </p>
-        <a className="primary-button hero-cta" href="#install">
+        <a className="primary-button hero-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
           <ChromeMark />
           Add to Chrome - It's free
         </a>
@@ -401,7 +402,7 @@ function LandingBFeatures() {
   );
 }
 
-function LandingHeader({ homeHref = "/", installHref = "#install" }: { homeHref?: string; installHref?: string }) {
+function LandingHeader({ homeHref = "/" }: { homeHref?: string }) {
   const [floating, setFloating] = useState(false);
 
   useEffect(() => {
@@ -427,7 +428,7 @@ function LandingHeader({ homeHref = "/", installHref = "#install" }: { homeHref?
       <header className="site-header landing-header" data-floating={floating}>
         <a className="brand" href={homeHref} aria-label="Tracer home">
         </a>
-        <a className="header-cta" href={installHref}>
+        <a className="header-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
           <ChromeMark />
           Add to Chrome
           <ArrowRight aria-hidden="true" size={16} />
@@ -485,7 +486,7 @@ function SitePage({
 
   return (
     <main className="site-page-shell landing-shell-b landing-b-subpage" data-background={background}>
-      <LandingHeader homeHref="/" installHref="/#install" />
+      <LandingHeader homeHref="/" />
       <div className="site-page-main">
         <header className="site-page-intro">
           <h1>{title}</h1>
