@@ -32,6 +32,8 @@ Prepared package: `output/submission-review/tracer-0.1.5-submission.zip`. Reload
 
 ## Store state during this release check
 
-The developer dashboard's Package page shows **Published 0.1.2** and **Draft 0.1.2**. Version 0.1.5 has not been uploaded or submitted yet. Store pages block background scripting; native controls follow the foreground Chrome window, which the user is using for study. The separate “Package Information” tab is retained for the upload once it is brought to the foreground. No published-version rollback or Store submission was performed.
+On 9 October 2026, uploaded the verified `tracer-0.1.5-submission.zip` to the existing Chrome Web Store item `dhefgfndmihnonnclclmmjmgnhidgokm`. The Package page confirmed **Draft 0.1.5** and **Published 0.1.2**, with unchanged listed permissions. Submitted 0.1.5 for review with **Publish automatically after it has passed review** checked. The Store confirmed “Your extension was submitted for review”; its refreshed Status page shows **Pending review** and “This draft is pending review.”
+
+Version 0.1.5 is awaiting Google approval. The live Store version remains 0.1.2 until automatic publication after approval. Local proof is saved at `output/submission-review/tracer-0.1.5-submitted-proof.png`; it is excluded from this GitHub commit because it includes publisher account details. The update was performed in the separate Store window, leaving the user's study tabs untouched.
 
 Future extension releases must include both a GitHub push and a Chrome Web Store package update. Increment the version, run the release checks, build with production endpoints, upload the reviewed ZIP to this existing Store item, submit with automatic publication after approval, and confirm the published package version. A GitHub push alone updates neither the public extension package nor users' installed Store versions.
