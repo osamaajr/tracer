@@ -3,13 +3,13 @@ import { readFileSync } from "node:fs";
 import { setTimeout as wait } from "node:timers/promises";
 import { parseHTML } from "linkedom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gbp, type PurchaseDraft, type SavedProduct } from "@tracer/core";
+import { gbp, type ProductPriceSnapshot, type PurchaseDraft, type SavedProduct } from "@tracer/core";
 
 const popupPath = new URL("../popup.html", import.meta.url);
 const originalFetch = globalThis.fetch;
 const originalSetTimeout = globalThis.setTimeout;
 const popupTimers = new Set<ReturnType<typeof setTimeout>>();
-const fallbackPriceCheck = vi.fn(async () => { throw new Error("Store price unavailable in this fixture"); });
+const fallbackPriceCheck = vi.fn<() => Promise<ProductPriceSnapshot>>(async () => { throw new Error("Store price unavailable in this fixture"); });
 
 const purchaseDraft: PurchaseDraft = {
   retailerId: "john-lewis",
@@ -63,7 +63,7 @@ describe("extension popup", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-22T09:05:00.000Z"));
-    fallbackPriceCheck.mockClear();
+    fallbackPriceCheck.mockReset();
     vi.doMock("../src/storePriceCheck", () => ({
       checkStorePrice: fallbackPriceCheck,
     }));
@@ -609,6 +609,87 @@ describe("extension popup", () => {
     expect(text("detailCurrentPrice")).toBe("£319");
     expect(text("detailPriceNote")).toContain("latest check failed");
     expect(element("detailCurrentPrice").dataset.checking).toBe("false");
+    expect(element("detailCurrentPrice").parentElement?.querySelector(".detail-price-label")?.textContent).toBe("Last checked price");
+    expect(text("detailStatus")).toBe("● Unable to check");
+    expect(element("detailStatus").dataset.error).toBe("true");
+    expect(element("detailStatus").dataset.alert).toBe("false");
+    expect(element("detailPriceCard").dataset.alert).toBe("false");
+    harness.popupBack.click();
+    await flushPopup();
+    expect(harness.firstItem().dataset.error).toBe("true");
+    expect(harness.firstItem().textContent).toContain("Unable to check");
+  });
+
+  it("shows a red out-of-stock status separately from a verified price", async () => {
+    const dashboard = droppedDashboard();
+    const purchase = dashboard.purchases[0]! as Record<string, unknown>;
+    purchase.monitoringStatus = "unavailable";
+    purchase.checkedOnStore = true;
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    expect(harness.firstItem().dataset.error).toBe("true");
+    expect(harness.firstItem().textContent).toContain("Out of stock");
+    harness.firstItem().click();
+    await flushPopup();
+    expect(text("detailCurrentPrice")).toBe("£319");
+    expect(text("detailStatus")).toBe("● Out of stock");
+    expect(element("detailStatus").dataset.error).toBe("true");
+    expect(text("detailPriceNote")).toContain("Price listed by the store");
+    expect(text("detailPriceNote")).toContain("out of stock");
+    expect(text("detailMonitoringState")).toBe("Out of stock");
+    expect(harness.priceCheckRequests()).toHaveLength(0);
+  });
+
+  it("keeps failures red even with a recent locally verified price and retries on reopen", async () => {
+    const dashboard = droppedDashboard();
+    const purchase = dashboard.purchases[0]! as Record<string, unknown>;
+    purchase.monitoringStatus = "unable_to_check";
+    purchase.checkedOnStore = true;
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard, priceCheckFails: true });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await vi.waitFor(() => expect(element("detailCurrentPrice").dataset.checking).toBe("false"));
+    expect(harness.priceCheckRequests()).toHaveLength(1);
+    expect(text("detailCurrentPrice")).toBe("£319");
+    expect(element("detailCurrentPrice").parentElement?.querySelector(".detail-price-label")?.textContent).toBe("Last checked price");
+    expect(text("detailStatus")).toBe("● Unable to check");
+    expect(element("detailStatus").dataset.error).toBe("true");
+    expect(text("detailMonitoringInsight")).toContain("Tracer will retry");
+  });
+
+  it("preserves out-of-stock availability in local checks and pending purchase storage", async () => {
+    fallbackPriceCheck.mockResolvedValueOnce({
+      retailerId: purchaseDraft.retailerId,
+      productName: purchaseDraft.lineItems[0]!.productName,
+      productUrl: purchaseDraft.lineItems[0]!.productUrl!,
+      price: gbp(31_900),
+      observedAt: "2026-09-22T09:05:00.000Z",
+      availability: "out_of_stock",
+    });
+    const harness = await setupPopup({
+      protected: true,
+      pendingPurchases: [{ id: "local_pending", draft: purchaseDraft, queuedAt: "2026-09-22T09:00:00.000Z" }],
+    });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await vi.waitFor(() => expect(text("detailStatus")).toBe("● Out of stock"));
+    expect(text("detailCurrentPrice")).toBe("£319");
+    expect(element("detailStatus").dataset.error).toBe("true");
+    await vi.waitFor(() => expect(harness.localStorageSet).toHaveBeenCalledWith({
+      tracerPendingPurchases: [expect.objectContaining({ priceChecks: {
+        0: expect.objectContaining({ price: gbp(31_900), availability: "out_of_stock" }),
+      } })],
+    }));
+    harness.popupBack.click();
+    await flushPopup();
+    expect(harness.firstItem().textContent).toContain("Out of stock");
+    expect(harness.firstItem().dataset.error).toBe("true");
   });
 
   it("reuses the automatic background scan when the popup opens", async () => {

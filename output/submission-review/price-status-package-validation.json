@@ -1,0 +1,29 @@
+{
+  "version": "0.1.5",
+  "files": 21,
+  "zipBytes": 2294899,
+  "sha256": "74b7e7db93d1999264a3537739a2432680bd90699fab884d7772a3ecd1ee29bd",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ],
+  "testsPassed": 243,
+  "checks": [
+    "workspace typecheck",
+    "lint",
+    "all workspace builds",
+    "extension production release build",
+    "monitoring workflow",
+    "manifest resource paths",
+    "production service endpoints",
+    "no source maps or source files or env files",
+    "zip contents equal release directory",
+    "zip CRC valid"
+  ]
+}

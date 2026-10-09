@@ -1,0 +1,86 @@
+[
+  {
+    "name": "01-less-tab-chaos",
+    "width": 1280,
+    "height": 800,
+    "headline": "Less tab chaos.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Less tabchaos.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Save your finds in one place.Come back without the hunt.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 564,
+    "bottom": 554.125,
+    "textFits": true
+  },
+  {
+    "name": "02-see-it-save-it",
+    "width": 1280,
+    "height": 800,
+    "headline": "See it. Save it.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "See it.Save it.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Keep your favourite finds.Come back anytime.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 1216,
+    "bottom": 553.65625,
+    "textFits": true
+  },
+  {
+    "name": "03-keep-watch",
+    "width": 1280,
+    "height": 800,
+    "headline": "Let Tracer keep watch.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Let Tracerkeep watch.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Save your items.We’ll keep checking their prices.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 584,
+    "bottom": 554.65625,
+    "textFits": true
+  }
+]

@@ -1,0 +1,149 @@
+[
+  {
+    "name": "01-save-it",
+    "width": 1280,
+    "height": 800,
+    "headline": "Save it. We’ll keep watching it.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Save it.We’ll keepwatching it.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Your favourite finds, saved in one place.Let Tracer keep an eye on the price.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 574,
+    "bottom": 602.6875,
+    "textFits": true
+  },
+  {
+    "name": "02-price-drops",
+    "width": 1280,
+    "height": 800,
+    "headline": "Catch the price drop.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Catch theprice drop.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Save an item.Let Tracer watch the price.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Price drop detected",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 574,
+    "bottom": 569.3125,
+    "textFits": true
+  },
+  {
+    "name": "03-after-checkout",
+    "width": 1280,
+    "height": 800,
+    "headline": "Even after checkout.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Even aftercheckout.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Protect your purchase.Keep watching for price drops.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 574,
+    "bottom": 569.3125,
+    "textFits": true
+  },
+  {
+    "name": "04-your-maybes",
+    "width": 1280,
+    "height": 800,
+    "headline": "A place for your maybes.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "A place foryour maybes.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Keep products from different storestogether in one saved collection.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 574,
+    "bottom": 556.8125,
+    "textFits": true
+  },
+  {
+    "name": "05-one-place",
+    "width": 1280,
+    "height": 800,
+    "headline": "Your finds. One place.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Your finds.One place.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Fewer scattered tabs and bookmarks.Come back to your saved items anytime.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 574,
+    "bottom": 569.3125,
+    "textFits": true
+  }
+]

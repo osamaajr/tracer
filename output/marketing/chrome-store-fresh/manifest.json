@@ -1,0 +1,114 @@
+[
+  {
+    "name": "01-morning-desk",
+    "width": 1280,
+    "height": 800,
+    "headline": "Shop now. Decide later.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Shop now.Decide later.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Save the things you like.Come back when you’re ready.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 1216,
+    "bottom": 537.5,
+    "textFits": true
+  },
+  {
+    "name": "02-worth-the-wait",
+    "width": 1280,
+    "height": 800,
+    "headline": "Worth the wait.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Worth the wait.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Get notified when Tracer finds a lower price.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 1120,
+    "bottom": 249.953125,
+    "textFits": true
+  },
+  {
+    "name": "03-found-it",
+    "width": 1280,
+    "height": 800,
+    "headline": "Found it? Save it.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Found it?Save it.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "All your favourite products together.Saved for later. Watched for price drops.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 955,
+    "bottom": 497.71875,
+    "textFits": true
+  },
+  {
+    "name": "04-still-watching",
+    "width": 1280,
+    "height": 800,
+    "headline": "Bought it? Still watching.",
+    "fontLoaded": true,
+    "exactFont": true,
+    "typography": [
+      {
+        "text": "Bought it?Still watching.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      },
+      {
+        "text": "Protect your purchase.Stay alert to later price drops.",
+        "family": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+        "weight": "400",
+        "kerning": "normal",
+        "synthesis": "none"
+      }
+    ],
+    "font": "\"Tracer B Reference Serif\", Charter, Georgia, serif",
+    "right": 1216,
+    "bottom": 519.71875,
+    "textFits": true
+  }
+]

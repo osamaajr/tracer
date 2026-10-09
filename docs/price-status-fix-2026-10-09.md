@@ -18,6 +18,14 @@ The API correctly distinguishes a failed check (`unable_to_check`) from a verifi
 - Reviewed protected list, detail, local fallback, pending persistence, cached failure and saved-item status paths. Saved-item check failures already use red styling.
 - Extension TypeScript check passed.
 - Development and production release builds passed, including their bundled JavaScript syntax checks. Both builds use the production API and website endpoints.
-- No automated tests or installed-browser runtime checks were run for this change.
+- The initial implementation pass did not run automated tests or installed-browser runtime checks.
+
+## Final release check
+
+The subsequent user-requested release review passes **243 tests in 15 files**, all workspace type checks, lint, all workspace builds, and the production extension build. New popup regression coverage verifies out-of-stock prices, red failure states, retained-price labelling, clearing earlier price-drop styling, retrying failed checks, and persisting local availability across pending purchase storage and list refresh.
+
+The isolated monitoring workflow passes: one price-drop event and notification, no duplicate events on repeat, no checks after pause or clearing. The live API health endpoint returns `{"ok":true,"service":"tracer-api"}`.
+
+The ZIP contains 21 files, unchanged permissions, HTTPS-only release host permissions, production service endpoints, and no source maps, TypeScript sources or environment files. Its entries match the release directory and its CRC check passes. Evidence is recorded in `output/submission-review/price-status-package-validation.json`. These checks do not guarantee every retailer's future page structure or Google approval.
 
 Prepared package: `output/submission-review/tracer-0.1.5-submission.zip`. Reload the unpacked extension to use the local build. The public Chrome Web Store version does not change until this package is uploaded and published through the Store update process.

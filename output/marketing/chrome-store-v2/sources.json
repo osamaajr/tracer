@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "path": "backgrounds/01-save-it.png"
+  },
+  {
+    "id": 2,
+    "path": "backgrounds/02-price-drops.png"
+  },
+  {
+    "id": 3,
+    "path": "backgrounds/03-after-checkout.png"
+  },
+  {
+    "id": 4,
+    "path": "backgrounds/04-your-maybes.png"
+  },
+  {
+    "id": 5,
+    "path": "backgrounds/05-one-place.png"
+  }
+]

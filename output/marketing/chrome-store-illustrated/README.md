@@ -1,0 +1,22 @@
+# Illustrated Tracer campaign
+
+Three new campaign directions focused on actions and visual metaphors: organizing browser tabs, saving a find while browsing, and watching prices with a telescope at night.
+
+Illustrations generated using the built-in image generation tool. Final text is rendered directly with the exact landing-page AnthropicSerif-Roman-Web.woff2 file (weight 400, normal kerning, letter spacing -0.02em, font synthesis disabled). The exact original outlined Tracer logo is inserted from the landing page. All exports are 1280×800 opaque RGB PNGs. These are conceptual promotional illustrations.
+
+The HTML files contain editable typography with embedded original assets. render.mjs reproduces final PNGs and records font and layout checks in manifest.json. Original generated illustrations are kept in backgrounds/.
+
+## Final generation prompts
+
+## Illustration 1
+
+Use case: ads-marketing. Generate ONE original landscape editorial illustration for a shopping-item browser extension, EXACT aspect ratio 8:5. No text, letters, numbers, logos, watermarks or recognizable software interface. A COMPLETELY NEW visual direction: sophisticated cut-paper and ink illustration, NOT a photo, NOT a 3D product mockup. Warm ivory background. On the RIGHT HALF a joyful sweeping stream of small abstract blue browser tabs, bookmark slips and little simple web-window shapes gathers into ONE large neatly organized open blue folder or bookmark-shaped pocket. Windows show minimal geometric blocks only, no words or controls. The stream curves from upper right into pocket in lower right, demonstrating scattered shopping tabs becoming an organized saved collection. Use cobalt and pale blue with cream paper, tactile layered paper edges, crisp hand-drawn black fine outlines, sparse playful marks. Elegant editorial design suitable for a premium tech brand, no childish cartoon. The entire LEFT 46% remains calm empty ivory space for headline, and upper left remains empty for logo. No real products, people, clouds, ribbons, phones, price arrows or floating white product cards. Minimum 6% safety margins.
+
+## Illustration 2
+
+Use case: ads-marketing. ONE landscape premium editorial illustration, EXACT 8:5 aspect ratio, not photorealistic. No text, letters, logos, numbers, watermarks or screenshots. New visual direction: an elegant hand-painted gouache and fine-ink scene of an adult woman at a small desk casually browsing on a laptop. She wears a soft blue shirt, has natural dark hair tied back, thoughtfully reaches toward a large symbolic blue bookmark that floats beside her laptop. The laptop has a simple abstract cream screen with one blue rectangle and no actual UI. Side-on scene on LEFT HALF, blue desk, cream walls, quiet blue pencil holder, minimal artistic detail. Modern magazine illustration with confident loose contours and flat textured blue paint, warm skin tones, tasteful linework. Her expression is calm and engaged, not exaggerated. The entire RIGHT 47% is empty cream backdrop for a large headline and supporting text, upper right empty for logo. No detailed products, shopping bags, clouds, floating product cards, notification badges, comic balloons or fake browser controls. Communicate saving a find while browsing. Reserve spacious margins.
+
+## Illustration 3
+
+Use case: ads-marketing. ONE original premium editorial gouache-and-ink illustration for Tracer shopping price monitoring. Exact landscape 8:5 canvas. NO TEXT, LETTERS, NUMBERS, LOGOS, WATERMARKS OR SOFTWARE UI. Creative 3: a calm dark cobalt and midnight-blue night scene. On the RIGHT HALF, a beautifully drawn powder-blue telescope stands on a small cream circular hill, pointed upward toward a large suspended cream price-tag shape with a tiny simple blue bell symbol embossed on it, NO numbers or writing. A soft subtle pale-blue cone of light links telescope to tag, metaphor for watching prices. Minimal four-point stars as small cream ink marks, no clouds. Sophisticated textured painterly surfaces, delicate black contours, confident editorial illustration suitable for grown-up design, a little playful but restrained. No characters or people, no real products, no physical storefronts, no floating product cards or screenshot mockups. The entire LEFT 45% stays flat uncluttered midnight blue for large cream type; upper left clear for original logo. Keep telescope and tag visible in full within generous 7% safety margins. Memorable conceptual campaign about an item being watched while someone is away.
+
