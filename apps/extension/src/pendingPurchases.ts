@@ -1,4 +1,4 @@
-import type { Money, PurchaseDraft } from "@tracer/core";
+import type { Money, ProductPriceSnapshot, PurchaseDraft } from "@tracer/core";
 
 export const pendingPurchasesStorageKey = "tracerPendingPurchases";
 
@@ -6,7 +6,7 @@ export interface PendingProtectedPurchase {
   id: string;
   draft: PurchaseDraft;
   queuedAt: string;
-  priceChecks?: Record<string, { price: Money; observedAt: string; productName: string; productUrl?: string }>;
+  priceChecks?: Record<string, { price: Money; observedAt: string; productName: string; productUrl?: string; availability?: ProductPriceSnapshot["availability"] }>;
 }
 
 export async function getPendingPurchases(): Promise<PendingProtectedPurchase[]> {
@@ -51,6 +51,7 @@ export async function savePendingPriceCheck(
   lineIndex: number,
   price: Money,
   observedAt: string,
+  availability: ProductPriceSnapshot["availability"] = "unknown",
 ): Promise<void> {
   const pending = await getPendingPurchases();
   const purchase = pending.find((item) => item.id === pendingId);
@@ -62,6 +63,7 @@ export async function savePendingPriceCheck(
     [lineIndex]: {
       price,
       observedAt,
+      availability,
       productName: lineItem.productName,
       ...(lineItem.productUrl ? { productUrl: lineItem.productUrl } : {}),
     },

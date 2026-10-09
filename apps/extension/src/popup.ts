@@ -10,6 +10,7 @@ import {
   type PurchaseDraft,
   type PurchaseLineItemDraft,
   type PurchaseRecord,
+  type ProductPriceSnapshot,
 } from "@tracer/core";
 import {
   getPendingPurchases,
@@ -301,7 +302,7 @@ let selectedPurchaseId: string | null = null;
 let detailRenderId = 0;
 type PriceCheckResult =
   | { kind: "server"; dashboard: DashboardData; purchaseId: string }
-  | { kind: "store"; price: Money; observedAt: string };
+  | { kind: "store"; price: Money; observedAt: string; availability: ProductPriceSnapshot["availability"] };
 const activePriceChecks = new Map<string, Promise<PriceCheckResult>>();
 let itemsLoadRunId = 0;
 let activeScanRunId = 0;
@@ -1601,7 +1602,7 @@ function mergePendingDashboard(data: DashboardData, pending: PendingProtectedPur
       captureConfidence: pendingPurchase.draft.captureConfidence,
       currentPriceDisplay: savedCheck ? formatMoney(savedCheck.price) : null,
       lastCheckedAt: savedCheck?.observedAt ?? null,
-      monitoringStatus: "watching",
+      monitoringStatus: savedCheck?.availability === "out_of_stock" ? "unavailable" : "watching",
       pendingSync: true,
       pendingDraftId: pendingPurchase.id,
       pendingLineIndex: index,
@@ -1782,12 +1783,16 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
   const priceDropped = !monitoringPaused && purchase.monitoringStatus === "price_dropped";
   const savingDisplay = purchase.savingDisplay ?? opportunity?.potentialSavingDisplay ?? "";
   detailStatus.dataset.alert = String(priceDropped);
-  detailStatus.dataset.error = String(!monitoringPaused && purchase.monitoringStatus === "unable_to_check");
+  const checkFailed = purchase.monitoringStatus === "unable_to_check";
+  const outOfStock = purchase.monitoringStatus === "unavailable";
+  detailStatus.dataset.error = String(!monitoringPaused && (checkFailed || outOfStock));
   detailStatus.dataset.paused = String(monitoringPaused);
   detailStatus.textContent = monitoringPaused
     ? "● Paused"
     : priceDropped
     ? `● Price dropped by ${savingDisplay}`
+    : checkFailed || outOfStock
+    ? monitoringStatusLabel(purchase.monitoringStatus)
     : purchase.checkedOnStore
     ? "● Price checked"
     : monitoringStatusLabel(purchase.monitoringStatus);
@@ -1799,7 +1804,7 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
   const checkedAt = purchase.lastCheckedAt ? new Date(purchase.lastCheckedAt).getTime() : NaN;
   const stalePrice = !Number.isFinite(checkedAt) || Date.now() - checkedAt > 30 * 60_000;
   if (detailCurrentPriceLabel) {
-    detailCurrentPriceLabel.textContent = hasCurrentPrice && stalePrice ? "Last checked price" : "Current price";
+    detailCurrentPriceLabel.textContent = hasCurrentPrice && (stalePrice || checkFailed) ? "Last checked price" : "Current price";
   }
   detailPriceCard.dataset.alert = String(priceDropped);
   detailPriceCard.dataset.error = String(
@@ -1823,7 +1828,9 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
     : purchase.monitoringStatus === "unable_to_check"
     ? "We’ll try checking again automatically."
     : purchase.monitoringStatus === "unavailable"
-    ? "This item is currently unavailable."
+    ? hasCurrentPrice
+      ? "Price listed by the store; this item is currently out of stock."
+      : "This item is currently out of stock."
     : purchase.checkedOnStore
     ? stalePrice
       ? `Last verified on the store’s product page ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}.`
@@ -1836,7 +1843,7 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
   detailMonitoringInsight.textContent = monitoringPaused
     ? "Monitoring is paused."
     : purchase.monitoringStatus === "unavailable"
-    ? "The store currently reports this item unavailable."
+    ? "The store currently reports this item out of stock."
     : purchase.monitoringStatus === "unable_to_check"
     ? `Unable to check${purchase.lastCheckedAt ? ` · Last attempt ${formatShortDate(purchase.lastCheckedAt)}` : ""}; Tracer will retry.`
     : purchase.checkedOnStore
@@ -1847,14 +1854,14 @@ function showItemDetail(purchase: DashboardPurchase, opportunity?: DashboardOppo
   detailMonitoringState.textContent = monitoringPaused
     ? "Paused"
     : purchase.monitoringStatus === "unavailable"
-    ? "Unavailable"
+    ? "Out of stock"
     : purchase.monitoringStatus === "unable_to_check"
     ? "Retrying"
     : purchase.checkedOnStore
     ? "Checked"
     : "Automatic";
 
-  if (checkMissingPrice && !monitoringPaused && (!hasCurrentPrice || stalePrice)) {
+  if (checkMissingPrice && !monitoringPaused && (!hasCurrentPrice || stalePrice || checkFailed)) {
     void checkDetailPrice(purchase, renderId);
   }
 }
@@ -1876,7 +1883,7 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
             /* @vite-ignore */ chrome.runtime.getURL("storePriceCheck.js")
           ) as typeof import("./storePriceCheck");
           const snapshot = await checkStorePrice(purchase);
-          return { kind: "store", price: snapshot.price, observedAt: snapshot.observedAt };
+          return { kind: "store", price: snapshot.price, observedAt: snapshot.observedAt, availability: snapshot.availability };
         };
         const checkServer = async (): Promise<PriceCheckResult> => {
         const userId = await getTracerUserId();
@@ -1926,7 +1933,7 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
         ...purchase,
         currentPriceDisplay: formatMoney(result.price),
         lastCheckedAt: result.observedAt,
-        monitoringStatus: "watching",
+        monitoringStatus: result.availability === "out_of_stock" ? "unavailable" : "watching",
         checkedOnStore: true,
       };
       if (dashboardCache) {
@@ -1936,7 +1943,7 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
       showItemDetail(updated, undefined, false);
       if (purchase.pendingDraftId !== undefined && purchase.pendingLineIndex !== undefined) {
         void savePendingPriceCheck(
-          purchase.pendingDraftId, purchase.pendingLineIndex, result.price, result.observedAt,
+          purchase.pendingDraftId, purchase.pendingLineIndex, result.price, result.observedAt, result.availability,
         ).catch(() => undefined);
       }
       return;
@@ -1953,14 +1960,12 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
   } catch (error) {
     console.warn("Tracer current price check failed", error);
     if (!isCurrent()) return;
-    detailCurrentPrice.textContent = purchase.currentPriceDisplay ?? "Unable to check";
-    detailPriceCard.dataset.error = String(!purchase.currentPriceDisplay);
-    detailPriceNote.textContent = purchase.currentPriceDisplay
-      ? `Last verified ${purchase.lastCheckedAt ? formatShortDate(purchase.lastCheckedAt) : "previously"}; latest check failed.`
-      : priceCheckFailureMessage(error);
-    detailStatus.textContent = "● Unable to check";
-    detailStatus.dataset.error = "true";
-    detailMonitoringState.textContent = "Unavailable";
+    const failed: DashboardPurchase = { ...purchase, monitoringStatus: "unable_to_check" };
+    if (dashboardCache) {
+      dashboardCache.purchases = dashboardCache.purchases.map((item) => item.id === purchase.id ? failed : item);
+    }
+    showItemDetail(failed, undefined, false);
+    if (!purchase.currentPriceDisplay) detailPriceNote.textContent = priceCheckFailureMessage(error);
   } finally {
     if (isCurrent()) {
       detailCurrentPrice.dataset.checking = "false";
@@ -2004,8 +2009,9 @@ function monitoringStatusLabel(status: DashboardPurchase["monitoringStatus"]): s
     case "monitoring_paused":
       return "● Monitoring paused";
     case "unable_to_check":
-    case "unavailable":
       return "● Unable to check";
+    case "unavailable":
+      return "● Out of stock";
     default:
       return "● Watching";
   }
