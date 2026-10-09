@@ -29,3 +29,9 @@ The isolated monitoring workflow passes: one price-drop event and notification, 
 The ZIP contains 21 files, unchanged permissions, HTTPS-only release host permissions, production service endpoints, and no source maps, TypeScript sources or environment files. Its entries match the release directory and its CRC check passes. Evidence is recorded in `output/submission-review/price-status-package-validation.json`. These checks do not guarantee every retailer's future page structure or Google approval.
 
 Prepared package: `output/submission-review/tracer-0.1.5-submission.zip`. Reload the unpacked extension to use the local build. The public Chrome Web Store version does not change until this package is uploaded and published through the Store update process.
+
+## Store state during this release check
+
+The developer dashboard's Package page shows **Published 0.1.2** and **Draft 0.1.2**. Version 0.1.5 has not been uploaded or submitted yet. Store pages block background scripting; native controls follow the foreground Chrome window, which the user is using for study. The separate “Package Information” tab is retained for the upload once it is brought to the foreground. No published-version rollback or Store submission was performed.
+
+Future extension releases must include both a GitHub push and a Chrome Web Store package update. Increment the version, run the release checks, build with production endpoints, upload the reviewed ZIP to this existing Store item, submit with automatic publication after approval, and confirm the published package version. A GitHub push alone updates neither the public extension package nor users' installed Store versions.
