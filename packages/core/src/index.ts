@@ -10,6 +10,7 @@ export * from "./retailers/johnLewisPolicy";
 export * from "./retailers/johnLewisProductExtractor";
 export * from "./retailers/johnLewisPurchaseExtractor";
 export * from "./retailers/orderTotal";
+export * from "./retailers/receiptText";
 export * from "./retailers/purchaseExtractor";
 export * from "./retailers/purchasePage";
 export * from "./retailers/productImage";

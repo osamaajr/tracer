@@ -1,5 +1,6 @@
 import { parsePrice } from "../domain/money";
 import { extractOrderTotalPaid } from "./orderTotal";
+import { receiptPriceText } from "./receiptText";
 import { isCompletedPurchasePage } from "./purchasePage";
 import type { PurchaseDraft, PurchaseLineItemDraft, ProductPriceSnapshot } from "../domain/types";
 import {
@@ -681,7 +682,7 @@ function findTableCellByHeader(element: HTMLElement, headerPattern: RegExp): str
   for (const headerRow of headerRows) {
     const headers = Array.from(headerRow.querySelectorAll<HTMLElement>(":scope > th, :scope > td"));
     const index = headers.findIndex((header) => headerPattern.test(normalizedText(header)));
-    if (index >= 0 && cells[index]) return normalizedText(cells[index]);
+    if (index >= 0 && cells[index]) return receiptPriceText(cells[index]);
   }
   return null;
 }
@@ -744,7 +745,7 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
   );
   if (parsedTableUnitPrice) return parsedTableUnitPrice;
 
-  const labeledUnitPrice = textFromSelectors(element, [
+  const unitPriceSelectors = [
     "[data-label*='each' i]",
     "[data-label*='unit price' i]",
     "[data-th*='each' i]",
@@ -755,11 +756,14 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
     "[headers*='unit' i]",
     "[class*='each' i]",
     "[class*='unit-price' i]",
-  ]);
+  ];
+  const labeledUnitPrice = unitPriceSelectors.map((selector) => element.querySelector(selector))
+    .filter((candidate): candidate is Element => candidate !== null)
+    .map(receiptPriceText).find(Boolean);
   const parsedLabeledUnitPrice = parsePrice(currencyAmounts(labeledUnitPrice ?? "")[0] ?? labeledUnitPrice);
   if (parsedLabeledUnitPrice) return parsedLabeledUnitPrice;
 
-  const receiptText = normalizedText(element);
+  const receiptText = receiptPriceText(element);
   const explicitUnitAmount = receiptText.match(
     /\b(?:each|unit\s+price)\b\s*[:-]?\s*((?:£|\$|€|\b(?:GBP|USD|EUR)\b)\s*\d[\d.,]*)/i,
   )?.[1];
@@ -781,13 +785,13 @@ function extractLineItemPrice(element: HTMLElement, quantity: number): ReturnTyp
   const sources = [...new Set(priceElements)]
     .map((candidate) => ({
       element: candidate,
-      text: candidate.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      text: receiptPriceText(candidate),
     }))
     .filter(({ text }) => Boolean(
       text && currencyAmounts(text).length && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
     ));
   const selected = sources.at(-1);
-  const source = selected?.text ?? element.textContent ?? "";
+  const source = selected?.text ?? receiptPriceText(element);
   const amount = currencyAmounts(source).at(-1);
   const price = parsePrice(amount ?? source);
   if (!price || quantity <= 1 || !selected || !isLineTotal(selected.element, source)) return price;

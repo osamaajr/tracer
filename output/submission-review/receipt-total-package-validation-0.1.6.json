@@ -1,0 +1,39 @@
+{
+  "version": "0.1.6",
+  "fileCount": 21,
+  "zipBytes": 2295609,
+  "sha256": "b0749e6801fc8585a4a758d356f624b00a5c427007e08a9e610f873cf237e3d1",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "hostPermissions": [
+    "https://*/*"
+  ],
+  "crcValid": true,
+  "releaseEntriesMatch": true,
+  "productionEndpoints": true,
+  "testsPassed": 271,
+  "testFilesPassed": 17,
+  "typecheckPassed": true,
+  "lintPassed": true,
+  "confirmationLayout": {
+    "viewportWidth": 380,
+    "viewportHeight": 590,
+    "mainClientHeight": 590,
+    "mainScrollHeight": 590,
+    "mainScrollTop": 0,
+    "headerTop": 20,
+    "variants": [
+      "protected",
+      "protected long name and offline copy",
+      "detected long name",
+      "duplicate long name and offline copy"
+    ]
+  },
+  "installedBrowserCheck": "blocked: Mac locked",
+  "storeUpload": "not performed"
+}

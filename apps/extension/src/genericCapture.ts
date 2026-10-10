@@ -8,6 +8,7 @@ import type {
 import {
   extractPurchaseFromDocument,
   extractOrderTotalPaid,
+  receiptPriceText,
   extractShopifyAccountPurchaseFromDocument,
   findOpenGraphImage,
   findOrderConfirmationImage,
@@ -399,13 +400,13 @@ function extractLineItemPrice(root: Element, quantity: number, fallbackCurrency:
   const sources = [...new Set(elements)]
     .map((element) => ({
       element,
-      text: element.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      text: receiptPriceText(element),
     }))
     .filter(({ text }) => Boolean(
       text && currencyAmounts(text).length && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
     ));
   const selected = sources.at(-1);
-  const source = selected?.text ?? root.textContent ?? "";
+  const source = selected?.text ?? receiptPriceText(root);
   const amount = currencyAmounts(source).at(-1);
   const price = parsePrice(amount ?? source, fallbackCurrency);
   if (!price || quantity <= 1 || !selected || !isLineTotal(selected.element, source)) return price;

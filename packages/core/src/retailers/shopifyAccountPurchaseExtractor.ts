@@ -2,6 +2,7 @@ import type { PurchaseDraft, PurchaseLineItemDraft } from "../domain/types";
 import { parsePrice } from "../domain/money";
 import { selectProductImage } from "./productImage";
 import { extractOrderTotalPaid } from "./orderTotal";
+import { receiptPriceText } from "./receiptText";
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -162,11 +163,11 @@ function extractLineItemPrice(root: Element, quantity: number): ReturnType<typeo
     "[role='cell']",
   ].join(",")));
   const candidates = [...new Set(elements)]
-    .map((element) => cleanText(element.textContent))
+    .map((element) => cleanText(receiptPriceText(element)))
     .filter((text): text is string => Boolean(
       text && hasCurrencyAmount(text) && !/(?:saving|discount|shipping|delivery|tax|refund)/i.test(text),
     ));
-  const source = candidates.at(-1) ?? cleanText(root.textContent);
+  const source = candidates.at(-1) ?? cleanText(receiptPriceText(root));
   const price = parseLastPrice(source);
   if (!price || quantity <= 1 || isUnitPrice(source)) return price;
   return {

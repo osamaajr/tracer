@@ -1697,7 +1697,7 @@
       [hidden] { display:none !important; }
       /* Purchase confirmation screens share the landing page's pearl cards and editorial type. */
       main:is([data-screen="detected"], [data-screen="review"], [data-screen="protected"], [data-screen="duplicate"]) {
-        overflow-y: auto;
+        overflow-y: hidden;
         background: var(--canvas);
       }
       .detected-screen, .success-screen { padding: 4px 0 16px; align-content: start; gap: 18px; }
@@ -1940,6 +1940,58 @@
         width:auto;
       }
       .success-continue-browsing:hover { color:#33352f; }
+
+      /* Confirmation content shares a bounded frame; focusing the CTA must
+         never scroll the logo out of view. Lists and the review form retain
+         their own scrolling behaviour. */
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) {
+        display:flex;
+        flex-direction:column;
+        height:590px;
+        min-height:0;
+        gap:0;
+        overflow:hidden;
+      }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) .topbar {
+        flex:0 0 40px;
+        margin-bottom:14px;
+      }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.detected-screen, .success-screen) {
+        flex:1;
+        min-height:0;
+        flex-direction:column;
+        justify-content:flex-start;
+        gap:14px;
+        padding:0 10px;
+      }
+      main[data-screen="detected"] .detected-screen,
+      main:is([data-screen="protected"], [data-screen="duplicate"]) .success-screen { display:flex; }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) .purchase-receipt {
+        flex:none;
+        height:116px;
+        margin-bottom:6px;
+      }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.success-hero, .detected-copy) {
+        flex:none;
+        min-height:0;
+      }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) .product-title h2 {
+        display:-webkit-box;
+        -webkit-box-orient:vertical;
+        -webkit-line-clamp:3;
+        overflow:hidden;
+        overflow-wrap:anywhere;
+      }
+      main:is([data-screen="protected"], [data-screen="duplicate"]) .success-summary {
+        flex:none;
+        min-height:0;
+        padding:16px 18px;
+      }
+      main:is([data-screen="detected"], [data-screen="protected"], [data-screen="duplicate"]) :is(.actions, .summary-actions) {
+        flex:none;
+        margin-top:auto;
+      }
+      main[data-screen="review"] { overflow-y:auto; }
 
       /* Open purchase layout, with natural row heights and warm neutral surfaces. */
       main[data-screen="detail"] { display:flex; flex-direction:column; gap:0; padding:20px 26px 24px; background:var(--canvas); }

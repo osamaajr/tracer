@@ -521,6 +521,32 @@ describe("extension popup", () => {
     expect(harness.app.dataset.screen).toBe("duplicate");
   });
 
+  it("preserves the final charge independently of the item price and focuses without scrolling", async () => {
+    const receiptDraft: PurchaseDraft = {
+      ...purchaseDraft,
+      orderTotalPaid: gbp(2199),
+      lineItems: [{ ...purchaseDraft.lineItems[0]!, productName: "Graphic Beanie", pricePaid: gbp(1800) }],
+    };
+    const harness = await setupPopup({
+      cachedScanResponse: { ok: true, draft: receiptDraft },
+      protectResponse: {
+        ok: true,
+        response: { accepted: [{ status: "created", purchase: { id: "pur_beanie" } }], rejected: [] },
+      },
+    });
+    await flushPopup();
+    expect(text("totalPaid")).toBe("£21.99");
+    expect(text("detectedPaidLabel")).toBe("Order total paid");
+    const focus = vi.spyOn(harness.dashboardCta, "focus");
+    harness.protectButton.click();
+    await flushPopup();
+    expect(text("summaryPaid")).toBe("£21.99");
+    expect(text("summaryPaidLabel")).toBe("Order total paid");
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    const sent = harness.runtimeSendMessage.mock.calls.find(([message]) => message.type === "TRACER_PROTECT_PURCHASE");
+    expect(sent?.[0]).toMatchObject({ purchaseDraft: { orderTotalPaid: gbp(2199), lineItems: [{ pricePaid: gbp(1800) }] } });
+  });
+
   it("returns from details to the list and from the list to the original screen", async () => {
     const harness = await setupPopup({
       protected: true,

@@ -848,7 +848,7 @@ function renderProtectedPurchase(options: {
     ? "Order total paid" : "Item subtotal";
   renderState(options.title === "Already protected" ? "duplicate" : "protected", options.title, successCopy.textContent);
   dashboardCta.textContent = "View your items";
-  dashboardCta.focus();
+  dashboardCta.focus({ preventScroll: true });
 
   if (options.newlyProtected) {
     if (!confettiPopulated) {
