@@ -59,6 +59,8 @@ flowchart LR
 
 ## Run locally
 
+For the published extension, install [Tracer from the Chrome Web Store](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm). The steps below are for developing an unpacked copy.
+
 ### Requirements
 
 - Node.js 26+ and npm 11+
@@ -109,7 +111,7 @@ Tests cover extraction, saved-item behavior, monitoring decisions, policy evalua
 - Saved items are local to one Chrome profile. Protected purchases use a random extension-installation token; account sync and recovery are not available.
 - Production purchase persistence uses a transactional PostgreSQL JSONB state row. The normalized schema is not yet used by the API.
 - John Lewis is the first verified policy adapter. Other stores can be tracked without implying a refund is available.
-- The extension is loaded locally; it is not yet distributed through the Chrome Web Store.
+- Chrome Web Store releases go through a separate upload and review process. Pushing code to GitHub does not update the installed extension; see the [extension update checklist](docs/production-deployment.md#extension-update-checklist).
 
 For implementation detail, see [`docs/architecture.md`](docs/architecture.md), [`docs/universal-watchlist.md`](docs/universal-watchlist.md), and [`docs/v1-monitoring-workflow.md`](docs/v1-monitoring-workflow.md).
 

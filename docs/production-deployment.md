@@ -25,8 +25,32 @@
    npm run build:release -w @tracer/extension
    ```
 
-8. Package only `apps/extension/release` (manifest version `0.1.4`) and upload the ZIP to the existing Chrome Web Store draft. The release build keeps the local `apps/extension/dist` demo untouched. Complete the listing, privacy declarations, and required screenshots before submitting it for review.
+8. Package only the contents of `apps/extension/release`, using the version in `apps/extension/public/manifest.json`, and upload the ZIP to the existing Chrome Web Store item. `manifest.json` must be at the ZIP root. The release build keeps the local `apps/extension/dist` demo untouched. Complete the listing, privacy declarations, and required screenshots before submitting it for review.
 9. On an installed extension, verify a saved-item check, a protected purchase, `/api/dashboard`, an immediate protected-purchase price check, and the next daily cron invocation. Check that an older localhost override is ignored after the customer build is installed.
+
+## Extension update checklist
+
+Use this checklist for each update to the existing [Tracer Store listing](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm).
+
+1. Keep the extension version consistent in `apps/extension/public/manifest.json`, `apps/extension/package.json`, and its workspace entry in `package-lock.json`. Use a version higher than the latest uploaded Store package.
+2. Run the repository quality checks and monitoring verification before preparing a release:
+
+   ```bash
+   npm run typecheck
+   npm test
+   npm run lint
+   npm run build
+   npm run verify:monitoring
+   ```
+
+3. Run the customer `build:release` command above with the production HTTPS endpoints. Package the contents of `apps/extension/release`, not the development `dist` folder. Confirm the ZIP has `manifest.json` at its root, the intended version and permissions, and no environment files or demo price overrides.
+4. Reload the unpacked extension after rebuilding it and check the changed customer flow. For receipt capture, verify the discounted item price separately from the final order charge including delivery and fees; an explanatory VAT amount must not replace the total. Confirm purchase confirmation screens fit the popup and saved-item monitoring does not open product tabs.
+5. Commit reviewed source changes and release evidence, then push them to `main`. Keep private receipts, browser screenshots containing customer information, local preview files, and credentials out of the public repository.
+6. Upload the customer ZIP to the existing Store item. Review package validation and any changed permission or privacy declarations, then submit for review. Uploading a draft alone does not publish an update.
+7. Record the submitted version and review status with the date. Keep “prepared”, “submitted”, and “published” distinct: GitHub, the local unpacked extension, and the Store package each have their own update step.
+8. After approval and publication, confirm the public version and check that an installed Store copy receives it. Recheck the changed flow against the production services.
+
+The [0.1.6 investigation report](receipt-total-and-confirmation-fix-2026-10-10.md) records that release's parser and layout evidence and the browser checks that remained blocked. It is historical evidence, not confirmation of the current Store version.
 
 ## Configuration and operations
 
