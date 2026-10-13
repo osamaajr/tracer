@@ -68,6 +68,18 @@ Saving a product does not upload it as a protected purchase. The shopper confirm
 | [`packages/db`](packages/db) | Drizzle PostgreSQL schema and initial migration |
 | [`docs`](docs) | Architecture and deeper monitoring notes |
 
+### Code tour
+
+| If you are changing… | Start here |
+| --- | --- |
+| Product or order extraction | [`packages/core/src/retailers`](packages/core/src/retailers) and the core fixture tests |
+| Price-drop and policy decisions | [`packages/core/src/useCases/monitorPrices.ts`](packages/core/src/useCases/monitorPrices.ts) and [`packages/core/src/policies/evaluateOpportunity.ts`](packages/core/src/policies/evaluateOpportunity.ts) |
+| Saved-item monitoring | [`apps/extension/src/savedItemMonitor.ts`](apps/extension/src/savedItemMonitor.ts) and the extension tests |
+| HTTP endpoints or persistence | [`apps/api/src/tracerServer.ts`](apps/api/src/tracerServer.ts) and [`apps/api/src/repositories`](apps/api/src/repositories) |
+| Landing page or dashboard | [`apps/web/src/App.tsx`](apps/web/src/App.tsx) and [`apps/web/src/landing-b.css`](apps/web/src/landing-b.css) |
+
+Shared business rules belong in `packages/core` so the browser and server use the same decisions. Add a focused fixture or test when changing extraction or monitoring behavior.
+
 ## Live deployment
 
 | Component | Deployment | Update path |
