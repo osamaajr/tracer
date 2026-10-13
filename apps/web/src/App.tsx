@@ -31,6 +31,14 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 const demoUserId = "dev-user-tracer";
 const chromeWebStoreUrl = "https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm";
 
+function recordInstallClick() {
+  // Vercel's free pageview analytics records client-side route changes. Keep
+  // campaign source in the path so a Store click is visible without a paid
+  // custom-event plan or any personal data.
+  const source = /^\/from\/([a-z0-9-]+)$/.exec(window.location.pathname)?.[1] ?? "direct";
+  window.history.pushState({}, "", `/install-click/${source}`);
+}
+
 interface DashboardPurchase {
   id: string;
   retailerId: string;
@@ -149,14 +157,15 @@ function HeroSectionB() {
   return (
     <section className="hero landing-b-hero" id="install">
       <div className="hero-copy">
-        <h1>Save it.<br />We’ll keep watching it.</h1>
+        <h1>One list for everything you might buy.</h1>
         <p className="hero-text">
-          Save products from any website, come back anytime, and let Tracer keep an eye on the price — even after you buy.
+          Save products from different shops as you browse. Tracer keeps them together and alerts you when a price drops.
         </p>
-        <a className="primary-button hero-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
+        <a className="primary-button hero-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
           <ChromeMark />
           Add to Chrome - It's free
         </a>
+        <p className="hero-trust">No account needed. Saved items stay in this browser.</p>
       </div>
       <div className="hero-stage landing-b-hero-stage" aria-label="Tracer purchase monitoring preview">
         <HeroMonitoringVisual />
@@ -216,10 +225,10 @@ function HeroMonitoringVisual() {
       />
       <FloatingAlertCard
         className="landing-b-alert-up"
-        copy={<><span>Keep products from any</span><br />website in one place.</>}
+        copy={<><span>Keep products from different</span><br />shops in one place.</>}
         icon={<Globe2 aria-hidden="true" size={24} />}
         time="Just now"
-        title="Saved from anywhere"
+        title="Saved from different shops"
         tone="blue"
       />
       <FloatingAlertCard
@@ -274,7 +283,7 @@ function LandingBValueStatement() {
   return (
     <section className="landing-b-value">
       <h2>No more scattered wishlists, bookmarks, or tabs.</h2>
-      <p className="landing-b-watchlist-note">Save products from any website into one place, come back whenever you want, and let Tracer keep an eye on the price while they’re there.</p>
+      <p className="landing-b-watchlist-note">Save products from shopping pages into one list. Come back when you’re ready, or let Tracer check for price drops.</p>
       <div className="landing-b-video" role="region" aria-label="Tracer product demo">
         <video
           ref={demoVideoRef}
@@ -303,7 +312,7 @@ function LandingBFeatures() {
         <article className="landing-b-editorial-feature">
           <div className="landing-b-editorial-copy">
             <h3>Keep every find in one place.</h3>
-            <p>Save products from any shop and pick up where you left off.</p>
+            <p>Save products from supported shopping pages and pick up where you left off.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-save-visual" aria-label="Tracer saved items example">
             <div className="landing-b-save-card">
@@ -326,7 +335,7 @@ function LandingBFeatures() {
                   <strong>Daypack</strong><span>£84.50</span>
                 </div>
               </div>
-              <footer><span className="landing-b-save-watching"><i aria-hidden="true" />Watching for price drops</span><span>From any shop <Globe2 aria-hidden="true" size={13} /></span></footer>
+              <footer><span className="landing-b-save-watching"><i aria-hidden="true" />Watching for price drops</span><span>Across shops <Globe2 aria-hidden="true" size={13} /></span></footer>
             </div>
           </div>
         </article>
@@ -428,7 +437,7 @@ function LandingHeader({ homeHref = "/" }: { homeHref?: string }) {
       <header className="site-header landing-header" data-floating={floating}>
         <a className="brand" href={homeHref} aria-label="Tracer home">
         </a>
-        <a className="header-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer">
+        <a className="header-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
           <ChromeMark />
           Add to Chrome
           <ArrowRight aria-hidden="true" size={16} />
