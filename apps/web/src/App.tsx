@@ -176,7 +176,6 @@ function HeroSectionB() {
           <ChromeMark />
           Add to Chrome - It's free
         </a>
-        <p className="hero-trust">No account needed. Saved items stay in this browser.</p>
       </div>
       <div className="hero-stage landing-b-hero-stage" aria-label="Tracer purchase monitoring preview">
         <HeroMonitoringVisual />

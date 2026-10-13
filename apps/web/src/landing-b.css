@@ -365,13 +365,6 @@
   border-radius: 999px;
 }
 
-.landing-shell-b .hero-trust {
-  color: #3f382e;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin: 12px 0 0;
-}
-
 .landing-shell-b .brand > img,
 .landing-shell-b .extension-topbar > div:first-child > img {
   display: none;
