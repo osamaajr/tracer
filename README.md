@@ -6,6 +6,8 @@ Tracer is a Chrome extension and companion web app for tracking products across 
 
 This repository includes the extension, a React landing page, a Fastify API, shared TypeScript domain logic, deterministic monitoring fixtures, and a PostgreSQL schema. Local development uses a file store; the production API uses transactional PostgreSQL storage.
 
+**Explore Tracer:** [Website](https://www.tracercart.com/) · [Chrome Web Store](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm) · [Privacy policy](https://www.tracercart.com/privacy)
+
 ## At a glance
 
 | | |
