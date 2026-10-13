@@ -74,7 +74,7 @@ For the published extension, install [Tracer from the Chrome Web Store](https://
 
 ### Requirements
 
-- Node.js 26+ and npm 11+
+- Node.js 24 or 26 and npm 11+
 - Google Chrome for the unpacked extension
 - PostgreSQL only if you want to inspect or apply the included database migration; the local app uses a file-backed store
 
@@ -82,9 +82,10 @@ For the published extension, install [Tracer from the Chrome Web Store](https://
 git clone https://github.com/osamaajr/tracer.git
 cd tracer
 npm install
-cp .env.example .env
 npm run dev
 ```
+
+No `.env` file is needed for the default local setup. The scripts do not automatically load the root `.env` file; `.env.example` is a reference for variables to set in your shell or hosting environment when you need a different configuration. In particular, setting `DATABASE_URL` switches the API from its file store to PostgreSQL.
 
 The API runs at `http://localhost:4000` and the web app at `http://localhost:5173`. The development store is `.tracer-data/dev-store.json` by default.
 
