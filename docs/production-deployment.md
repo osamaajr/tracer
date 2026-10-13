@@ -9,6 +9,18 @@
 - Saved watchlist items and their price checks remain in Chrome storage. The API is used for protected purchases.
 - The extension generates a random 256-bit installation token, stores it in trusted extension storage, and sends it over HTTPS. The API derives a SHA-256 user key. There is no account sign-in or cross-device sync.
 
+## Website deployment and analytics
+
+The `tracer` Vercel project deploys the website from `apps/web` on the `main` branch. Its production domain is `www.tracercart.com`. The website build runs TypeScript checking before Vite creates `dist`; the extension and API have separate release paths.
+
+Vercel Web Analytics is mounted once beside the React app in `apps/web/src/main.tsx` using `@vercel/analytics/react`. It counts website visitors and page views; it does not measure extension usage or API monitoring jobs. After changing website code:
+
+1. Build the website with `npm run build -w @tracer/web` and push the commit to `main`.
+2. Wait for the `tracer` project's Production deployment to show **Ready** in Vercel.
+3. Visit `https://www.tracercart.com/` in a browser and confirm the page loads `/_vercel/insights/script.js`. Review the project's **Analytics** tab for the resulting page view. Data may take a short time to appear, and content blockers can suppress collection.
+
+This verification visit is itself counted. Do not interpret a single visit or page view as customer traffic.
+
 ## Release sequence
 
 1. Review and merge the API, extension, lockfile, and `apps/api/vercel.json` changes to `main`.
