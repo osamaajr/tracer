@@ -68,6 +68,16 @@ Saving a product does not upload it as a protected purchase. The shopper confirm
 | [`packages/db`](packages/db) | Drizzle PostgreSQL schema and initial migration |
 | [`docs`](docs) | Architecture and deeper monitoring notes |
 
+## Live deployment
+
+| Component | Deployment | Update path |
+| --- | --- | --- |
+| Website | [www.tracercart.com](https://www.tracercart.com/) on Vercel | A commit to `main` builds `apps/web`; Vercel Analytics measures website visits |
+| API | `api.tracercart.com` on a separate Vercel project | A commit to `main` builds `apps/api`; Neon PostgreSQL stores protected purchases |
+| Extension | [Chrome Web Store](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm) | A customer build is packaged, uploaded, reviewed, and published separately |
+
+The website, API, and extension share source code but have independent release steps. See the [production deployment guide](docs/production-deployment.md) for configuration and release checks.
+
 ## Run locally
 
 For the published extension, install [Tracer from the Chrome Web Store](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm). The steps below are for developing an unpacked copy.
