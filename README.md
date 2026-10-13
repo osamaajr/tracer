@@ -38,6 +38,15 @@ flowchart LR
   I -->|No| K[Price tracking only]
 ```
 
+### Where each flow runs
+
+| Flow | Source of truth | Price checks | Result |
+| --- | --- | --- | --- |
+| Saved products | Chrome extension storage in one browser profile | Extension checks the saved public product page | Current price and price-drop alert in the extension |
+| Protected purchases | API-backed PostgreSQL in production | API monitoring, with an immediate check available from the extension | Purchase history and, when a verified policy applies, a claim opportunity |
+
+Saving a product does not upload it as a protected purchase. The shopper confirms protection separately after checkout.
+
 ## Engineering highlights
 
 **Shared rules across runtimes.** `packages/core` contains money and product models, extraction, URL validation, monitoring decisions, and policy evaluation. The extension and API use these rules rather than duplicating business logic.
