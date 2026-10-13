@@ -31,12 +31,23 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 const demoUserId = "dev-user-tracer";
 const chromeWebStoreUrl = "https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm";
 
+function getCampaignSource() {
+  return /^\/from\/([a-z0-9-]+)$/.exec(window.location.pathname)?.[1] ?? "direct";
+}
+
+function getTrackedStoreUrl() {
+  const url = new URL(chromeWebStoreUrl);
+  url.searchParams.set("utm_source", "tracercart");
+  url.searchParams.set("utm_medium", "website");
+  url.searchParams.set("utm_campaign", getCampaignSource());
+  return url.toString();
+}
+
 function recordInstallClick() {
   // Vercel's free pageview analytics records client-side route changes. Keep
   // campaign source in the path so a Store click is visible without a paid
   // custom-event plan or any personal data.
-  const source = /^\/from\/([a-z0-9-]+)$/.exec(window.location.pathname)?.[1] ?? "direct";
-  window.history.pushState({}, "", `/install-click/${source}`);
+  window.history.pushState({}, "", `/install-click/${getCampaignSource()}`);
 }
 
 interface DashboardPurchase {
@@ -161,7 +172,7 @@ function HeroSectionB() {
         <p className="hero-text">
           Save products from different shops as you browse. Tracer keeps them together and alerts you when a price drops.
         </p>
-        <a className="primary-button hero-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
+        <a className="primary-button hero-cta" href={getTrackedStoreUrl()} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
           <ChromeMark />
           Add to Chrome - It's free
         </a>
@@ -437,7 +448,7 @@ function LandingHeader({ homeHref = "/" }: { homeHref?: string }) {
       <header className="site-header landing-header" data-floating={floating}>
         <a className="brand" href={homeHref} aria-label="Tracer home">
         </a>
-        <a className="header-cta" href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
+        <a className="header-cta" href={getTrackedStoreUrl()} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
           <ChromeMark />
           Add to Chrome
           <ArrowRight aria-hidden="true" size={16} />
