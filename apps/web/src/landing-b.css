@@ -1620,6 +1620,77 @@
   opacity: 0;
   translate: 0 28px;
 }
+
+/* Play each product moment once when its feature row enters the viewport. */
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-product {
+  animation: landing-b-item-arrive 680ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-product:nth-child(1) { animation-delay: 260ms; }
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-product:nth-child(2) { animation-delay: 490ms; }
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-product:nth-child(3) { animation-delay: 720ms; }
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-count {
+  animation: landing-b-status-pop 620ms 1.05s cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-watching i {
+  animation: landing-b-watch-pulse 1.2s 1.3s ease-out 2;
+}
+
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-drop-header {
+  animation: landing-b-item-arrive 650ms 250ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-feature-price-row > svg {
+  animation: landing-b-price-arrow 680ms 650ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-feature-price-row strong {
+  animation: landing-b-status-pop 720ms 900ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-drop-footer em {
+  animation: landing-b-status-pop 720ms 1.2s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-update-card > header {
+  animation: landing-b-item-arrive 700ms 300ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-update-detail {
+  animation: landing-b-item-arrive 760ms 800ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.landing-b-monitor-card dl { overflow: hidden; position: relative; }
+.landing-b-monitor-card dl::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 62%), transparent);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  translate: -110% 0;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-monitor-card dl::after {
+  animation: landing-b-price-scan 1.3s 450ms ease-in-out both;
+}
+.landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-monitor-card footer {
+  animation: landing-b-item-arrive 680ms 1.3s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes landing-b-item-arrive {
+  from { opacity: 0; translate: 0 14px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes landing-b-status-pop {
+  from { opacity: 0; scale: .86; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes landing-b-watch-pulse {
+  50% { box-shadow: 0 0 0 8px rgb(45 116 76 / 0%); }
+}
+@keyframes landing-b-price-arrow {
+  from { opacity: .3; translate: -10px 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes landing-b-price-scan {
+  from { translate: -110% 0; }
+  to { translate: 110% 0; }
+}
+
 @media (prefers-reduced-motion: reduce), print {
   .landing-shell-b .scroll-reveal,
   .landing-shell-b .scroll-reveal.landing-b-hover-card {
@@ -1627,4 +1698,18 @@
     translate: none;
     transition: none;
   }
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-product,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-count,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-save-watching i,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-drop-header,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-feature-price-row > svg,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-feature-price-row strong,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-drop-footer em,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-update-card > header,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-update-detail,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-monitor-card dl::after,
+  .landing-b-editorial-feature.scroll-reveal:not(.scroll-reveal-pending) .landing-b-monitor-card footer {
+    animation: none;
+  }
+  .landing-b-monitor-card dl::after { content: none; }
 }
