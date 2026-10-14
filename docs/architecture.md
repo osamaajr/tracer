@@ -1,6 +1,6 @@
 # Tracer Architecture
 
-Last updated: 2026-08-30
+Last updated: 2026-10-14
 
 ## Product Slice
 
@@ -71,4 +71,4 @@ This is intentionally not a generic policy engine. A generic store purchase may 
 - Production persistence currently uses a single JSONB state row; normalized tables are ready but are not yet wired.
 - Vercel Hobby scheduled monitoring runs once per day. More frequent jobs require a different plan or scheduler.
 - The live HTML fetcher covers public product pages. Private pages, heavy bot protection, client-only prices, and stores that hide prices from HTML will need retailer-specific adapters or browser-based fetching.
-- Extension publishing and Chrome Web Store URL are placeholders.
+- The extension has a [Chrome Web Store listing](https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm). GitHub pushes do not update installed copies; customer builds are packaged, uploaded, reviewed, and published separately. See the [extension update checklist](production-deployment.md#extension-update-checklist).
