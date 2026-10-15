@@ -477,6 +477,7 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
           </>}
         </a>
         <nav className="footer-links" aria-label="Footer navigation">
+          <a href="/guides/save-products-from-different-shops.html">Guide</a>
           <a href="/contact">Contact</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
