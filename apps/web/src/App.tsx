@@ -224,7 +224,7 @@ function HeroMonitoringVisual() {
         </div>
         <footer>
           <span><CheckCircle2 aria-hidden="true" size={14} />Saved</span>
-          <span>Protect after checkout</span>
+          <span>Watch after checkout</span>
         </footer>
       </article>
 
@@ -405,7 +405,7 @@ function LandingBFeatures() {
 
         <article className="landing-b-editorial-feature landing-b-editorial-feature-reversed">
           <div className="landing-b-editorial-copy">
-            <h3>Protect it once. We keep watch.</h3>
+            <h3>Keep watching after you buy.</h3>
             <p>After checkout, Tracer keeps checking the price and alerts you when it drops.</p>
           </div>
           <div className="landing-b-feature-visual landing-b-monitor-visual" aria-label="Tracer protected-purchase monitoring example">
