@@ -365,19 +365,6 @@
   border-radius: 999px;
 }
 
-.landing-shell-b .hero-site-access-note {
-  color: #294c72;
-  font-size: 0.875rem;
-  line-height: 1.45;
-  margin: 0.8rem 0 0;
-}
-
-.landing-shell-b .hero-site-access-note a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .landing-shell-b .brand > img,
 .landing-shell-b .extension-topbar > div:first-child > img {
   display: none;

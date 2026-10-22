@@ -176,9 +176,6 @@ function HeroSectionB() {
           <ChromeMark />
           Add to Chrome - It's free
         </a>
-        <p className="hero-site-access-note">
-          Chrome asks for access to websites so Tracer can work across shops. <a href="/privacy">See how Tracer uses it.</a>
-        </p>
       </div>
       <div className="hero-stage landing-b-hero-stage" aria-label="Tracer purchase monitoring preview">
         <HeroMonitoringVisual />
