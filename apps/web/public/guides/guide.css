@@ -1,0 +1,129 @@
+@font-face {
+  font-family: "Tracer Serif";
+  src: url("./tracer-serif.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  background: #faf8f3;
+  color: #22231f;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+a { color: inherit; }
+
+.guide-header-space { height: 83px; }
+.guide-header {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: calc(100% - 48px);
+  max-width: 840px;
+  min-height: 66px;
+  padding: 9px 14px 9px 24px;
+  border: 1px solid rgb(40 35 28 / 9%);
+  border-radius: 999px;
+  background: rgb(255 252 247 / 94%);
+  box-shadow: 0 8px 30px rgb(40 35 28 / 9%), 0 2px 6px rgb(40 35 28 / 3%);
+  transform: translateX(-50%);
+}
+.guide-brand { display: inline-flex; align-items: center; flex: none; }
+.guide-brand img { display: block; width: 148px; height: 42px; object-fit: contain; }
+.guide-header-cta,
+.guide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border-radius: 999px;
+  background: #171717;
+  color: #fff;
+  font-size: .91rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-header-cta { min-height: 48px; padding: 0 19px; white-space: nowrap; }
+.guide-header-cta:hover,
+.guide-button:hover { background: #343434; }
+.guide-header-cta svg { width: 19px; height: 19px; flex: none; }
+.guide-header-cta .guide-arrow { width: 16px; height: 16px; }
+
+.guide-main { width: min(100%, 1216px); margin: 0 auto; padding: 88px 38px 112px; }
+.guide-intro { padding-bottom: 48px; border-bottom: 1px solid rgb(39 65 89 / 15%); }
+h1, h2 { font-family: "Tracer Serif", Charter, Georgia, serif; font-weight: 400; letter-spacing: -.02em; }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2.8rem, 5vw, 4.5rem); line-height: 1.04; }
+.guide-lead { max-width: 650px; margin: 22px 0 0; color: #4f5d69; font-size: 1.08rem; line-height: 1.62; }
+.guide-document { display: grid; margin-top: 14px; }
+.guide-section { display: grid; grid-template-columns: minmax(200px, .42fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); padding: 38px 0; border-bottom: 1px solid rgb(39 65 89 / 12%); }
+.guide-section h2 { margin: 0; font-size: 1.65rem; line-height: 1.24; }
+.guide-section > div { display: grid; align-content: start; gap: 14px; color: #59616a; font-size: 1rem; line-height: 1.72; }
+.guide-section p { margin: 0; }
+.guide-note,
+.guide-try { border: 1px solid #d8e0e7; border-radius: 20px; background: #e5eff9; }
+.guide-note { margin-top: 28px; padding: 30px; }
+.guide-note p { margin: 0; color: #4f5d69; line-height: 1.7; }
+.guide-try { display: grid; grid-template-columns: minmax(200px, .42fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); margin-top: 42px; padding: 30px; scroll-margin-top: 104px; }
+.guide-try h2 { margin: 0; font-size: 1.65rem; line-height: 1.24; }
+.guide-try > div { color: #4f5d69; font-size: 1rem; line-height: 1.68; }
+.guide-try p { margin: 0 0 18px; }
+.guide-try p:last-child { margin: 18px 0 0; font-size: .86rem; }
+.guide-button { min-height: 44px; padding: 0 20px; }
+.guide-try a:not(.guide-button) { color: #204970; text-underline-offset: 3px; }
+
+.guide-footer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 68px max(38px, calc((100vw - 1216px) / 2 + 38px)) 0;
+  background: linear-gradient(180deg, rgb(128 181 233 / 20%), rgb(93 158 222 / 8%)), url("./tracer-sky.webp") center 58% / cover no-repeat;
+}
+.guide-footer::before {
+  position: absolute;
+  z-index: 1;
+  right: -8%;
+  bottom: -70px;
+  left: -8%;
+  height: 260px;
+  background: radial-gradient(ellipse at 10% 90%, rgb(255 249 241 / 92%) 0 20%, transparent 48%), radial-gradient(ellipse at 35% 100%, rgb(255 255 255 / 88%) 0 26%, transparent 55%), radial-gradient(ellipse at 67% 92%, rgb(255 247 237 / 86%) 0 24%, transparent 52%), radial-gradient(ellipse at 95% 100%, rgb(255 255 255 / 88%) 0 24%, transparent 52%);
+  content: "";
+  filter: blur(8px);
+  pointer-events: none;
+}
+.guide-footer-row, .guide-copyright { position: relative; z-index: 2; }
+.guide-footer-row { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding-bottom: 24px; border-bottom: 1px solid rgb(17 24 32 / 14%); }
+.guide-footer .guide-brand img { width: 144px; height: 36px; }
+.guide-footer-links { display: flex; align-items: center; flex-wrap: wrap; gap: 18px clamp(30px, 4vw, 56px); padding-top: 8px; }
+.guide-footer-links a { color: #111820; font-size: .92rem; font-weight: 680; text-decoration: none; }
+.guide-footer-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.guide-copyright { margin: 2px 0 0; color: rgb(17 24 32 / 68%); font-size: .76rem; }
+.guide-footer-giant { position: relative; z-index: 1; width: 100vw; margin: 28px 0 0 calc(50% - 50vw); color: rgb(255 255 255 / 30%); font-family: Montserrat, "Arial Black", sans-serif; font-size: 32.5vw; font-weight: 900; letter-spacing: -.095em; line-height: .8; text-align: center; text-shadow: 0 2px 18px rgb(36 77 115 / 4%); white-space: nowrap; pointer-events: none; }
+
+@media (max-width: 760px) {
+  .guide-header { top: 10px; width: calc(100% - 24px); padding: 9px 10px 9px 16px; }
+  .guide-brand img { width: 112px; height: 34px; }
+  .guide-header-cta { min-height: 42px; padding: 0 13px; font-size: .8rem; }
+  .guide-main { padding: 60px 20px 80px; }
+  .guide-section, .guide-try { grid-template-columns: 1fr; gap: 16px; }
+  .guide-section { padding: 28px 0; }
+  .guide-try, .guide-note { padding: 24px 20px; }
+  .guide-footer { padding: 48px 20px 0; }
+  .guide-footer-row { align-items: flex-start; flex-direction: column; }
+  .guide-footer-links { padding-top: 0; gap: 18px 24px; }
+  .guide-footer-giant { margin-top: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

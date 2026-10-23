@@ -69,7 +69,17 @@ function tracerMarketingPages() {
       // only these reviewed, crawlable marketing files.
       const publicRoot = resolve(import.meta.dirname, "public");
       const outputRoot = resolve(import.meta.dirname, "dist");
-      for (const path of ["guides/save-products-from-different-shops.html", "robots.txt", "sitemap.xml"]) {
+      for (const path of [
+        "guides/save-products-from-different-shops.html",
+        "guides/google-universal-cart-uk.html",
+        "guides/guide.css",
+        "guides/tracer-wordmark.webp",
+        "guides/tracer-serif.woff2",
+        "guides/tracer-sky.webp",
+        "guides/favicon.png",
+        "robots.txt",
+        "sitemap.xml",
+      ]) {
         const destination = resolve(outputRoot, path);
         mkdirSync(resolve(destination, ".."), { recursive: true });
         copyFileSync(resolve(publicRoot, path), destination);

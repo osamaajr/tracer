@@ -480,7 +480,8 @@ function Footer({ landingB = false }: { landingB?: boolean }) {
           </>}
         </a>
         <nav className="footer-links" aria-label="Footer navigation">
-          <a href="/guides/save-products-from-different-shops.html">Guide</a>
+          <a href="/guides/save-products-from-different-shops.html">Shopping guide</a>
+          <a href="/guides/google-universal-cart-uk.html">Universal Cart guide</a>
           <a href="/contact">Contact</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
