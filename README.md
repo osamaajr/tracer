@@ -128,6 +128,17 @@ Then open `chrome://extensions`, enable **Developer mode**, and choose **Load un
 
 The local web server also serves development-only order and extension-state previews. They are excluded from production web builds.
 
+### Understanding purchase prices
+
+| Value or state | Meaning |
+| --- | --- |
+| Item price | The price of the purchased product, kept separately from the full order charge |
+| Order total paid | The final receipt total, including delivery and fees after discounts; an explanatory VAT amount is not the order total |
+| Checking | Tracer is requesting a fresh price from the store |
+| Unable to check | Tracer could not verify a current price; this does not establish that the price has changed |
+
+When reporting an incorrect price, include the public product URL, extension version, the value shown, and the expected item price and order total separately. Remove personal details and private order links from screenshots or public issues. The [receipt-total investigation](docs/receipt-total-and-confirmation-fix-2026-10-10.md) explains the VAT-note regression and its coverage.
+
 ## Quality checks
 
 ```bash
