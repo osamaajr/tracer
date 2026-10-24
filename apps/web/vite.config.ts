@@ -71,6 +71,7 @@ function tracerMarketingPages() {
       const outputRoot = resolve(import.meta.dirname, "dist");
       for (const path of [
         "guides/save-products-from-different-shops.html",
+        "guides/carted-alternative-chrome.html",
         "guides/google-universal-cart-uk.html",
         "guides/guide.css",
         "guides/tracer-wordmark.webp",
