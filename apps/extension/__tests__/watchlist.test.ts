@@ -104,7 +104,7 @@ describe('watchlist extraction', () => {
     expect(result).toMatchObject({...saved, sku:'S1', savedPrice:{amountMinor:34999,currency:'GBP'},imageUrl:'https://shop.example.com/headphones.jpg'});
   });
   it('allows name and URL without optional metadata', () => {
-    expect(extractSavedProduct(productDoc({}),url)).toEqual(saved);
+    expect(extractSavedProduct(productDoc({}),url)).toEqual({...saved, availability:'unknown'});
   });
   it('uses a same-store canonical URL', () => {
     expect(extractSavedProduct(productDoc({},'<link rel="canonical" href="/products/headphones">'),`${url}?variant=blue`)?.canonicalUrl).toBe(url);
@@ -354,6 +354,15 @@ describe('watchlist extraction', () => {
 });
 
 describe('watchlist persistence and isolation', () => {
+  it('preserves availability when saving, reloading and recording monitoring results', async () => {
+    const {repository,storage} = storageHarness();
+    const {item} = await repository.save({...saved, savedPrice:{amountMinor:1999,currency:'GBP'}, availability:'out_of_stock'});
+    expect(item.monitoringStatus).toBe('out_of_stock');
+    const reloaded = new WatchlistRepository(storage);
+    expect((await reloaded.list())[0]?.availability).toBe('out_of_stock');
+    await reloaded.updateMonitoring(item.id, {availability:'in_stock',monitoringStatus:'watching'});
+    expect((await reloaded.list())[0]).toMatchObject({availability:'in_stock',monitoringStatus:'watching'});
+  });
   it('saves minimal products and survives repository reload', async () => {
     const {repository,storage}=storageHarness();
     const result=await repository.save(saved);

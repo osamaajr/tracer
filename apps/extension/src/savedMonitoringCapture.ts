@@ -3,7 +3,7 @@ import { extractSavedProduct, extractZaraSavedProduct } from "@tracer/core";
 /** Read-only capture in an existing tab's extension isolated world. */
 export async function readSavedMonitoringProduct() {
   const standard = extractSavedProduct(document, location.href, { includeImage: false });
-  if (standard?.savedPrice || !/(^|\.)zara\.com$/i.test(location.hostname)) return standard;
+  if (standard?.savedPrice || standard?.availability === 'out_of_stock' || !/(^|\.)zara\.com$/i.test(location.hostname)) return standard;
   try {
     const url = new URL(location.href);
     url.searchParams.set("ajax", "true");

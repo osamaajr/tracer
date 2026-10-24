@@ -3,7 +3,7 @@ import { evaluateSavedPrice, isInternalMonitoringUrl } from "./savedPriceMonitor
 import { checkSavedProductPrice } from "./savedProductPriceCheck";
 import { WatchlistRepository } from "./watchlistRepository";
 
-export type SavedItemMonitorMode = "all" | "unavailable";
+export type SavedItemMonitorMode = "all" | "unavailable" | "stale";
 
 interface MonitoringNotification {
   id: string;
@@ -37,9 +37,14 @@ async function runSavedItemMonitoring(
 ): Promise<void> {
   const settings = await chrome.storage.sync.get("monitoringEnabled").catch((): Record<string, unknown> => ({}));
   if (settings.monitoringEnabled === false) return;
-  const items = (await watchlist.all()).filter((item) =>
-    item.status === "saved" && (mode === "all" || item.monitoringStatus === "unavailable")
-  );
+  const now = Date.now();
+  const items = (await watchlist.all()).filter((item) => {
+    if (item.status !== 'saved') return false;
+    if (mode === 'all') return true;
+    if (mode === 'unavailable') return item.monitoringStatus === 'unavailable' || item.monitoringStatus === 'out_of_stock';
+    const checkedAt = Date.parse(item.lastCheckedAt ?? '');
+    return item.availability === undefined || !Number.isFinite(checkedAt) || checkedAt > now || now - checkedAt >= 15 * 60_000;
+  });
   const queue = [...items].sort((left, right) =>
     Number(Boolean(left.savedPrice)) - Number(Boolean(right.savedPrice))
   );
@@ -61,7 +66,24 @@ async function monitorSavedItem(
   try {
     const checkPrice = dependencies.checkPrice ?? checkSavedProductPrice;
     const monitoredProduct = await checkPrice(item);
+    if (!monitoredProduct) throw new Error('monitor_product_unavailable');
     const latest = monitoredProduct?.savedPrice;
+    if (latest && (!Number.isSafeInteger(latest.amountMinor) || latest.amountMinor <= 0 || item.savedPrice && latest.currency !== item.savedPrice.currency)) {
+      throw new Error('monitor_price_invalid');
+    }
+    const availability = monitoredProduct.availability && monitoredProduct.availability !== 'unknown'
+      ? monitoredProduct.availability : item.availability ?? (item.monitoringStatus === 'out_of_stock' ? 'out_of_stock' : 'unknown');
+    if (availability === 'out_of_stock') {
+      await watchlist.updateMonitoring(item.id, {
+        availability,
+        monitoringStatus: 'out_of_stock',
+        ...(latest ? { currentPrice: latest, ...(!item.savedPrice ? { savedPrice: latest } : {}) } : {}),
+        priceDropAmount: undefined,
+        priceDropPercent: undefined,
+        lastCheckedAt: checkedAt,
+      });
+      return;
+    }
     if (!latest || latest.amountMinor <= 0) {
       throw new Error("monitor_price_unavailable");
     }
@@ -71,6 +93,7 @@ async function monitorSavedItem(
         savedPrice: latest,
         currentPrice: latest,
         monitoringStatus: "watching",
+        availability,
         lastCheckedAt: checkedAt,
       });
       return;
@@ -83,33 +106,32 @@ async function monitorSavedItem(
       ...(decision.priceDropAmount ? { priceDropAmount: decision.priceDropAmount } : { priceDropAmount: undefined }),
       ...(decision.priceDropPercent !== undefined ? { priceDropPercent: decision.priceDropPercent } : { priceDropPercent: undefined }),
       monitoringStatus: decision.monitoringStatus,
+      availability,
       lastCheckedAt: decision.lastCheckedAt,
       // Keep an existing delivery marker while a new alert is pending, but
       // clear it after recovery so a later return to the same low price can
       // generate a fresh notification.
       ...(!decision.shouldNotify ? { lastNotifiedPrice: decision.lastNotifiedPrice } : {}),
     });
-    if (updatedItem && decision.shouldNotify && await dependencies.getPriceDropAlertsEnabled()) {
+    if (updatedItem && decision.shouldNotify) {
       const saving = formatMonitoringMoney(decision.priceDropAmount!);
-      await dependencies.createNotification({
-        id: `tracer-saved-drop:${item.id}:${latest.amountMinor}`,
-        title: "Price drop detected",
-        message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less.`,
-      });
-      // A failed browser notification must remain retryable on the next check.
-      // Persist the delivery marker only after Chrome confirms creation.
-      await watchlist.updateMonitoring(item.id, { lastNotifiedPrice: latest });
+      try {
+        if (!await dependencies.getPriceDropAlertsEnabled()) return;
+        await dependencies.createNotification({
+          id: `tracer-saved-drop:${item.id}:${latest.amountMinor}`,
+          title: "Price drop detected",
+          message: `${item.name} is now ${formatMonitoringMoney(latest)} — ${saving} less.`,
+        });
+        // Notification failure is retryable and is not a failed price check.
+        await watchlist.updateMonitoring(item.id, { lastNotifiedPrice: latest });
+      } catch { /* Keep the verified drop and retry notification delivery later. */ }
     }
   } catch {
-    // A temporary loading, network, or extraction failure must not erase a valid
-    // price or turn an actively watched item into a permanent error state.
-    if (!item.savedPrice && !item.currentPrice) {
-      await watchlist.updateMonitoring(item.id, { monitoringStatus: "unavailable", lastCheckedAt: checkedAt });
-    } else if (item.monitoringStatus === "unavailable") {
-      await watchlist.updateMonitoring(item.id, {
-        monitoringStatus: item.priceDropAmount ? "price_dropped" : "watching",
-      });
-    }
+    // Preserve the last price and verified stock. A failed request does not
+    // establish recovery or make an old price a freshly checked one.
+    await watchlist.updateMonitoring(item.id, {
+      monitoringStatus: item.availability === 'out_of_stock' || item.monitoringStatus === 'out_of_stock' ? 'out_of_stock' : 'unavailable',
+    });
   }
 }
 

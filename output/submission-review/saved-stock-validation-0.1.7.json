@@ -1,0 +1,29 @@
+{
+  "version": "0.1.7",
+  "package": "output/submission-review/tracer-0.1.7-submission.zip",
+  "sha256": "fa169cc44177ea7cf6e9d78ada49768858a2fa45b0ccbd74e4e4e6d05d25b4ab",
+  "sizeBytes": 2299260,
+  "fileCount": 21,
+  "crcValid": true,
+  "entriesMatchRelease": true,
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "hostPermissions": [
+    "https://*/*"
+  ],
+  "testsPassed": 297,
+  "testFilesPassed": 18,
+  "baselineStockRegressionsFailed": 16,
+  "browserPreview": {
+    "label": "Out of stock",
+    "color": "rgb(155, 58, 50)",
+    "priceDropHighlight": false,
+    "source": "popup test harness DOM with actual popup CSS, not the installed extension"
+  },
+  "storeUploadPerformed": false
+}

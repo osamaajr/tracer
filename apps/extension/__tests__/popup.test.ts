@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { setTimeout as wait } from "node:timers/promises";
 import { parseHTML } from "linkedom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gbp, type ProductPriceSnapshot, type PurchaseDraft, type SavedProduct } from "@tracer/core";
+import { gbp, type ProductPriceSnapshot, type PurchaseDraft, type SavedProduct, type SavedItem } from "@tracer/core";
 
 const popupPath = new URL("../popup.html", import.meta.url);
 const originalFetch = globalThis.fetch;
@@ -33,6 +33,8 @@ const purchaseDraft: PurchaseDraft = {
 };
 
 interface PopupHarnessOptions {
+  savedItems?: SavedItem[];
+  refreshSavedItems?: (repository: WatchlistRepository) => Promise<void>;
   savedProduct?: SavedProduct | null;
   imageCandidates?: string[];
   saveFailure?: boolean;
@@ -194,6 +196,39 @@ describe("extension popup", () => {
       .find((message) => message.type === 'TRACER_WATCHLIST_SAVE');
     expect(saveMessage?.product?.imageUrl).toBe(secondImage);
     expect(productCard.querySelectorAll('.saved-image-arrow')).toHaveLength(0);
+  });
+
+  it('shows a sold-out saved item in red without price-drop styling or a green watching label', async () => {
+    const harness = await setupPopup({ savedItems: [{
+      id: 'beanie', name: 'Bershka Zoo york x bershka beanie in denim blue', retailer: 'ASOS', retailerId: 'store_asos-com',
+      canonicalUrl: 'https://www.asos.com/bershka/beanie/prd/211870859', savedAt: '2026-09-01T00:00:00Z', status: 'saved',
+      savedPrice: gbp(1999), currentPrice: gbp(1999), availability: 'out_of_stock', monitoringStatus: 'out_of_stock',
+    }] });
+    await flushPopup();
+    element<HTMLButtonElement>('yourItemsMenu').click();
+    await flushPopup();
+    element<HTMLButtonElement>('savedTab').click();
+    await flushPopup();
+    const row = element('itemsList').querySelector('.saved-row')!;
+    expect(row.textContent).toContain('● Out of stock');
+    expect(row.textContent).not.toContain('Watching for price drops');
+    expect(row.querySelector<HTMLElement>('.saved-monitoring-status')?.dataset.state).toBe('out_of_stock');
+    expect((row as HTMLElement).dataset.alert).toBe('false');
+    expect(harness.tabsCreate).not.toHaveBeenCalled();
+  });
+
+  it('refreshes stale stock in the saved list without opening a product tab', async () => {
+    const harness = await setupPopup({ savedItems: [{
+      id: 'beanie', name: 'Blue beanie', retailer: 'ASOS', retailerId: 'store_asos-com', canonicalUrl: 'https://www.asos.com/beanie/prd/1',
+      savedAt: '2026-09-01T00:00:00Z', status: 'saved', savedPrice: gbp(1999), currentPrice: gbp(1999), monitoringStatus: 'watching',
+    }], refreshSavedItems: async repository => { await repository.updateMonitoring('beanie', { availability: 'out_of_stock', monitoringStatus: 'out_of_stock' }); } });
+    await flushPopup();
+    element<HTMLButtonElement>('yourItemsMenu').click();
+    await flushPopup();
+    element<HTMLButtonElement>('savedTab').click();
+    await flushPopup();
+    expect(text('itemsList')).toContain('● Out of stock');
+    expect(harness.tabsCreate).not.toHaveBeenCalled();
   });
 
   it('discards a product captured from a different page', async () => {
@@ -1055,6 +1090,7 @@ async function setupPopup(
       return watchlist.save((message as {type:string; product:SavedProduct}).product).then(result => ({ok:true,result}));
     }
     if (message.type === "TRACER_WATCHLIST_LIST") return watchlist.list().then(result => ({ok:true,result}));
+    if (message.type === 'TRACER_WATCHLIST_MONITOR') return (options.refreshSavedItems?.(watchlist) ?? Promise.resolve()).then(() => ({ok:true}));
     if (message.type === "TRACER_WATCHLIST_REMOVE") return watchlist.remove((message as {type:string; id:string}).id).then(result => ({ok:true,result}));
     if (message.type === "TRACER_WATCHLIST_CLEAR") return watchlist.clearSaved().then(result => ({ok:true,result}));
     if (message.type === "TRACER_GET_CACHED_PAGE_SCAN") {
@@ -1111,6 +1147,7 @@ async function setupPopup(
   const storageSet = vi.fn(async () => undefined);
   const localStore: Record<string, unknown> = {
     tracerUserId: "dev-user",
+    ...(options.savedItems ? { tracerWatchlistV1: structuredClone(options.savedItems) } : {}),
     ...(options.pendingPurchases ? { tracerPendingPurchases: options.pendingPurchases } : {}),
   };
   const localStorageSet = vi.fn(async (values: Record<string, unknown>) => {

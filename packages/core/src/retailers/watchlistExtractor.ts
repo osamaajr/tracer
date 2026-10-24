@@ -4,6 +4,8 @@ import type { PurchaseDraft, PurchaseLineItemDraft } from '../domain/types';
 import { parsePrice } from '../domain/money';
 import { asRecord, extractJsonLdObjects, flattenJsonLd, jsonLdHasType, firstString } from './jsonLd';
 import { findProductPageImage } from './productImage';
+import { stockFromOffers, stockFromProductDom, stockFromValue } from './productAvailability';
+import { receiptPriceText } from './receiptText';
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -144,10 +146,29 @@ export function extractSavedProduct(
       ? product.hasVariant.map(asRecord).filter((variant) => variant !== null)
       : [];
     const productSku = firstString(product?.sku);
-    const offer = selectOffer([
+    const offers = [
       ...asRecords(product?.offers),
       ...variants.flatMap((variant) => asRecords(variant.offers)),
-    ], productSku, url, page.url);
+    ];
+    const skuOffers = productSku ? offers.filter(candidate => firstString(candidate.sku) === productSku) : [];
+    const variantOffers = offers.filter(candidate => {
+      try {
+        const offerUrl = firstString(candidate.url);
+        return Boolean(offerUrl && new URL(page.url).search && normalizeSavedUrl(new URL(offerUrl, page.url).href) === normalizeSavedUrl(page.url));
+      } catch { return false; }
+    });
+    const stockOffers = variantOffers.length ? variantOffers : skuOffers.length ? skuOffers : offers;
+    const structuredStock = stockFromOffers(stockOffers);
+    // A sold-out size's cheaper offer is not a purchasable price drop for an
+    // unselected product that still has other sizes available.
+    const availableOffers = stockOffers.filter(candidate => stockFromValue(candidate.availability) === 'in_stock');
+    const uncertainOffers = stockOffers.filter(candidate => stockFromValue(candidate.availability) === 'unknown');
+    const offer = selectOffer(availableOffers.length ? availableOffers : uncertainOffers.length ? uncertainOffers : stockOffers, productSku, url, page.url);
+    if (variantOffers.length) result.canonicalUrl = normalizeSavedUrl(page.url);
+    // Do not let DOM copy for another size override conflicting offer evidence.
+    result.availability = structuredStock !== 'unknown' ? structuredStock
+      : stockOffers.some(candidate => candidate.availability !== undefined) ? 'unknown'
+      : stockFromProductDom(document, scope ?? null);
     const priceNode = scope?.querySelector('[itemprop="price"]');
     const metaPrice = meta('product:price:amount') ?? meta('og:price:amount');
     const metaCurrency = meta('product:price:currency') ?? meta('og:price:currency');
@@ -174,7 +195,7 @@ export function extractSavedProduct(
       });
       if (image) result.imageUrl = image.url;
     }
-    const sku = productSku || firstString(offer?.sku) || firstString(variants[0]?.sku);
+    const sku = firstString(offer?.sku) || productSku || firstString(variants[0]?.sku);
     const productId = firstString(product?.productID) || firstString(product?.productGroupID) || normalizeRetailerUrl(retailerId, url).productId;
     if (sku) result.sku = sku;
     if (productId) result.externalProductId = productId;
@@ -183,7 +204,7 @@ export function extractSavedProduct(
 }
 
 function isProductDetailPath(path: string): boolean {
-  return /\/(?:products?|dp|p)\//i.test(path) || /\/productpage\.\d+/i.test(path) ||
+  return /\/(?:products?|prd|dp|p)\//i.test(path) || /\/productpage\.\d+/i.test(path) ||
     /\/p\d+(?:\/|$)/i.test(path) || /-p\d+\.html$/i.test(path);
 }
 
@@ -263,15 +284,17 @@ function selectOffer(
 ): Record<string, unknown> | null {
   if (!offers.length) return null;
   if (productSku) {
-    const skuMatch = offers.find((offer) => firstString(offer.sku) === productSku);
-    if (skuMatch) return skuMatch;
+    const skuMatches = offers.filter((offer) => firstString(offer.sku) === productSku);
+    if (skuMatches.length === 1) return skuMatches[0]!;
+    if (skuMatches.length) offers = skuMatches;
   }
-  const urlMatch = offers.find((offer) => {
+  const urlMatches = offers.filter((offer) => {
     const offerUrl = firstString(offer.url);
     if (!offerUrl) return false;
     try { return normalizeSavedUrl(new URL(offerUrl, pageUrl).href) === normalizeSavedUrl(canonicalUrl); } catch { return false; }
   });
-  if (urlMatch) return urlMatch;
+  if (urlMatches.length === 1) return urlMatches[0]!;
+  if (urlMatches.length) offers = urlMatches;
 
   const signatures = offers.map(offerSignature).filter((signature): signature is string => Boolean(signature));
   if (signatures.length === offers.length && new Set(signatures).size === 1) return offers[0] ?? null;
@@ -320,7 +343,10 @@ function findScopedDomPrice(document: Document, currency: string | null): Money 
   const root = document.querySelector('main') ?? document.body;
   if (!root) return null;
   for (const element of Array.from(root.querySelectorAll(selectors.join(','))).slice(0, 30)) {
-    const value = element.getAttribute('content') ?? element.getAttribute('data-product-price') ?? element.getAttribute('data-price') ?? element.textContent;
+    if (element.closest('s, del, strike, [hidden], [aria-hidden="true"], [style*="display:none" i], [style*="display: none" i]')) continue;
+    const card = element.closest('li, article, aside, [class*="product-card" i], [class*="product-tile" i], [class*="recommend" i]');
+    if (card && !card.contains(document.querySelector('h1'))) continue;
+    const value = element.getAttribute('content') ?? element.getAttribute('data-product-price') ?? element.getAttribute('data-price') ?? receiptPriceText(element);
     if (!value || value.trim().length > 80) continue;
     const price = parseDisplayedCurrentPrice(value.trim(), currency);
     if (price && price.amountMinor > 0) return price;

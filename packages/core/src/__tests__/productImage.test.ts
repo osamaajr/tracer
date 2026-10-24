@@ -278,6 +278,7 @@ describe("smart product image selection", () => {
     `);
 
     expect(extractSavedProduct(document, baseUrl)).toEqual({
+      availability: 'unknown',
       name: "Aurora Glass Lamp",
       retailer: "Shop",
       retailerId: "store_shop-example-com",

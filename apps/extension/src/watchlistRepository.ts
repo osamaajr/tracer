@@ -9,6 +9,7 @@ type MonitoringUpdate = {
   monitoringStatus?: NonNullable<SavedItem['monitoringStatus']>;
   lastCheckedAt?: NonNullable<SavedItem['lastCheckedAt']>;
   lastNotifiedPrice?: SavedItem['lastNotifiedPrice'] | undefined;
+  availability?: NonNullable<SavedItem['availability']>;
 };
 interface Storage {
   get(key: string): Promise<Record<string, unknown>>;
@@ -38,14 +39,15 @@ export class WatchlistRepository {
       const existing = items.find(item => item.status === 'saved' && item.canonicalUrl === canonicalUrl);
       if (existing) {
         if (!existing.savedPrice && product.savedPrice) {
-          const updated: SavedItem = {...existing, savedPrice: product.savedPrice, currentPrice: product.savedPrice, monitoringStatus: 'watching', lastCheckedAt: new Date().toISOString()};
+          const availability = product.availability && product.availability !== 'unknown' ? product.availability : existing.availability ?? 'unknown';
+          const updated: SavedItem = {...existing, savedPrice: product.savedPrice, currentPrice: product.savedPrice, availability, monitoringStatus: availability === 'out_of_stock' ? 'out_of_stock' : 'watching', lastCheckedAt: new Date().toISOString()};
           await this.storage.set({[watchlistKey]: items.map(item => item.id === existing.id ? updated : item)});
           return {item: updated, duplicate: true};
         }
         return {item: existing, duplicate: true};
       }
       const savedAt = new Date().toISOString();
-      const item: SavedItem = {...product, canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt, status: 'saved', ...(product.savedPrice ? {currentPrice: product.savedPrice, lastCheckedAt: savedAt} : {}), monitoringStatus: product.savedPrice ? 'watching' : 'unavailable'};
+      const item: SavedItem = {...product, availability: product.availability ?? 'unknown', canonicalUrl, name: product.name.trim(), id: crypto.randomUUID(), savedAt, status: 'saved', ...(product.savedPrice ? {currentPrice: product.savedPrice, lastCheckedAt: savedAt} : {}), monitoringStatus: product.availability === 'out_of_stock' ? 'out_of_stock' : product.savedPrice ? 'watching' : 'unavailable'};
       await this.storage.set({[watchlistKey]: [...items, item]});
       return {item, duplicate: false};
     });

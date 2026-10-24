@@ -193,7 +193,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     case 'TRACER_WATCHLIST_SAVE': task = watchlist.save(message.product as SavedProduct); break;
     case 'TRACER_WATCHLIST_REMOVE': task = watchlist.remove(message.id); break;
     case 'TRACER_WATCHLIST_CLEAR': task = watchlist.clearSaved(); break;
-    case 'TRACER_WATCHLIST_MONITOR': task = monitorSavedItems(watchlist, monitoringDependencies, message.onlyUnavailable ? "unavailable" : "all"); break;
+    case 'TRACER_WATCHLIST_MONITOR': task = monitorSavedItems(watchlist, monitoringDependencies, message.onlyStale ? 'stale' : message.onlyUnavailable ? "unavailable" : "all"); break;
     default: return false;
   }
   void task.then(result => respond({ok:true, result})).catch(() => respond({ok:false, error:'Could not update saved items. Please try again.'}));

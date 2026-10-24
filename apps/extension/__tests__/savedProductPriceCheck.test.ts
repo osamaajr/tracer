@@ -9,6 +9,17 @@ const fallback = () => vi.fn().mockResolvedValue(null);
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("direct saved-product checks", () => {
+  it('keeps verified out-of-stock evidence, including pages that omit a price', async () => {
+    for (const withPrice of [true, false]) {
+      const html = `<html><head><link rel="canonical" href="${item.canonicalUrl}"><script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name: item.name, url: item.canonicalUrl, offers: { availability: 'https://schema.org/OutOfStock', ...(withPrice ? { price: '19.99', priceCurrency: 'GBP' } : {}) } })}</script></head><body></body></html>`;
+      expect(await checkSavedProductPrice(item, { fetchImpl: vi.fn().mockResolvedValue(response(html)), readOpenProduct: fallback() })).toMatchObject({ name: item.name, availability: 'out_of_stock' });
+    }
+  });
+  it('still rejects sold-out pages for another product and failed HTTP responses', async () => {
+    const html = productHtml('19.99', 'GBP', 'Gold Necklace').replace('"priceCurrency":"GBP"', '"priceCurrency":"GBP","availability":"https://schema.org/OutOfStock"');
+    expect(await checkSavedProductPrice(item, { fetchImpl: vi.fn().mockResolvedValue(response(html)), readOpenProduct: fallback() })).toBeNull();
+    expect(await checkSavedProductPrice(item, { fetchImpl: vi.fn().mockResolvedValue(new Response('Out of stock', { status: 404 })), readOpenProduct: fallback() })).toBeNull();
+  });
   it("reads structured data with the exact URL, no cached response and no tab APIs", async () => {
     const forbidden = vi.fn(() => { throw new Error("Browser mutation forbidden"); });
     vi.stubGlobal("chrome", { tabs: { create: forbidden, update: forbidden, remove: forbidden, query: forbidden }, windows: { create: forbidden } });

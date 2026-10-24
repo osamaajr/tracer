@@ -33,6 +33,56 @@ describe("legacy monitoring tab cleanup", () => {
 });
 
 describe("tab-free saved-item monitoring", () => {
+  it('refreshes legacy and stale entries while skipping recent verified entries', async () => {
+    const now = new Date().toISOString();
+    const { watchlist, dependencies } = setup([
+      { ...item, id: 'legacy', lastCheckedAt: now },
+      { ...item, id: 'recent', availability: 'in_stock', lastCheckedAt: now },
+      { ...item, id: 'stale', availability: 'out_of_stock', monitoringStatus: 'out_of_stock', lastCheckedAt: '2026-01-01T00:00:00Z' },
+    ]);
+    await monitorSavedItems(watchlist, dependencies, 'stale');
+    expect(dependencies.checkPrice.mock.calls.map(([target]) => target.id).sort()).toEqual(['legacy', 'stale']);
+  });
+  it('retains notification deduplication across a sold-out interval', async () => {
+    const { watchlist, dependencies } = setup();
+    await monitorSavedItems(watchlist, dependencies);
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: money(3499), availability: 'out_of_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: money(3499), availability: 'in_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    expect(dependencies.createNotification).toHaveBeenCalledTimes(1);
+  });
+  it('records sold-out stock, clears drop styling and does not notify about an unbuyable discount', async () => {
+    const { watchlist, dependencies } = setup();
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: money(2499), availability: 'out_of_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    expect((await watchlist.list())[0]).toMatchObject({ currentPrice: money(2499), availability: 'out_of_stock', monitoringStatus: 'out_of_stock' });
+    expect((await watchlist.list())[0]?.priceDropAmount).toBeUndefined();
+    expect(dependencies.createNotification).not.toHaveBeenCalled();
+  });
+  it('retains a sold-out state through unknown availability and failed checks, then recovers on positive stock evidence', async () => {
+    const { watchlist, dependencies } = setup();
+    dependencies.checkPrice.mockResolvedValue({ ...item, availability: 'out_of_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: money(3499), availability: 'unknown' });
+    await monitorSavedItems(watchlist, dependencies);
+    expect((await watchlist.list())[0]?.monitoringStatus).toBe('out_of_stock');
+    dependencies.checkPrice.mockRejectedValue(new Error('offline'));
+    await monitorSavedItems(watchlist, dependencies);
+    expect((await watchlist.list())[0]?.monitoringStatus).toBe('out_of_stock');
+    expect(dependencies.createNotification).not.toHaveBeenCalled();
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: money(3499), availability: 'in_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    expect((await watchlist.list())[0]).toMatchObject({ availability: 'in_stock', monitoringStatus: 'price_dropped', priceDropAmount: money(1000) });
+    expect(dependencies.createNotification).toHaveBeenCalledTimes(1);
+  });
+  it('accepts verified sold-out stock without erasing the last price when the store removes its price', async () => {
+    const { watchlist, dependencies } = setup();
+    dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: undefined, availability: 'out_of_stock' });
+    await monitorSavedItems(watchlist, dependencies);
+    expect((await watchlist.list())[0]).toMatchObject({ currentPrice: money(4499), monitoringStatus: 'out_of_stock' });
+    expect(dependencies.createNotification).not.toHaveBeenCalled();
+  });
   it("stores real price drops and preserves the existing notification text", async () => {
     const { watchlist, tabs, dependencies } = setup();
     await monitorSavedItems(watchlist, dependencies);
@@ -80,7 +130,7 @@ describe("tab-free saved-item monitoring", () => {
     if (failure === "missing") dependencies.checkPrice.mockResolvedValue(null);
     if (failure === "currency") dependencies.checkPrice.mockResolvedValue({ ...item, savedPrice: { amountMinor: 3000, currency: "USD" } });
     await monitorSavedItems(watchlist, dependencies);
-    expect((await watchlist.list())[0]).toMatchObject({ currentPrice: money(4499), monitoringStatus: "watching" });
+    expect((await watchlist.list())[0]).toMatchObject({ currentPrice: money(4499), monitoringStatus: "unavailable" });
     expect(dependencies.createNotification).not.toHaveBeenCalled();
     expect(tabs.create).not.toHaveBeenCalled();
     expect(tabs.update).not.toHaveBeenCalled();
@@ -93,7 +143,7 @@ describe("tab-free saved-item monitoring", () => {
       return { ...target, savedPrice: money(3499) };
     });
     await monitorSavedItems(watchlist, dependencies);
-    expect((await watchlist.list()).find((x) => x.id === "missing")).toMatchObject({ monitoringStatus: "unavailable", lastCheckedAt: expect.any(String) });
+    expect((await watchlist.list()).find((x) => x.id === "missing")).toMatchObject({ monitoringStatus: "unavailable" });
     expect(dependencies.createNotification).toHaveBeenCalledTimes(1);
   });
   it("does not recreate or notify for an item removed during a check", async () => {

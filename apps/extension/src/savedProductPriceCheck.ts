@@ -76,8 +76,9 @@ async function requestPage(url: string, expectedUrl: string, fetchImpl: typeof f
 }
 
 function matchesItem(item: SavedProduct, product: SavedProduct | null): product is SavedProduct {
-  if (!product?.savedPrice || !Number.isSafeInteger(product.savedPrice.amountMinor) || product.savedPrice.amountMinor <= 0) return false;
-  if (item.savedPrice && product.savedPrice.currency !== item.savedPrice.currency) return false;
+  if (!product || (!product.savedPrice && product.availability !== 'out_of_stock')) return false;
+  if (product.savedPrice && (!Number.isSafeInteger(product.savedPrice.amountMinor) || product.savedPrice.amountMinor <= 0)) return false;
+  if (item.savedPrice && product.savedPrice && product.savedPrice.currency !== item.savedPrice.currency) return false;
   if (product.retailerId !== item.retailerId) return false;
   const expected = new URL(normalizeSavedUrl(item.canonicalUrl));
   const actual = new URL(normalizeSavedUrl(product.canonicalUrl));
@@ -100,7 +101,7 @@ async function readExistingProductTab(url: string): Promise<SavedProduct | null>
       const results = await withTimeout(chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["savedMonitoringCapture.js"] }));
       const product = results.find((result) => result.frameId === 0)?.result as SavedProduct | null | undefined;
       const currentTab = await chrome.tabs.get(tab.id);
-      if (sameUrl(currentTab.url, url) && product?.savedPrice) return product;
+      if (sameUrl(currentTab.url, url) && (product?.savedPrice || product?.availability === 'out_of_stock')) return product;
     } catch {
       // Closed or navigated user tabs are left untouched.
     }

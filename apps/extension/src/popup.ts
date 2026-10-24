@@ -148,7 +148,8 @@ const savedPriceDropOverrides = (() => {
   return overrides;
 })();
 function displaySavedPriceDrop(item: SavedItem): SavedItem {
-  if (item.monitoringStatus === 'price_dropped') return item;
+  if (item.availability === 'out_of_stock') return { ...item, monitoringStatus: 'out_of_stock' };
+  if (item.monitoringStatus === 'price_dropped' || item.monitoringStatus === 'out_of_stock' || item.monitoringStatus === 'unavailable') return item;
   const currentPrice = savedPriceDropOverrides.get(item.id);
   if (!currentPrice || !item.savedPrice) return item;
   if (currentPrice.currency !== item.savedPrice.currency) return item;
@@ -2479,15 +2480,18 @@ function renderSavedProduct(
   if (displayPrice) {
     const price = document.createElement('p');
     price.className = 'saved-price';
-    price.textContent = `${formatMoney(displayPrice)} · ${'currentPrice' in item && item.currentPrice ? 'current price' : 'price when saved'}`;
+    price.textContent = `${formatMoney(displayPrice)} · ${'monitoringStatus' in item && (item.monitoringStatus === 'unavailable' || item.monitoringStatus === 'out_of_stock') ? 'last checked price' : 'currentPrice' in item && item.currentPrice ? 'current price' : 'price when saved'}`;
     copy.append(price);
   }
   if ('monitoringStatus' in item) {
     const status = document.createElement('p');
     status.className = 'saved-monitoring-status';
-    const dropped = item.monitoringStatus === 'price_dropped' && item.priceDropAmount;
+    const outOfStock = item.monitoringStatus === 'out_of_stock' || item.availability === 'out_of_stock';
+    const dropped = !outOfStock && item.monitoringStatus === 'price_dropped' && item.priceDropAmount;
     const monitoringState = !monitoringEnabled
       ? 'off'
+      : outOfStock
+        ? 'out_of_stock'
       : dropped
         ? 'alert'
         : item.monitoringStatus === 'watching'
@@ -2496,6 +2500,8 @@ function renderSavedProduct(
     status.dataset.state = monitoringState;
     status.textContent = monitoringState === 'off'
       ? '● Price watching is off'
+      : outOfStock
+      ? '● Out of stock'
       : dropped
       ? `● Price dropped ${formatMoney(item.priceDropAmount!)}`
       : item.monitoringStatus === 'unavailable' ? '● Unable to check price' : '● Watching for price drops';
@@ -2532,7 +2538,7 @@ function selectSavedImage(offset: -1 | 1): void {
   image.src = selectedImage;
 }
 
-async function showSavedItems(): Promise<void> {
+async function showSavedItems(refresh = true): Promise<void> {
   const runId = ++itemsLoadRunId;
   setItemsSegment(true);
   renderState('items', 'Your items', '');
@@ -2575,6 +2581,11 @@ async function showSavedItems(): Promise<void> {
       footer.append(open, remove);
       row.append(footer);
       itemsList.append(row);
+    }
+    if (refresh && monitoringEnabled) {
+      void watchlistRequest('MONITOR', { onlyStale: true }).then(() => {
+        if (runId === itemsLoadRunId && currentState === 'items' && savedTab.getAttribute('aria-pressed') === 'true') void showSavedItems(false);
+      }).catch(() => undefined);
     }
   } catch {
     if (runId !== itemsLoadRunId || currentState !== 'items') return;
