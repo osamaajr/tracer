@@ -311,7 +311,7 @@ function LandingBValueStatement() {
           Your browser doesn’t support this video. <a href={tracerDemoVideo}>Watch the demo</a>.
         </video>
       </div>
-      <p className="landing-b-watchlist-note">
+      <p className="landing-b-watchlist-note landing-b-install-note">
         Once installed, open a product page in Chrome, open Tracer from the extensions menu, and choose <strong>Save to Tracer</strong>.
       </p>
     </section>

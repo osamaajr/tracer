@@ -1615,6 +1615,7 @@
 }
 
 .landing-b-value .landing-b-watchlist-note { max-width:490px; margin:24px auto 0; font-size:.9rem; line-height:1.65; color:#737870; }
+.landing-b-value .landing-b-install-note { color:#969b94; }
 
 /* Reveal once; independent translate preserves the cards' existing tilt. */
 .landing-shell-b .scroll-reveal {

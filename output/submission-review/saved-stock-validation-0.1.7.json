@@ -29,10 +29,23 @@
   "storeSubmission": {
     "date": "2026-10-24",
     "version": "0.1.7",
-    "status": "pending_review",
+    "status": "ready_to_publish",
     "autoPublish": false,
     "publishedVersionAtSubmission": "0.1.5",
     "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
-    "submissionConfirmationObserved": true
+    "submissionConfirmationObserved": true,
+    "approvalObservedOn": "2026-10-24",
+    "publicationDeadlineAsDisplayed": "2026-11-24",
+    "publishedVersionAtReadinessCheck": "0.1.5",
+    "needsPublishAction": true
+  },
+  "readinessCheck": {
+    "date": "2026-10-24",
+    "testsPassedAgain": 297,
+    "packageHashReverified": true,
+    "releaseEntriesReverified": true,
+    "productionApiHealth": "ok",
+    "websiteContactPrivacyTermsHttpStatus": 200,
+    "landingPageBuildPassed": true
   }
 }

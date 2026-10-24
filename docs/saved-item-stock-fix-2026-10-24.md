@@ -46,3 +46,9 @@ The installed extension must be reloaded or updated to use the fix. Availability
 Uploaded the verified 0.1.7 ZIP to the existing Tracer item. The dashboard showed draft version 0.1.7 with the existing permissions and published version 0.1.5. Google then confirmed “Your extension was submitted for review”, and the item status changed to **Pending review**.
 
 Automatic publication is **off**. Automatic approval review rejected the submission while that setting was enabled because the current request authorised submission for review, not automatic public release. The review-only submission succeeded after disabling it. Following approval, publication requires a separate action. The public version remains 0.1.5 until the approved update is published.
+
+## Readiness check — 24 October 2026
+
+Google has accepted 0.1.7. The live dashboard shows **Ready to publish**, with draft version 0.1.7 and published version 0.1.5. It says to publish before 24 November 2026. Automatic publication remains off; a separate Publish action is still required.
+
+Reverified the ZIP checksum, CRC, 21 release entries and version files. All 297 tests pass again. The production API health endpoint returns OK; the website, contact, privacy and terms routes return HTTP 200. The current landing-page sources also pass the TypeScript/Vite build. The earlier faint installation-instruction styling is included in this readiness commit.
