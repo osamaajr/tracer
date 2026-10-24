@@ -459,8 +459,20 @@
   font-weight: 680;
 }
 
+.landing-shell-b > .site-footer .footer-guide-menu summary {
+  color: #111820;
+  font-size: .92rem;
+  font-weight: 680;
+}
+
+.landing-shell-b > .site-footer .footer-guide-submenu a {
+  color: #29445b;
+  font-size: .82rem;
+  font-weight: 560;
+}
+
 .landing-shell-b > .site-footer .footer-links a:hover {
-  color: #fff;
+  color: #111820;
 }
 
 .landing-shell-b > .site-footer .footer-copyright {
