@@ -25,5 +25,14 @@
     "priceDropHighlight": false,
     "source": "popup test harness DOM with actual popup CSS, not the installed extension"
   },
-  "storeUploadPerformed": false
+  "storeUploadPerformed": true,
+  "storeSubmission": {
+    "date": "2026-10-24",
+    "version": "0.1.7",
+    "status": "pending_review",
+    "autoPublish": false,
+    "publishedVersionAtSubmission": "0.1.5",
+    "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
+    "submissionConfirmationObserved": true
+  }
 }

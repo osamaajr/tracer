@@ -38,4 +38,11 @@ Plan:
 
 Version **0.1.7** is built with production HTTPS endpoints. The customer ZIP is `output/submission-review/tracer-0.1.7-submission.zip`; validation and its SHA-256 are recorded in `output/submission-review/saved-stock-validation-0.1.7.json`. Its entries match the release directory and pass ZIP CRC validation. The local `dist` and `release` directories receive the same customer build.
 
-The installed extension must be reloaded or updated to use the fix. The package has not been uploaded to the Chrome Web Store as part of this work. Availability remains dependent on retailer evidence: a blocked, ambiguous or unsupported page cannot establish live stock, and periodic checks do not guarantee instantaneous inventory updates.
+The installed extension must be reloaded or updated to use the fix. Availability remains dependent on retailer evidence: a blocked, ambiguous or unsupported page cannot establish live stock, and periodic checks do not guarantee instantaneous inventory updates.
+
+
+## Store submission — 24 October 2026
+
+Uploaded the verified 0.1.7 ZIP to the existing Tracer item. The dashboard showed draft version 0.1.7 with the existing permissions and published version 0.1.5. Google then confirmed “Your extension was submitted for review”, and the item status changed to **Pending review**.
+
+Automatic publication is **off**. Automatic approval review rejected the submission while that setting was enabled because the current request authorised submission for review, not automatic public release. The review-only submission succeeded after disabling it. Following approval, publication requires a separate action. The public version remains 0.1.5 until the approved update is published.
