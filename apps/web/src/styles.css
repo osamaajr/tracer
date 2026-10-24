@@ -1912,6 +1912,7 @@ dd {
 
 .footer-guide-menu {
   position: relative;
+  flex: none;
 }
 
 .footer-guide-menu summary {
@@ -1945,7 +1946,22 @@ dd {
 .footer-guide-submenu {
   display: grid;
   gap: 10px;
-  padding-top: 16px;
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  width: max-content;
+  padding: 16px 18px;
+  border: 1px solid rgb(17 24 32 / 12%);
+  border-radius: 14px;
+  background: #fffdfa;
+  box-shadow: 0 12px 32px rgb(17 24 32 / 12%);
+  z-index: 5;
+  animation: footer-guide-reveal 220ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes footer-guide-reveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .footer-guide-submenu a {
@@ -1983,6 +1999,10 @@ dd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .footer-guide-submenu {
+    animation: none;
+  }
+
   .footer-links a::after,
   .footer-guide-menu summary::after,
   .footer-guide-chevron {
@@ -2885,6 +2905,12 @@ dd {
 
   .footer-links {
     gap: 26px;
+  }
+
+  .footer-guide-submenu {
+    position: static;
+    width: max-content;
+    margin-top: 12px;
   }
 
   .site-page-main {

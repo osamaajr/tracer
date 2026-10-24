@@ -109,13 +109,18 @@ kbd { border: 1px solid #d8e0e7; border-radius: 5px; padding: 1px 5px; backgroun
 .guide-footer-row { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding-bottom: 24px; border-bottom: 1px solid rgb(17 24 32 / 14%); }
 .guide-footer .guide-brand img { width: 144px; height: 36px; }
 .guide-footer-links { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 18px clamp(30px, 4vw, 56px); padding-top: 8px; }
+.guide-footer-menu { position: relative; flex: none; }
 .guide-footer-links a,
 .guide-footer-menu summary { position: relative; width: fit-content; color: #111820; font-size: .92rem; font-weight: 680; text-decoration: none; }
 .guide-footer-menu summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
 .guide-footer-menu summary::-webkit-details-marker { display: none; }
 .guide-footer-chevron { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 180ms ease; }
 .guide-footer-menu[open] .guide-footer-chevron { transform: translateY(1px) rotate(225deg); }
-.guide-footer-submenu { display: grid; gap: 10px; padding-top: 16px; }
+.guide-footer-submenu { display: grid; gap: 10px; position: absolute; top: calc(100% + 12px); left: 0; width: max-content; padding: 16px 18px; border: 1px solid rgb(17 24 32 / 12%); border-radius: 14px; background: #fffdfa; box-shadow: 0 12px 32px rgb(17 24 32 / 12%); z-index: 5; animation: guide-footer-reveal 220ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes guide-footer-reveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .guide-footer-submenu a { color: #29445b; font-size: .82rem; font-weight: 560; white-space: nowrap; }
 .guide-footer-links a::after,
 .guide-footer-menu summary::after { position: absolute; right: 0; bottom: -3px; left: 0; height: 1.5px; background: currentColor; content: ""; transform: scaleX(0); transform-origin: left; transition: transform 230ms cubic-bezier(.22, 1, .36, 1); }
@@ -137,11 +142,13 @@ kbd { border: 1px solid #d8e0e7; border-radius: 5px; padding: 1px 5px; backgroun
   .guide-footer { padding: 48px 20px 0; }
   .guide-footer-row { align-items: flex-start; flex-direction: column; }
   .guide-footer-links { padding-top: 0; gap: 18px 24px; }
+  .guide-footer-submenu { position: static; margin-top: 12px; }
   .guide-footer-giant { margin-top: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .guide-footer-submenu { animation: none; }
   .guide-footer-links a::after,
   .guide-footer-menu summary::after,
   .guide-footer-chevron { transition: none; }
