@@ -128,6 +128,16 @@ Then open `chrome://extensions`, enable **Developer mode**, and choose **Load un
 
 The local web server also serves development-only order and extension-state previews. They are excluded from production web builds.
 
+### Understanding saved-item status
+
+| Status | Meaning |
+| --- | --- |
+| Watching for price drops | The item is being monitored; this label alone does not guarantee live stock availability |
+| Out of stock | The retailer supplied explicit sold-out evidence; price-drop alerts are suppressed while the item remains sold out |
+| Unable to check price | A fresh price could not be verified; the last successful price is retained and labelled as last checked |
+
+Missing stock data or a failed request does not prove that a sold-out item is back in stock. Tracer requires positive in-stock evidence before restoring its normal price-drop monitoring state. Checks run periodically, so retailer stock changes may not appear immediately.
+
 ### Understanding purchase prices
 
 | Value or state | Meaning |
