@@ -47,5 +47,25 @@
     "productionApiHealth": "ok",
     "websiteContactPrivacyTermsHttpStatus": 200,
     "landingPageBuildPassed": true
+  },
+  "finalCheck": {
+    "date": "2026-10-25",
+    "sourceCommit": "ce2332c3df3c8fadc53dabd9911bfb1f03515abc",
+    "verificationSource": "Exact GitHub main archive with matching locked dependencies",
+    "testsPassed": 297,
+    "testFilesPassed": 18,
+    "typechecksPassed": true,
+    "lintPassed": true,
+    "buildsPassed": true,
+    "monitoringFixturePassed": true,
+    "packageHashReverified": true,
+    "releaseEntriesReverified": true,
+    "productionApiHealth": "ok",
+    "websiteContactPrivacyTermsAndGuidesHttpStatus": 200,
+    "websiteDeployment": "success",
+    "faintInstallationNoteDeployed": true,
+    "lastObservedStoreStatus": "ready_to_publish",
+    "publicationAuthorised": true,
+    "publicationConfirmed": false
   }
 }

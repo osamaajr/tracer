@@ -52,3 +52,11 @@ Automatic publication is **off**. Automatic approval review rejected the submiss
 Google has accepted 0.1.7. The live dashboard shows **Ready to publish**, with draft version 0.1.7 and published version 0.1.5. It says to publish before 24 November 2026. Automatic publication remains off; a separate Publish action is still required.
 
 Reverified the ZIP checksum, CRC, 21 release entries and version files. All 297 tests pass again. The production API health endpoint returns OK; the website, contact, privacy and terms routes return HTTP 200. The current landing-page sources also pass the TypeScript/Vite build. The earlier faint installation-instruction styling is included in this readiness commit.
+
+## Final check — 25 October 2026
+
+Checked the exact GitHub `main` snapshot at `ce2332c3df3c8fadc53dabd9911bfb1f03515abc`, including the newer Carted guide. All 297 tests in 18 files, all workspace type checks, lint and builds pass. The monitoring fixture reports one price-drop event and one notification, no repeat event, no paused check and no check after clearing. The snapshot uses the same locked dependencies as the earlier verification checkout. The original workspace test run was stopped after filesystem reads stalled; the complete snapshot checks passed independently.
+
+Rechecked the customer ZIP: SHA-256, CRC, version 0.1.7, all 21 entries and existing permissions still match the release directory. The API health endpoint returns OK. The homepage, contact, privacy, terms and both saved-product/Carted guide pages return HTTP 200. The live sitemap contains the new guide, and the installation note's faint colour is deployed. GitHub reports the website deployment successful and the API deployment correctly skipped because it was unaffected.
+
+After Google sign-in verification, the dashboard still showed **Ready to publish**. The user has explicitly authorised publishing 0.1.7. Publication has not yet been confirmed; browser controls subsequently stopped exposing the dashboard content. Test/build success does not establish exhaustive live retailer compatibility.
