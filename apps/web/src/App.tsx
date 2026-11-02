@@ -170,7 +170,7 @@ function HeroSectionB() {
       <div className="hero-copy">
         <h1>One list for everything you might buy.</h1>
         <p className="hero-text">
-          Save products from different shops as you browse. Tracer keeps them together and alerts you when a price drops.
+          On desktop Chrome, save products from different shops as you browse. Tracer keeps them together and alerts you when a price drops.
         </p>
         <a className="primary-button hero-cta" href={getTrackedStoreUrl()} target="_blank" rel="noopener noreferrer" onClick={recordInstallClick}>
           <ChromeMark />
