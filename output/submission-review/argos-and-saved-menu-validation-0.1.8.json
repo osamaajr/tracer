@@ -62,9 +62,19 @@
   ],
   "storeRelease": {
     "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
-    "status": "prepared",
-    "uploadPerformed": false,
-    "submissionPerformed": false,
-    "publicVersionConfirmed": false
-  }
+    "status": "pending_review",
+    "uploadPerformed": true,
+    "submissionPerformed": true,
+    "publicVersionConfirmed": false,
+    "autoPublish": true,
+    "submittedOn": "2026-11-03",
+    "publishedVersionAtSubmission": "0.1.7",
+    "homepageUrl": "https://tracercart.com/",
+    "homepageRedirectDestination": "https://www.tracercart.com/",
+    "homepageValidationNote": "Google timed out on the www URL twice despite HTTP 200 from both advertised IPs. The existing apex redirect was accepted on submission."
+  },
+  "sourceCommit": "91e8066",
+  "websiteDeployment": "success",
+  "apiDeployment": "success",
+  "productionApiHealth": "ok"
 }
