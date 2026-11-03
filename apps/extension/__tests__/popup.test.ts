@@ -124,6 +124,48 @@ describe("extension popup", () => {
     });
   });
 
+  it('opens Saved from Your items, keeps Protected available, and restores the previous screen on Back', async () => {
+    const harness = await setupPopup({
+      savedItems: [{ id: 'lamp', name: 'Desk lamp', retailer: 'Shop', retailerId: 'shop', canonicalUrl: 'https://shop.example.com/products/lamp', savedAt: '2026-09-01T00:00:00Z', status: 'saved' }],
+      dashboardResponse: droppedDashboard(),
+    });
+    await flushPopup();
+    const previousScreen = harness.app.dataset.screen;
+    element<HTMLButtonElement>('menuToggle').click();
+    element<HTMLButtonElement>('yourItemsMenu').click();
+    await flushPopup();
+    expect(harness.app.dataset.screen).toBe('items');
+    expect(element('savedTab').getAttribute('aria-pressed')).toBe('true');
+    expect(element('protectedTab').getAttribute('aria-pressed')).toBe('false');
+    expect(text('itemsList')).toContain('Desk lamp');
+    expect(text('itemsList')).not.toContain('Sony');
+    expect(element('popupMenu').hidden).toBe(true);
+    expect(element('menuToggle').getAttribute('aria-expanded')).toBe('false');
+    expect(harness.dashboardRequests()).toHaveLength(0);
+    element<HTMLButtonElement>('protectedTab').click();
+    await flushPopup();
+    expect(text('itemsList')).toContain('Sony');
+    element<HTMLButtonElement>('menuToggle').click();
+    element<HTMLButtonElement>('yourItemsMenu').click();
+    await flushPopup();
+    expect(element('savedTab').getAttribute('aria-pressed')).toBe('true');
+    expect(text('itemsList')).toContain('Desk lamp');
+    harness.popupBack.click();
+    expect(harness.app.dataset.screen).toBe(previousScreen);
+    expect(harness.tabsCreate).not.toHaveBeenCalled();
+  });
+
+  it('opens the empty Saved list from the menu without falling back to protected purchases', async () => {
+    const harness = await setupPopup({ dashboardResponse: droppedDashboard() });
+    await flushPopup();
+    element<HTMLButtonElement>('yourItemsMenu').click();
+    await flushPopup();
+    expect(element('savedTab').getAttribute('aria-pressed')).toBe('true');
+    expect(text('itemsList')).toContain('A place for your maybes.');
+    expect(harness.dashboardRequests()).toHaveLength(0);
+    expect(harness.tabsCreate).not.toHaveBeenCalled();
+  });
+
   it("saves a product, shows confirmation, deduplicates, and separates Saved from Protected", async () => {
     const harness = await setupPopup({
       savedProduct: {name:'Desk lamp',retailer:'shop.example.com',retailerId:'store_shop-example-com',canonicalUrl:'https://shop.example.com/products/lamp'},

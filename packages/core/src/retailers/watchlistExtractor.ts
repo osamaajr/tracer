@@ -95,7 +95,7 @@ export function extractSavedProduct(
         .find(element => !belongsToAnotherCard(element));
       let hasAddControl = false;
       for (const element of (document.querySelector('main') ?? document).querySelectorAll('button, [role="button"]')) {
-        if (/^add to (?:bag|basket|cart)$/i.test(element.textContent?.trim() ?? '')) {
+        if (/^add\s+to\s+(?:bag|basket|cart|trolley)$/i.test(element.textContent?.trim() ?? '')) {
           // Quick-add controls in recommendation/listing cards are not the
           // purchase control for the page's main product.
           if (belongsToAnotherCard(element)) continue;
@@ -211,12 +211,15 @@ function isProductDetailPath(path: string): boolean {
 function hasProductListingControls(document: Document, pageUrl: string): boolean {
   const main = document.querySelector('main') ?? document.body;
   if (!main) return false;
-  const sortControl = Array.from(main.querySelectorAll('select, [role="combobox"], button[aria-label]')).some(element =>
-    /sort(?:\s|[-_]|$)|most relevant/i.test([
+  const sortControl = Array.from(main.querySelectorAll('select, [role="combobox"], button[aria-label]')).some(element => {
+    // A product's review/Q&A sorting is not a product-list filter. Sold-out
+    // details can legitimately have these controls without an add button.
+    if (/^sort\s+(?:reviews?|questions?|answers?)$/i.test(element.getAttribute('aria-label')?.trim() ?? '')) return false;
+    return /sort(?:\s|[-_]|$)|most relevant/i.test([
       element.getAttribute('aria-label'), element.getAttribute('name'), element.id,
       element.tagName === 'SELECT' ? element.textContent : '',
-    ].join(' ')),
-  );
+    ].join(' '));
+  });
   if (!sortControl) return false;
   return Array.from(main.querySelectorAll('a[href]')).some(link => {
     try {

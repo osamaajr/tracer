@@ -29,7 +29,7 @@
   "storeSubmission": {
     "date": "2026-10-24",
     "version": "0.1.7",
-    "status": "ready_to_publish",
+    "status": "published",
     "autoPublish": false,
     "publishedVersionAtSubmission": "0.1.5",
     "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
@@ -37,7 +37,9 @@
     "approvalObservedOn": "2026-10-24",
     "publicationDeadlineAsDisplayed": "2026-11-24",
     "publishedVersionAtReadinessCheck": "0.1.5",
-    "needsPublishAction": true
+    "needsPublishAction": false,
+    "publishedOn": "2026-11-03",
+    "publishedVersionConfirmed": "0.1.7"
   },
   "readinessCheck": {
     "date": "2026-10-24",

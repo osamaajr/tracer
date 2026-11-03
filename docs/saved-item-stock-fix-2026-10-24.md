@@ -60,3 +60,7 @@ Checked the exact GitHub `main` snapshot at `ce2332c3df3c8fadc53dabd9911bfb1f035
 Rechecked the customer ZIP: SHA-256, CRC, version 0.1.7, all 21 entries and existing permissions still match the release directory. The API health endpoint returns OK. The homepage, contact, privacy, terms and both saved-product/Carted guide pages return HTTP 200. The live sitemap contains the new guide, and the installation note's faint colour is deployed. GitHub reports the website deployment successful and the API deployment correctly skipped because it was unaffected.
 
 After Google sign-in verification, the dashboard still showed **Ready to publish**. The user has explicitly authorised publishing 0.1.7. Publication has not yet been confirmed; browser controls subsequently stopped exposing the dashboard content. Test/build success does not establish exhaustive live retailer compatibility.
+
+## Publication — 3 November 2026
+
+Completed the authorised publication of 0.1.7. Google confirmed the publish request, and the dashboard changed to **Published — public** with published package version 0.1.7. This completes the earlier staged release; the subsequent Argos/menu update is version 0.1.8 and has its own release record.

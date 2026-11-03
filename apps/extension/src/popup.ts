@@ -441,7 +441,7 @@ stateCloseButton.addEventListener("click", () => {
 });
 settingsToggle.addEventListener("click", openSettings);
 menuToggle.addEventListener("click", () => { popupMenu.hidden = !popupMenu.hidden; menuToggle.setAttribute("aria-expanded", String(!popupMenu.hidden)); });
-yourItemsMenu.addEventListener("click", openProtectedItems);
+yourItemsMenu.addEventListener("click", () => openItems('saved'));
 menuSettings.addEventListener("click", openSettings);
 getElement<HTMLButtonElement>("menuHelp").addEventListener("click", async () => {
   popupMenu.hidden = true;
@@ -1221,6 +1221,10 @@ function openExtensionUrl(url: string): void {
 }
 
 function openProtectedItems(): void {
+  openItems('protected');
+}
+
+function openItems(segment: 'saved' | 'protected'): void {
   popupMenu.hidden = true;
   menuToggle.setAttribute("aria-expanded", "false");
 
@@ -1230,7 +1234,8 @@ function openProtectedItems(): void {
     itemsReturnState = currentState;
   }
 
-  void showProtectedItems();
+  if (segment === 'saved') void showSavedItems();
+  else void showProtectedItems();
 }
 
 function openSettings(): void {

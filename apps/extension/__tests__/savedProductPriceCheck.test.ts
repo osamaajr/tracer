@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { checkSavedProductPrice } from "../src/savedProductPriceCheck";
 import type { SavedProduct } from "@tracer/core";
 
@@ -9,6 +10,16 @@ const fallback = () => vi.fn().mockResolvedValue(null);
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("direct saved-product checks", () => {
+  it('checks an Argos product with review sorting without creating or navigating tabs', async () => {
+    const argos: SavedProduct = { name: 'HoMedics Novo Mini Massage Gun', retailer: 'Argos', retailerId: 'store_argos-co-uk', canonicalUrl: 'https://www.argos.co.uk/product/3100110', sku: '3100110', savedPrice: { amountMinor: 3999, currency: 'GBP' } };
+    const html = readFileSync(new URL('../../../packages/core/src/__tests__/fixtures/argos-product.html', import.meta.url), 'utf8');
+    const forbidden = vi.fn(() => { throw new Error('Browser mutation forbidden'); });
+    vi.stubGlobal('chrome', { tabs: { create: forbidden, update: forbidden, remove: forbidden, query: forbidden }, windows: { create: forbidden } });
+    const readOpenProduct = fallback();
+    expect(await checkSavedProductPrice(argos, { fetchImpl: vi.fn().mockResolvedValue(response(html)), readOpenProduct })).toMatchObject({ savedPrice: { amountMinor: 2999, currency: 'GBP' }, sku: '3100110' });
+    expect(readOpenProduct).not.toHaveBeenCalled();
+    expect(forbidden).not.toHaveBeenCalled();
+  });
   it('keeps verified out-of-stock evidence, including pages that omit a price', async () => {
     for (const withPrice of [true, false]) {
       const html = `<html><head><link rel="canonical" href="${item.canonicalUrl}"><script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name: item.name, url: item.canonicalUrl, offers: { availability: 'https://schema.org/OutOfStock', ...(withPrice ? { price: '19.99', priceCurrency: 'GBP' } : {}) } })}</script></head><body></body></html>`;

@@ -1,0 +1,70 @@
+{
+  "version": "0.1.8",
+  "date": "2026-11-03",
+  "package": "output/submission-review/tracer-0.1.8-submission.zip",
+  "sha256": "b6cc2ebedb795c645af7e5a5b05fd02f34c6c7db4d5b6a0d95feef299d53e52d",
+  "sizeBytes": 2298748,
+  "fileCount": 21,
+  "crcValid": true,
+  "entriesMatchRelease": true,
+  "testsPassed": 309,
+  "testFilesPassed": 19,
+  "baselineRegressionsFailed": 7,
+  "typechecksPassed": true,
+  "lintPassed": true,
+  "buildsPassed": true,
+  "monitoringFixture": {
+    "priceDropEvents": 1,
+    "notifications": 1,
+    "repeatEvents": 0,
+    "pausedChecks": 0,
+    "checksAfterClear": 0
+  },
+  "liveArgosDomChecks": [
+    {
+      "url": "https://www.argos.co.uk/product/3100110",
+      "baselineRejected": true,
+      "name": "HoMedics Novo Mini Massage Gun",
+      "price": {
+        "amountMinor": 2999,
+        "currency": "GBP"
+      },
+      "imageUrl": "https://media.4rgos.it/s/Argos/3100110_R_SET?$Web$&$Thumb100$?ProductImageThumbnail&w=200&h=200&qlt=75&fmt=webp",
+      "availability": "unknown",
+      "blockedFetchWithOpenPageFallback": "passed"
+    },
+    {
+      "url": "https://www.argos.co.uk/product/8203809",
+      "baselineRejected": true,
+      "name": "Neo G Airflow Knee Support - Medium",
+      "price": {
+        "amountMinor": 1450,
+        "currency": "GBP"
+      },
+      "imageUrl": "https://media.4rgos.it/s/Argos/8203809_R_SET?$Web$&$Thumb100$?ProductImageThumbnail&w=200&h=200&qlt=75&fmt=webp",
+      "availability": "unknown",
+      "blockedFetchWithOpenPageFallback": "passed"
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "hostPermissions": [
+    "https://*/*"
+  ],
+  "productionEndpoints": [
+    "https://api.tracercart.com",
+    "https://www.tracercart.com"
+  ],
+  "storeRelease": {
+    "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
+    "status": "prepared",
+    "uploadPerformed": false,
+    "submissionPerformed": false,
+    "publicVersionConfirmed": false
+  }
+}
