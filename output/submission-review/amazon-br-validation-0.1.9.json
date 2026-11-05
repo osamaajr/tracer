@@ -85,8 +85,18 @@
   "websiteSourcesChanged": false,
   "storeRelease": {
     "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
-    "status": "prepared",
+    "status": "pending_review",
     "publishedVersionConfirmed": "0.1.8",
-    "publishedVersionCheckedOn": "2026-11-05"
+    "publishedVersionCheckedOn": "2026-11-05",
+    "uploadPerformed": true,
+    "draftVersionConfirmed": "0.1.9",
+    "uploadedOn": "2026-11-05",
+    "sourceCommit": "82e6db12aa9e61d0cb11203d774460c3e07c28b0",
+    "submissionPerformed": true,
+    "autoPublish": true,
+    "submittedOn": "2026-11-05",
+    "publicVersionConfirmed": false,
+    "publishedVersionAtSubmission": "0.1.8",
+    "submissionConfirmation": "Your extension was submitted for review"
   }
 }
