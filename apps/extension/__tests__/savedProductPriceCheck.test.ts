@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { checkSavedProductPrice } from "../src/savedProductPriceCheck";
-import type { SavedProduct } from "@tracer/core";
+import { extractSavedProduct, type SavedProduct } from "@tracer/core";
+import { parseHTML } from "linkedom";
 
 const item: SavedProduct = { name: "Silver Bracelet", retailer: "Example", retailerId: "store_shop-example-com", canonicalUrl: "https://shop.example.com/products/bracelet", savedPrice: { amountMinor: 3500, currency: "GBP" } };
 const productHtml = (price = "25.00", currency = "GBP", name = item.name, url = item.canonicalUrl) => `<html><head><link rel="canonical" href="${url}"><script type="application/ld+json">${JSON.stringify({ "@type": "Product", name, url, offers: { price, priceCurrency: currency } })}</script></head><body></body></html>`;
@@ -10,6 +11,21 @@ const fallback = () => vi.fn().mockResolvedValue(null);
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("direct saved-product checks", () => {
+  it.each([['B0H3WHDZK2', 589863], ['B0H4HYLQ71', 582245]])('checks a captured Amazon Brasil %s item in BRL without touching tabs', async (asin, amountMinor) => {
+    const html = readFileSync(new URL(`../../../packages/core/src/__tests__/fixtures/amazon-br-${String(asin).toLowerCase()}.html`, import.meta.url), 'utf8');
+    const captured = extractSavedProduct(parseHTML(html).document as unknown as Document, `https://www.amazon.com.br/dp/${asin}`)!;
+    expect(captured).not.toBeNull();
+    const forbidden = vi.fn(() => { throw new Error('Browser mutation forbidden'); });
+    vi.stubGlobal('chrome', { tabs: { create: forbidden, update: forbidden, remove: forbidden, query: forbidden }, windows: { create: forbidden } });
+    const readOpenProduct = fallback();
+    const fetchImpl = vi.fn().mockResolvedValue(response(html));
+    expect(await checkSavedProductPrice(captured, { fetchImpl, readOpenProduct })).toMatchObject({
+      sku: asin, savedPrice: { amountMinor, currency: 'BRL' },
+    });
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe(captured.canonicalUrl);
+    expect(readOpenProduct).not.toHaveBeenCalled();
+    expect(forbidden).not.toHaveBeenCalled();
+  });
   it('checks an Argos product with review sorting without creating or navigating tabs', async () => {
     const argos: SavedProduct = { name: 'HoMedics Novo Mini Massage Gun', retailer: 'Argos', retailerId: 'store_argos-co-uk', canonicalUrl: 'https://www.argos.co.uk/product/3100110', sku: '3100110', savedPrice: { amountMinor: 3999, currency: 'GBP' } };
     const html = readFileSync(new URL('../../../packages/core/src/__tests__/fixtures/argos-product.html', import.meta.url), 'utf8');

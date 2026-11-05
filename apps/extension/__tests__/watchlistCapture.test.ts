@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseHTML } from 'linkedom';
+import { readFileSync } from 'node:fs';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.resetModules(); });
 
@@ -27,6 +28,24 @@ async function captureHarness(html: string, pageUrl: string, fetchImpl = vi.fn()
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
 describe('watchlist capture page identity', () => {
+  it.each([['B0H3WHDZK2', 589863], ['B0H4HYLQ71', 582245]])('returns an Amazon Brasil %s save candidate and its delayed product image', async (asin, amountMinor) => {
+    const html = readFileSync(new URL(`../../../packages/core/src/__tests__/fixtures/amazon-br-${String(asin).toLowerCase()}.html`, import.meta.url), 'utf8');
+    const url = `https://www.amazon.com.br/dp/${asin}`;
+    const fetchImpl = vi.fn();
+    const h = await captureHarness(html, url, fetchImpl);
+    expect(h.read()).toBe(true);
+    await flush();
+    expect(h.respond).toHaveBeenCalledWith(expect.objectContaining({
+      product: expect.objectContaining({ sku: asin, savedPrice: { amountMinor, currency: 'BRL' } }),
+      pageUrl: url, imageCandidatesPending: true,
+    }));
+    h.timers[0]!();
+    expect(h.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'TRACER_PRODUCT_IMAGES_READY', pageUrl: url,
+      imageCandidates: expect.arrayContaining([expect.stringMatching(/^https:\/\/m\.media-amazon\.com\/images\//)]),
+    }), expect.any(Function));
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it('returns no save candidate or image scan for category AggregateOffer data', async () => {
     const url = 'https://shop.example.com/accessories/sunglasses';
     const h = await captureHarness(`<script type="application/ld+json">${JSON.stringify({

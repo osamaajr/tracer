@@ -1,0 +1,92 @@
+{
+  "version": "0.1.9",
+  "date": "2026-11-05",
+  "package": "output/submission-review/tracer-0.1.9-submission.zip",
+  "sha256": "304dbed3c25a8a9db2722b777d267d970bd071a707ac29a82b537f10cef8a152",
+  "sizeBytes": 2301869,
+  "fileCount": 21,
+  "crcValid": true,
+  "entriesMatchRelease": true,
+  "testsPassed": 332,
+  "testFilesPassed": 20,
+  "initialCoreRegressionsFailed": 11,
+  "typechecksPassed": true,
+  "lintPassed": true,
+  "buildsPassed": true,
+  "monitoringFixture": {
+    "priceDropEvents": 1,
+    "notifications": 1,
+    "repeatEvents": 0,
+    "pausedChecks": 0,
+    "checksAfterClear": 0
+  },
+  "capturedLiveDomProductionBundleChecks": [
+    {
+      "asin": "B0H3WHDZK2",
+      "product": {
+        "name": "Notebook Gamer Lenovo LOQ 15IRX9 Intel Core i7-13645HX 16GB 512GB SSD RTX 4050 Linux 15.6\" - 83KHS00600 Luna Grey",
+        "retailer": "Amazon Brasil",
+        "retailerId": "store_amazon-com-br",
+        "canonicalUrl": "https://www.amazon.com.br/Notebook-Gamer-Lenovo-15IRX9-i7-13645HX/dp/B0H3WHDZK2",
+        "sku": "B0H3WHDZK2",
+        "externalProductId": "B0H3WHDZK2",
+        "availability": "unknown",
+        "savedPrice": {
+          "amountMinor": 589863,
+          "currency": "BRL"
+        }
+      },
+      "imageCandidates": [
+        "https://m.media-amazon.com/images/I/81s36P2ha6L._AC_SX679_.jpg"
+      ],
+      "monitoringPrice": {
+        "amountMinor": 589863,
+        "currency": "BRL"
+      }
+    },
+    {
+      "asin": "B0H4HYLQ71",
+      "product": {
+        "name": "Notebook Gamer Lenovo Loq 15irx9, 15.6\" Full Hd 144hz, Intel Core I5-13450hx, 16gb, 512gb Ssd, Nvidia Rtx 4050, Linux - 83khs00300",
+        "retailer": "Amazon Brasil",
+        "retailerId": "store_amazon-com-br",
+        "canonicalUrl": "https://www.amazon.com.br/Notebook-Lenovo-15irx9-I5-13450hx-Nvidia/dp/B0H4HYLQ71",
+        "sku": "B0H4HYLQ71",
+        "externalProductId": "B0H4HYLQ71",
+        "availability": "in_stock",
+        "savedPrice": {
+          "amountMinor": 582245,
+          "currency": "BRL"
+        }
+      },
+      "imageCandidates": [
+        "https://m.media-amazon.com/images/I/61+CippnCvL._AC_SX679_.jpg"
+      ],
+      "monitoringPrice": {
+        "amountMinor": 582245,
+        "currency": "BRL"
+      }
+    }
+  ],
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "notifications",
+    "scripting",
+    "storage"
+  ],
+  "hostPermissions": [
+    "https://*/*"
+  ],
+  "productionEndpoints": [
+    "https://api.tracercart.com",
+    "https://www.tracercart.com"
+  ],
+  "websiteSourcesChanged": false,
+  "storeRelease": {
+    "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
+    "status": "prepared",
+    "publishedVersionConfirmed": "0.1.8",
+    "publishedVersionCheckedOn": "2026-11-05"
+  }
+}

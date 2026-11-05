@@ -6,6 +6,7 @@ import { asRecord, extractJsonLdObjects, flattenJsonLd, jsonLdHasType, firstStri
 import { findProductPageImage } from './productImage';
 import { stockFromOffers, stockFromProductDom, stockFromValue } from './productAvailability';
 import { receiptPriceText } from './receiptText';
+import { extractAmazonBrSavedProduct, isAmazonBrHost } from './amazonBrProductExtractor';
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -39,6 +40,11 @@ export function extractSavedProduct(
     const isListingRoute = /\/(?:search(?:[-_]results)?|collections?|categor(?:y|ies)|catalog(?:ue)?)(?:\/|$)/i.test(requestedPath);
     const hasNestedProductRoute = /\/products?\//i.test(requestedPath);
     if (isListingRoute && !hasNestedProductRoute) return null;
+    // Preserve generic structured-data capture for other Amazon layouts. Once
+    // the current Brasil product DOM is present, its identity guards own the result.
+    if (isAmazonBrHost(page.host) && document.querySelector('#dp-container #productTitle')) {
+      return measure('Amazon Brasil product capture', () => extractAmazonBrSavedProduct(document, page.url, options));
+    }
     const metaValues = measure('meta and OpenGraph collection', () => {
       const values = new Map<string, string>();
       for (const element of Array.from(document.querySelectorAll<HTMLMetaElement>('meta[property], meta[name]'))) {

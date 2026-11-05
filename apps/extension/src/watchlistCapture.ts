@@ -36,6 +36,8 @@ const watchlistCaptureListener: WatchlistCaptureListener = (message, _sender, re
         rankedImages = findProductPageImages(document, pageUrl, {
           productName: product.name,
           productIdentifiers: [product.externalProductId, product.sku],
+          ...(new URL(pageUrl).hostname === 'www.amazon.com.br' || new URL(pageUrl).hostname === 'amazon.com.br'
+            ? { retailerSelectors: ['#dp-container #landingImage'] } : {}),
         });
       } catch {
         // The metadata result remains usable if optional gallery ranking fails.
