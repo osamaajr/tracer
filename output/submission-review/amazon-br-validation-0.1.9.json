@@ -85,9 +85,9 @@
   "websiteSourcesChanged": false,
   "storeRelease": {
     "extensionId": "dhefgfndmihnonnclclmmjmgnhidgokm",
-    "status": "pending_review",
-    "publishedVersionConfirmed": "0.1.8",
-    "publishedVersionCheckedOn": "2026-11-05",
+    "status": "published_public",
+    "publishedVersionConfirmed": "0.1.9",
+    "publishedVersionCheckedOn": "2026-11-06",
     "uploadPerformed": true,
     "draftVersionConfirmed": "0.1.9",
     "uploadedOn": "2026-11-05",
@@ -95,8 +95,19 @@
     "submissionPerformed": true,
     "autoPublish": true,
     "submittedOn": "2026-11-05",
-    "publicVersionConfirmed": false,
+    "publicVersionConfirmed": true,
     "publishedVersionAtSubmission": "0.1.8",
-    "submissionConfirmation": "Your extension was submitted for review"
+    "submissionConfirmation": "Your extension was submitted for review",
+    "publicListingUrl": "https://chromewebstore.google.com/detail/tracer/dhefgfndmihnonnclclmmjmgnhidgokm",
+    "listingUpdatedDate": "2026-11-05"
+  },
+  "reverification": {
+    "date": "2026-11-06",
+    "testsPassed": 332,
+    "testFilesPassed": 20,
+    "typechecksPassed": true,
+    "lintPassed": true,
+    "monitoringFixturePassed": true,
+    "packageChecksumAndCrcPassed": true
   }
 }
