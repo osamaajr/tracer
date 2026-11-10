@@ -1,4 +1,4 @@
-import { extractSavedProduct, extractZaraSavedProduct, normalizeSavedUrl, type SavedProduct } from "@tracer/core";
+import { extractSavedProduct, extractZaraSavedProduct, frasersProductId, normalizeSavedUrl, type SavedProduct } from "@tracer/core";
 import { parseHTML } from "linkedom/worker";
 
 const maxPageBytes = 2_000_000;
@@ -13,7 +13,7 @@ export async function checkSavedProductPrice(
   const signal = AbortSignal.timeout(15_000);
   try {
     const html = await requestPage(url, url, fetchImpl, signal, false);
-    const product = extractSavedProduct(parseHTML(html).document as unknown as Document, url, { includeImage: false });
+    const product = extractSavedProduct(parseHTML(html).document as unknown as Document, url, { includeImage: false, savedSku: item.sku });
     if (matchesItem(item, product)) return product;
   } catch {
     // Some stores only expose product data through their application endpoint.
@@ -29,7 +29,7 @@ export async function checkSavedProductPrice(
       // An existing product tab may contain data rendered by the store's scripts.
     }
   }
-  const product = await (options.readOpenProduct ?? readExistingProductTab)(url).catch(() => null);
+  const product = await (options.readOpenProduct ? options.readOpenProduct(url) : readExistingProductTab(url, item)).catch(() => null);
   return matchesItem(item, product) ? product : null;
 }
 
@@ -82,9 +82,17 @@ function matchesItem(item: SavedProduct, product: SavedProduct | null): product 
   if (product.retailerId !== item.retailerId) return false;
   const expected = new URL(normalizeSavedUrl(item.canonicalUrl));
   const actual = new URL(normalizeSavedUrl(product.canonicalUrl));
-  if (expected.origin !== actual.origin || expected.pathname !== actual.pathname) return false;
-  if (item.sku && product.sku && item.sku !== product.sku) return false;
+  if (expected.origin !== actual.origin) return false;
+  const frasersId = frasersProductId(expected);
+  const verifiedFrasersProduct = frasersId && frasersProductId(actual) === frasersId && product.externalProductId === frasersId;
+  if (!verifiedFrasersProduct && expected.pathname !== actual.pathname) return false;
+  const legacyGroupSku = verifiedFrasersProduct && item.sku === frasersId;
+  if (item.sku && product.sku && item.sku !== product.sku && !legacyGroupSku) return false;
   if (item.externalProductId && product.externalProductId && item.externalProductId !== product.externalProductId) return false;
+  // These stores publish a stable product number even when the title and slug
+  // change. Only skip the name comparison for a verified product and colour.
+  if (verifiedFrasersProduct && product.sku && /^\d{8}$/.test(product.sku) && product.sku.startsWith(frasersId)
+    && (!item.sku || legacyGroupSku || item.sku === product.sku)) return true;
   const words = (name: string) => name.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean);
   const wanted = words(item.name);
   const found = words(product.name);
@@ -93,7 +101,7 @@ function matchesItem(item: SavedProduct, product: SavedProduct | null): product 
 }
 
 /** Only read an already loaded, matching user tab; never alter its location. */
-async function readExistingProductTab(url: string): Promise<SavedProduct | null> {
+async function readExistingProductTab(url: string, item: SavedProduct): Promise<SavedProduct | null> {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (typeof tab.id !== "number" || tab.status !== "complete" || !sameUrl(tab.url, url)) continue;
@@ -101,7 +109,7 @@ async function readExistingProductTab(url: string): Promise<SavedProduct | null>
       const results = await withTimeout(chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["savedMonitoringCapture.js"] }));
       const product = results.find((result) => result.frameId === 0)?.result as SavedProduct | null | undefined;
       const currentTab = await chrome.tabs.get(tab.id);
-      if (sameUrl(currentTab.url, url) && (product?.savedPrice || product?.availability === 'out_of_stock')) return product;
+      if (currentTab.url === tab.url && matchesItem(item, product ?? null)) return product ?? null;
     } catch {
       // Closed or navigated user tabs are left untouched.
     }
@@ -110,7 +118,15 @@ async function readExistingProductTab(url: string): Promise<SavedProduct | null>
 }
 
 function sameUrl(candidate: string | undefined, expected: string): boolean {
-  try { return Boolean(candidate) && normalizeSavedUrl(candidate!) === expected; } catch { return false; }
+  if (!candidate) return false;
+  try {
+    const normalized = normalizeSavedUrl(candidate);
+    if (normalized === expected) return true;
+    const actual = new URL(normalized);
+    const saved = new URL(expected);
+    const productId = frasersProductId(saved);
+    return Boolean(productId && actual.origin === saved.origin && actual.search === saved.search && frasersProductId(actual) === productId);
+  } catch { return false; }
 }
 
 async function withTimeout<T>(operation: Promise<T>): Promise<T> {

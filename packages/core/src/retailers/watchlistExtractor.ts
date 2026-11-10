@@ -7,6 +7,7 @@ import { findProductPageImage } from './productImage';
 import { stockFromOffers, stockFromProductDom, stockFromValue } from './productAvailability';
 import { receiptPriceText } from './receiptText';
 import { extractAmazonBrSavedProduct, isAmazonBrHost } from './amazonBrProductExtractor';
+import { extractFrasersSavedProduct, frasersProductId } from './frasersSavedProduct';
 import {
   createGenericRetailerIdFromHost,
   deriveRetailerNameFromHost,
@@ -24,7 +25,7 @@ export function normalizeSavedUrl(raw: string): string {
 export function extractSavedProduct(
   document: Document,
   pageUrl: string,
-  options: { includeImage?: boolean; onTiming?: (name: string, durationMs: number) => void } = {},
+  options: { includeImage?: boolean; savedSku?: string | undefined; onTiming?: (name: string, durationMs: number) => void } = {},
 ): SavedProduct | null {
   try {
     const measure = <T>(name: string, operation: () => T): T => {
@@ -35,7 +36,8 @@ export function extractSavedProduct(
       return value;
     };
     const page = measure('input URL normalization', () => normalizePublicStoreUrl(pageUrl));
-    const requestedPath = new URL(page.url).pathname;
+    const requestedUrl = new URL(page.url);
+    const requestedPath = requestedUrl.pathname;
     if (/\/(?:cart|basket|checkout|account|orders?)(?:\/|$)/i.test(requestedPath)) return null;
     const isListingRoute = /\/(?:search(?:[-_]results)?|collections?|categor(?:y|ies)|catalog(?:ue)?)(?:\/|$)/i.test(requestedPath);
     const hasNestedProductRoute = /\/products?\//i.test(requestedPath);
@@ -44,6 +46,10 @@ export function extractSavedProduct(
     // the current Brasil product DOM is present, its identity guards own the result.
     if (isAmazonBrHost(page.host) && document.querySelector('#dp-container #productTitle')) {
       return measure('Amazon Brasil product capture', () => extractAmazonBrSavedProduct(document, page.url, options));
+    }
+    if (frasersProductId(requestedUrl) && document.querySelector('[data-testid="buy-zone"]')) {
+      const product = measure('Flannels and Sports Direct product capture', () => extractFrasersSavedProduct(document, pageUrl, options));
+      if (product !== undefined) return product;
     }
     const metaValues = measure('meta and OpenGraph collection', () => {
       const values = new Map<string, string>();

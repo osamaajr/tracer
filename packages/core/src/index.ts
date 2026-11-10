@@ -22,4 +22,5 @@ export * from "./useCases/findProtectedPurchaseForDraft";
 export * from "./useCases/protectPurchase";
 export * from "./useCases/updateOpportunityStatus";
 export * from "./retailers/watchlistExtractor";
+export { frasersProductId } from "./retailers/frasersSavedProduct";
 export * from "./domain/watchlist";
