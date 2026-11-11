@@ -28,7 +28,11 @@ Removing a Saved item does not delete purchases, price observations, activity, n
 
 Saved items have their own extension-side monitoring path. Tracer revisits the public product URL, stores the latest price, and marks the item as `price_dropped` when that price is below the saved price. A meaningful new drop can trigger a Chrome notification; repeat checks at the same lower price do not send duplicate alerts. The Saved row renders its stored `currentPrice` and `priceDropAmount`, so a real detection uses the same UI as a local visual demonstration. If a check fails, Tracer preserves the last valid price rather than replacing it with an invented one. Monitoring can be paused in extension settings.
 
-Protected purchases use the separate API monitoring and policy pipeline. Saving a product does not mark it as purchased or make a retailer claim available. Stock alerts, variant tracking, folders, tags, notes, price targets, social sharing, and checkout features are outside the current scope. Compatibility remains best-effort across public stores.
+Flannels and Sports Direct price checks verify the retailer's product number, which stays stable when the product URL or title changes. When the saved entry includes a colour SKU, Tracer reads that colour's offer. Older entries with only a product number use the colour selected on the retailer's page. These checks are included in extension version 0.1.10.
+
+When a saved row shows **Unable to check price**, use **Open item** to load the retailer's page and select the saved colour if applicable. Leave the page open and reopen **Your items → Saved** to retry a stale entry. Tracer can read a matching, already open product page if the background request fails.
+
+Protected purchases use the separate API monitoring and policy pipeline. Saving a product does not mark it as purchased or make a retailer claim available. Stock alerts, folders, tags, notes, price targets, social sharing, and checkout features are outside the current scope. Compatibility remains best-effort across public stores.
 
 ## Local verification
 
