@@ -52,6 +52,8 @@ interface PopupHarnessOptions {
   dashboardFailures?: number;
   priceCheckGate?: Promise<void>;
   priceCheckFails?: boolean;
+  priceCheckStatus?: string;
+  localValues?: Record<string, unknown>;
   pendingPurchases?: Array<Record<string, unknown>>;
   monitoringSettingsStatus?: number;
   deleteStatus?: number;
@@ -697,6 +699,48 @@ describe("extension popup", () => {
     expect(element("detailCurrentPrice").dataset.checking).toBe("false");
   });
 
+  it("uses the browser fallback when an HTTP-successful server check still reports failure", async () => {
+    fallbackPriceCheck.mockResolvedValueOnce({
+      retailerId: purchaseDraft.retailerId, productName: purchaseDraft.lineItems[0]!.productName,
+      productUrl: purchaseDraft.lineItems[0]!.productUrl!, price: gbp(31_900),
+      observedAt: "2026-09-22T09:05:00.000Z", availability: "in_stock",
+    });
+    const dashboard = droppedDashboard();
+    dashboard.purchases[0]!.monitoringStatus = "unable_to_check";
+    const harness = await setupPopup({ protected: true, dashboardResponse: dashboard, priceCheckStatus: "unable_to_check" });
+    await flushPopup();
+    harness.dashboardCta.click();
+    await flushPopup();
+    harness.firstItem().click();
+    await vi.waitFor(() => expect(text("detailCurrentPrice")).toBe("£319"));
+    expect(fallbackPriceCheck).toHaveBeenCalledOnce();
+    expect(text("detailStatus")).toBe("● Price dropped by £30");
+    expect(element("detailStatus").dataset.error).toBe("false");
+    const cacheWrite = harness.localStorageSet.mock.calls.find(([values]) =>
+      Object.keys(values).some((key) => key.startsWith("tracerPurchasePriceCheck:")))?.[0];
+    expect(cacheWrite).toBeDefined();
+    // A fresh popup must retain the verified price instead of reverting to the
+    // server's older failure when rendering Purchased.
+    vi.resetModules();
+    const reopened = await setupPopup({ protected: true, dashboardResponse: dashboard, localValues: cacheWrite! });
+    await flushPopup();
+    reopened.dashboardCta.click();
+    await flushPopup();
+    expect(reopened.firstItem().textContent).toContain("Price dropped");
+    expect(reopened.firstItem().dataset.error).toBe("false");
+    dashboard.purchases[0]!.recentActivity.push({
+      type: "monitoring_error", title: "Unable to check", description: "Store blocked request",
+      occurredAt: "2026-09-22T09:05:00.000Z",
+    });
+    vi.resetModules();
+    const newerFailure = await setupPopup({ protected: true, dashboardResponse: dashboard, localValues: cacheWrite! });
+    await flushPopup();
+    newerFailure.dashboardCta.click();
+    await flushPopup();
+    expect(newerFailure.firstItem().dataset.error).toBe("true");
+    expect(newerFailure.firstItem().textContent).toContain("Unable to check");
+  });
+
   it("keeps the last verified price visible when a refresh fails", async () => {
     const dashboard = droppedDashboard();
     dashboard.purchases[0]!.lastCheckedAt = "2026-09-01T08:00:00.000Z";
@@ -1189,6 +1233,7 @@ async function setupPopup(
   const storageSet = vi.fn(async () => undefined);
   const localStore: Record<string, unknown> = {
     tracerUserId: "dev-user",
+    ...options.localValues,
     ...(options.savedItems ? { tracerWatchlistV1: structuredClone(options.savedItems) } : {}),
     ...(options.pendingPurchases ? { tracerPendingPurchases: options.pendingPurchases } : {}),
   };
@@ -1225,6 +1270,7 @@ async function setupPopup(
       await options.priceCheckGate;
       if (options.priceCheckFails) return { ok: false, status: 502 };
       dashboard.purchases[0]!.currentPriceDisplay = "£319.99";
+      if (options.priceCheckStatus) dashboard.purchases[0]!.monitoringStatus = options.priceCheckStatus;
       return { ok: true, status: 200 };
     }
     if (url.endsWith("/api/dashboard")) {

@@ -22,6 +22,7 @@ import {
 } from "./pendingPurchases";
 import { configuredBaseUrl, defaultApiBaseUrl, defaultDashboardBaseUrl, defaultUserId } from "./config";
 import { getTracerUserId } from "./identity";
+import { clearPurchasePriceCheck, readPurchasePriceChecks, savePurchasePriceCheck } from "./purchasePriceCache";
 
 interface ScanResponse {
   ok: boolean;
@@ -91,6 +92,7 @@ interface DashboardPurchase extends PurchaseRecord {
   pendingDraftId?: string;
   pendingLineIndex?: number;
   checkedOnStore?: boolean;
+  recentActivity?: Array<{ type: string; occurredAt: string }>;
 }
 
 interface DashboardOpportunity {
@@ -1558,10 +1560,24 @@ async function showProtectedItems(options: { force?: boolean } = {}): Promise<vo
     if (loadRunId !== itemsLoadRunId || currentState !== "items") {
       return;
     }
-    dashboardCache = mergePendingDashboard({
+    const merged = mergePendingDashboard({
       purchases: raw.purchases ?? [],
       opportunities: raw.opportunities ?? [],
     }, pendingPurchases);
+    const localChecks = await readPurchasePriceChecks(merged.purchases).catch(() => null);
+    if (loadRunId !== itemsLoadRunId || currentState !== "items") return;
+    merged.purchases = merged.purchases.map((purchase) => {
+      const check = localChecks?.get(purchase.id);
+      if (!check || Date.parse(purchase.lastCheckedAt ?? "") >= Date.parse(check.observedAt)) return purchase;
+      const recovered = applyStorePriceCheck(purchase, check);
+      const latestError = purchase.recentActivity?.some((event) =>
+        event.type === "monitoring_error" && Date.parse(event.occurredAt) >= Date.parse(check.observedAt));
+      if (latestError || Date.now() - Date.parse(check.observedAt) > 30 * 60_000) {
+        recovered.monitoringStatus = purchase.monitoringStatus ?? "watching";
+      }
+      return recovered;
+    });
+    dashboardCache = merged;
     renderProtectedItems(dashboardCache, loadRunId);
   } catch {
     if (loadRunId !== itemsLoadRunId || currentState !== "items") {
@@ -1921,7 +1937,13 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
           headers, signal: AbortSignal.timeout(10_000),
         });
         if (!dashboard.ok) throw new Error("Price refresh failed");
-        return { kind: "server", dashboard: await dashboard.json() as DashboardData, purchaseId: target.id };
+        const data = await dashboard.json() as DashboardData;
+        const checked = data.purchases.find((item) => item.id === target.id);
+        if (!checked || checked.monitoringStatus === "unable_to_check" ||
+          (!checked.currentPriceDisplay && checked.monitoringStatus !== "unavailable")) {
+          throw new Error("Server could not verify the current price");
+        }
+        return { kind: "server", dashboard: data, purchaseId: target.id };
         };
         if (purchase.pendingSync) {
           try { return await checkStore(); } catch (storeError) {
@@ -1933,15 +1955,12 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
       activePriceChecks.set(purchase.id, check);
     }
     const result = await check;
+    if (result.kind === "store" && !purchase.pendingSync) {
+      await savePurchasePriceCheck(purchase, result).catch(() => undefined);
+    }
     if (!isCurrent()) return;
     if (result.kind === "store") {
-      const updated: DashboardPurchase = {
-        ...purchase,
-        currentPriceDisplay: formatMoney(result.price),
-        lastCheckedAt: result.observedAt,
-        monitoringStatus: result.availability === "out_of_stock" ? "unavailable" : "watching",
-        checkedOnStore: true,
-      };
+      const updated = applyStorePriceCheck(purchase, result);
       if (dashboardCache) {
         dashboardCache.purchases = dashboardCache.purchases.map((item) =>
           item.id === purchase.id ? updated : item);
@@ -1966,18 +1985,39 @@ async function checkDetailPrice(purchase: DashboardPurchase, renderId: number): 
   } catch (error) {
     console.warn("Tracer current price check failed", error);
     if (!isCurrent()) return;
+    void clearPurchasePriceCheck(purchase.id).catch(() => undefined);
     const failed: DashboardPurchase = { ...purchase, monitoringStatus: "unable_to_check" };
     if (dashboardCache) {
       dashboardCache.purchases = dashboardCache.purchases.map((item) => item.id === purchase.id ? failed : item);
     }
     showItemDetail(failed, undefined, false);
-    if (!purchase.currentPriceDisplay) detailPriceNote.textContent = priceCheckFailureMessage(error);
+    const lastPriceNote = purchase.currentPriceDisplay ? `${detailPriceNote.textContent} ` : "";
+    detailPriceNote.textContent = `${lastPriceNote}${priceCheckFailureMessage(error)}`;
   } finally {
     if (isCurrent()) {
       detailCurrentPrice.dataset.checking = "false";
       detailCurrentPrice.setAttribute("aria-busy", "false");
     }
   }
+}
+
+function applyStorePriceCheck(
+  purchase: DashboardPurchase,
+  result: { price: Money; observedAt: string; availability: ProductPriceSnapshot["availability"] },
+): DashboardPurchase {
+  const saving = purchase.pricePaid.amountMinor - result.price.amountMinor;
+  const dropped = saving > 0 && result.availability !== "out_of_stock";
+  return {
+    ...purchase,
+    currentPriceDisplay: formatMoney(result.price),
+    lastCheckedAt: result.observedAt,
+    monitoringStatus: purchase.monitoringStatus === "monitoring_paused" ? "monitoring_paused"
+      : result.availability === "out_of_stock" ? "unavailable" : dropped ? "price_dropped" : "watching",
+    savingDisplay: dropped ? formatMoney({ amountMinor: saving, currency: result.price.currency }) : null,
+    savingPercentageBps: dropped ? Math.round(saving * 10_000 / purchase.pricePaid.amountMinor) : null,
+    priceDropDetectedAt: dropped ? purchase.priceDropDetectedAt ?? result.observedAt : null,
+    checkedOnStore: true,
+  };
 }
 
 function priceCheckFailureMessage(error: unknown): string {
@@ -1991,7 +2031,7 @@ function priceCheckFailureMessage(error: unknown): string {
   if (/timeout|timed out/i.test(message) || (error instanceof Error && error.name === "TimeoutError")) {
     return "The store took too long to respond. Reopen this item to retry.";
   }
-  if (/Store returned 404/.test(message)) return "The saved product page is no longer available.";
+  if (/Store returned 404|product page is no longer available/.test(message)) return "The store removed or redirected this product page. Its current price can no longer be verified.";
   if (/verify this product|did not return a product page/.test(message)) {
     return "The page didn’t provide an unambiguous price for this item and variant. Open the product page to check.";
   }
@@ -2067,6 +2107,7 @@ async function deleteSelectedPurchase(): Promise<void> {
     if (!response.ok && response.status !== 404) {
       throw new Error("delete_failed");
     }
+    void clearPurchasePriceCheck(purchaseId).catch(() => undefined);
 
     if (protectedPurchaseId === purchaseId) {
       protectedPurchaseId = null;

@@ -101,13 +101,21 @@ function matchesItem(item: SavedProduct, product: SavedProduct | null): product 
 }
 
 /** Only read an already loaded, matching user tab; never alter its location. */
-async function readExistingProductTab(url: string, item: SavedProduct): Promise<SavedProduct | null> {
+export async function readExistingProductTab(
+  url: string,
+  item: SavedProduct,
+  options: { allowWwwAlias?: boolean } = {},
+): Promise<SavedProduct | null> {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    if (typeof tab.id !== "number" || tab.status !== "complete" || !sameUrl(tab.url, url)) continue;
+    const tabUrl = options.allowWwwAlias ? alignWwwHost(tab.url, url) : tab.url;
+    if (typeof tab.id !== "number" || tab.status !== "complete" || !sameUrl(tabUrl, url)) continue;
     try {
       const results = await withTimeout(chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["savedMonitoringCapture.js"] }));
-      const product = results.find((result) => result.frameId === 0)?.result as SavedProduct | null | undefined;
+      const captured = results.find((result) => result.frameId === 0)?.result as SavedProduct | null | undefined;
+      const product = captured && options.allowWwwAlias
+        ? { ...captured, canonicalUrl: alignWwwHost(captured.canonicalUrl, url) ?? captured.canonicalUrl }
+        : captured;
       const currentTab = await chrome.tabs.get(tab.id);
       if (currentTab.url === tab.url && matchesItem(item, product ?? null)) return product ?? null;
     } catch {
@@ -115,6 +123,18 @@ async function readExistingProductTab(url: string, item: SavedProduct): Promise<
     }
   }
   return null;
+}
+
+function alignWwwHost(candidate: string | undefined, expected: string): string | undefined {
+  if (!candidate) return candidate;
+  try {
+    const actual = new URL(candidate);
+    const target = new URL(expected);
+    if (actual.hostname.replace(/^www\./, "") === target.hostname.replace(/^www\./, "")) {
+      actual.hostname = target.hostname;
+    }
+    return actual.href;
+  } catch { return candidate; }
 }
 
 function sameUrl(candidate: string | undefined, expected: string): boolean {

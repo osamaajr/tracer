@@ -4,9 +4,11 @@ import {
   isKnownRetailerId,
   normalizePublicStoreUrl,
   normalizeRetailerUrl,
+  type SavedProduct,
   type Money,
   type ProductPriceSnapshot,
 } from "@tracer/core";
+import { readExistingProductTab } from "./savedProductPriceCheck";
 
 interface StorePriceTarget {
   retailerId: string;
@@ -27,10 +29,9 @@ export async function checkStorePrice(
   options: {
     fetchImpl?: typeof fetch;
     parseHtml?: (html: string) => Document;
+    readOpenProduct?: (url: string, item: SavedProduct) => Promise<SavedProduct | null>;
   } = {},
 ): Promise<ProductPriceSnapshot> {
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const parseHtml = options.parseHtml ?? ((html: string) => new DOMParser().parseFromString(html, "text/html"));
   const original = normalizeTargetUrl(target, target.productUrl);
   if (target.sourceUrl) {
     const source = new URL(target.sourceUrl);
@@ -42,6 +43,54 @@ export async function checkStorePrice(
   if (/\/(?:checkout|orders?)(?:\/|$)/i.test(new URL(original.url).pathname)) {
     throw new Error("Purchase page is not a product page");
   }
+  try {
+    return await fetchStorePrice(target, original, options);
+  } catch (error) {
+    if (error instanceof Error && /404|no longer available|different product|does not match/.test(error.message)) throw error;
+    const item: SavedProduct = {
+      name: cleanPurchaseProductName(target.productName),
+      retailer: target.storeHost,
+      retailerId: target.retailerId,
+      canonicalUrl: original.url,
+      savedPrice: target.pricePaid,
+      ...(target.externalProductId ? { externalProductId: target.externalProductId } : {}),
+    };
+    const product = await (options.readOpenProduct
+      ? options.readOpenProduct(original.url, item)
+      : readExistingProductTab(original.url, item, { allowWwwAlias: true })).catch(() => null);
+    if (product?.savedPrice) {
+      const productUrl = new URL(product.canonicalUrl);
+      const requested = new URL(original.url);
+      // Stores commonly omit colour queries from their canonical tag. The
+      // existing-tab reader has already verified the loaded URL and navigation.
+      const samePage = productUrl.origin === requested.origin && productUrl.pathname === requested.pathname;
+      const sameSelection = [...productUrl.searchParams].every(([key, value]) => requested.searchParams.get(key) === value);
+      // Explicit variant IDs require variant-specific price evidence.
+      const variant = requested.searchParams.get("variant");
+      if (samePage && sameSelection && (!variant || productUrl.searchParams.get("variant") === variant)) {
+        const snapshot: ProductPriceSnapshot = {
+          retailerId: product.retailerId,
+          productName: product.name,
+          productUrl: original.url,
+          price: product.savedPrice,
+          observedAt: new Date().toISOString(),
+          availability: product.availability ?? "unknown",
+          ...(product.externalProductId ? { externalProductId: product.externalProductId } : {}),
+        };
+        if (isMatchingProduct(target, snapshot)) return snapshot;
+      }
+    }
+    throw error;
+  }
+}
+
+async function fetchStorePrice(
+  target: StorePriceTarget,
+  original: ReturnType<typeof normalizeTargetUrl>,
+  options: { fetchImpl?: typeof fetch; parseHtml?: (html: string) => Document },
+): Promise<ProductPriceSnapshot> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const parseHtml = options.parseHtml ?? ((html: string) => new DOMParser().parseFromString(html, "text/html"));
   let url = original.url;
   const signal = AbortSignal.timeout(15_000);
 
@@ -60,10 +109,17 @@ export async function checkStorePrice(
       if (original.productId && next.productId !== original.productId) {
         throw new Error("Store redirected to a different product");
       }
+      const destination = new URL(next.url);
+      if (destination.pathname === "/" || /\/(?:collections?|categories|search)(?:\/|$)/i.test(destination.pathname)) {
+        throw new Error("Store product page is no longer available");
+      }
       url = next.url;
       continue;
     }
     if (!response.ok) throw new Error(`Store returned ${response.status}`);
+    if (response.url && normalizeTargetUrl(target, response.url).url !== normalizeTargetUrl(target, url).url) {
+      throw new Error("Store redirected to a different product");
+    }
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
       throw new Error("Store did not return a product page");
@@ -72,8 +128,8 @@ export async function checkStorePrice(
     const page = parseHtml(html);
     const observedAt = new Date().toISOString();
     const snapshot = target.retailerId === "john-lewis"
-      ? extractJohnLewisProductFromDocument(page, url, observedAt, target.productName)
-      : extractGenericProductFromDocument(page, url, observedAt, target.productName);
+      ? extractJohnLewisProductFromDocument(page, url, observedAt, cleanPurchaseProductName(target.productName))
+      : extractGenericProductFromDocument(page, url, observedAt, cleanPurchaseProductName(target.productName));
     if (!snapshot || normalizeTargetUrl(target, snapshot.productUrl).url !==
       normalizeTargetUrl(target, url).url || !isMatchingProduct(target, snapshot)) {
       throw new Error("Store page did not verify this product and price");
@@ -97,7 +153,7 @@ function normalizeTargetUrl(target: StorePriceTarget, url: string) {
 function isMatchingProduct(target: StorePriceTarget, snapshot: ProductPriceSnapshot): boolean {
   if (snapshot.retailerId !== target.retailerId ||
     snapshot.price.currency !== target.pricePaid.currency ||
-    snapshot.price.amountMinor <= 0) return false;
+    !Number.isSafeInteger(snapshot.price.amountMinor) || snapshot.price.amountMinor <= 0) return false;
   if (target.pricePaid.amountMinor - snapshot.price.amountMinor >= 2_000 &&
     snapshot.price.amountMinor * 10 < target.pricePaid.amountMinor) return false;
   if (target.externalProductId && snapshot.externalProductId &&
@@ -110,8 +166,12 @@ function isMatchingProduct(target: StorePriceTarget, snapshot: ProductPriceSnaps
 }
 
 function normalizedWords(value: string): string[] {
-  return value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")
+  return cleanPurchaseProductName(value).normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim().split(/\s+/).filter(Boolean);
+}
+
+function cleanPurchaseProductName(value: string): string {
+  return value.replace(/\s+product\s+page\s*$/i, "").trim();
 }
 
 async function readLimitedHtml(response: Response): Promise<string> {
