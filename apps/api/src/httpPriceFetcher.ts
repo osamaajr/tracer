@@ -80,7 +80,7 @@ export class HttpPriceFetcher implements PriceFetcher {
                 productName: savedProduct.name,
                 price: savedProduct.savedPrice,
                 observedAt,
-                availability: "unknown",
+                availability: savedProduct.availability ?? "unknown",
                 ...(savedProduct.externalProductId
                   ? { externalProductId: savedProduct.externalProductId }
                   : {}),

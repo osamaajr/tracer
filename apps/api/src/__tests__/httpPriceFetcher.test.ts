@@ -17,6 +17,21 @@ const product: ProductRecord = {
 };
 
 describe("HTTP price fetching", () => {
+  it("keeps the requested ProductGroup colour's price and stock state", async () => {
+    const html = readFileSync(new URL("../../../../packages/core/src/__tests__/fixtures/footlocker-product-group.html", import.meta.url), "utf8");
+    const fetcher = new HttpPriceFetcher({
+      maxAttempts: 1,
+      fetchImpl: (async () => new Response(html, { status: 200 })) as typeof fetch,
+      resolveHost: async () => [{ address: "93.184.216.34" }],
+    });
+    await expect(fetcher.fetchCurrentPrice({
+      ...product, retailerId: "store_footlocker-co-uk", retailerName: "Foot Locker",
+      storeHost: "www.footlocker.co.uk", name: "New Balance 740 - Men Shoes",
+      canonicalUrl: "https://www.footlocker.co.uk/en/product/new-balance-740-men-shoes/314216963604.html",
+      sku: "314216963604",
+    })).resolves.toMatchObject({ price: { amountMinor: 7000, currency: "GBP" }, availability: "in_stock", sku: "314216963604" });
+  });
+
   it("retries a transient retailer failure with bounded backoff", async () => {
     const html = readFileSync(
       new URL("../../../../packages/core/fixtures/generic-store/product-pack-dropped.html", import.meta.url),

@@ -64,7 +64,7 @@ export function extractSavedProduct(
       return values;
     });
     const meta = (key: string) => metaValues.get(key);
-    const url = measure('canonical URL normalization', () => {
+    let url = measure('canonical URL normalization', () => {
       const canonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
       return normalizePublicStoreUrl(new URL(canonical || page.url, page.url).href, { expectedHost: page.host }).url;
     });
@@ -73,7 +73,6 @@ export function extractSavedProduct(
     // cannot establish the identity of the page currently being scanned.
     const canonicalPath = new URL(url).pathname.replace(/\/$/, '');
     const currentPath = requestedPath.replace(/\/$/, '');
-    if (canonicalPath !== currentPath && !(hasNestedProductRoute && currentPath.endsWith(canonicalPath))) return null;
     const objects = measure('JSON-LD parse + traversal', () => flattenJsonLd(extractJsonLdObjects(document)));
     const entities = objects.flatMap(value => {
       const entity = asRecord(value)?.mainEntity;
@@ -81,10 +80,41 @@ export function extractSavedProduct(
     });
     const products = entities.filter(p => jsonLdHasType(p, 'Product') || jsonLdHasType(p, 'https://schema.org/Product')).map(asRecord).filter(p => p !== null);
     const groups = entities.filter(p => jsonLdHasType(p, 'ProductGroup') || jsonLdHasType(p, 'https://schema.org/ProductGroup')).map(asRecord).filter(p => p !== null);
+    const matchesVariantPage = (raw: unknown) => {
+      if (typeof raw !== 'string') return false;
+      try {
+        const candidate = new URL(normalizePublicStoreUrl(new URL(raw, page.url).href, { expectedHost: page.host }).url);
+        // Some groups omit the language prefix from each colour's offer URL.
+        const withoutLocale = (path: string) => path.replace(/^\/[a-z]{2}(?:-[a-z]{2})?(?=\/products?\/)/i, '').replace(/\/$/, '');
+        return candidate.origin === requestedUrl.origin && candidate.search === requestedUrl.search &&
+          withoutLocale(candidate.pathname) === withoutLocale(currentPath);
+      } catch { return false; }
+    };
+    const matchingVariants = groups.flatMap(group => {
+      const groupUrls = [group.url, group['@id']];
+      const identifiesCanonical = groupUrls.some(raw => {
+        try { return typeof raw === 'string' && normalizePublicStoreUrl(new URL(raw, page.url).href).url === url; }
+        catch { return false; }
+      });
+      if (!identifiesCanonical) return [];
+      return asRecords(group.hasVariant).filter(variant =>
+        matchesVariantPage(variant.url) || asRecords(variant.offers).some(offer => matchesVariantPage(offer.url)),
+      ).map(variant => ({ group, variant }));
+    });
+    if (matchingVariants.length > 1) return null;
+    const selectedVariant = matchingVariants[0];
+    const canonicalMatchesPage = canonicalPath === currentPath || hasNestedProductRoute && currentPath.endsWith(canonicalPath);
+    if (!canonicalMatchesPage && !selectedVariant) return null;
+    if (!canonicalMatchesPage && selectedVariant?.group.sku &&
+      selectedVariant.group.sku !== selectedVariant.variant.sku) return null;
+    if (selectedVariant) url = page.url;
     const matchesPage = (raw: unknown) => {
+      if (selectedVariant) return matchesVariantPage(raw);
       try { return typeof raw === 'string' && normalizeSavedUrl(new URL(raw, page.url).href) === normalizeSavedUrl(url); } catch { return false; }
     };
-    let product = products.length === 1 ? products[0] : products.find(p =>
+    let product: Record<string, unknown> | undefined = selectedVariant
+      ? { ...selectedVariant.group, ...selectedVariant.variant, url: page.url, hasVariant: [] }
+      : products.length === 1 ? products[0] : products.find(p =>
       matchesPage(p.url) || asRecords(p.offers).some(offer => matchesPage(offer.url)),
     );
     if (!product && groups.length === 1) product = groups[0];
